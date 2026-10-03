@@ -64,7 +64,8 @@
           ]
         }
       ],
-      "artifactName": "CodeForge-Setup-${arch}.${ext}"
+      "artifactName": "CodeForge-Setup-${arch}.${ext}",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
@@ -106,6 +107,8 @@
         "Categories": "Development;IDE;TextEditor;",
         "MimeType": "inode/directory;text/plain;"
       }
-    }
+    },
+    "npmRebuild": false,
+    "afterPack": "scripts/afterPack.js"
   }
 }

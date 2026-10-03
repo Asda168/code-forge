@@ -1,0 +1,65 @@
+name: Build installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: --win --x64 --arm64
+          - os: macos-latest
+            args: --mac --universal
+          - os: ubuntu-latest
+            args: --linux AppImage deb rpm
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot libarchive-tools
+      - run: python -m pip install setuptools
+      - run: npm install --no-audit --no-fund
+      - run: npm run icons
+      # node-pty has no prebuilt Linux binaries, so rebuild native modules on Linux/macOS.
+      - name: Build (Windows keeps node-pty prebuilds)
+        if: runner.os == 'Windows'
+        run: npx electron-builder ${{ matrix.args }} --publish never
+      - name: Build
+        if: runner.os != 'Windows'
+        run: npx electron-builder ${{ matrix.args }} -c.npmRebuild=true --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+            desktop/dist/*.rpm
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*

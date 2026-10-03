@@ -35,3 +35,7 @@ No LSP (PHP/Python diagnostics, go-to-definition for them), no real debugger ada
 
 ## Shortcuts
 Windows installer creates Desktop and Start Menu shortcuts (and "Open with CodeForge"). Running from source: `npm run shortcut` in `desktop/` puts a launcher on your Desktop.
+
+## Releasing installers
+Windows: `npm run dist:win` (works on Windows). macOS and Linux installers must be built on those systems; the workflow in `.github/workflows/release.yml` does it for all three:
+`git tag v1.0.0 && git push --tags` builds the installers and attaches them to a GitHub Release. Then set `available: True` in `backend/core/site.py`.
