@@ -45,6 +45,7 @@ jobs:
           name: installers-${{ matrix.os }}
           path: |
             desktop/dist/*.exe
+            !desktop/dist/CodeForge-Setup.exe
             desktop/dist/*.dmg
             desktop/dist/*.AppImage
             desktop/dist/*.deb
