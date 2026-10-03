@@ -31,5 +31,7 @@
         "description": "join"
       }
     ]
-  }
+  },
+  "icon": "🛢",
+  "color": "#00758f"
 }

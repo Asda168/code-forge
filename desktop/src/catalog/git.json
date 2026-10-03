@@ -6,5 +6,7 @@
   "fileAssociations": {
     ".gitignore": "ini",
     ".gitattributes": "ini"
-  }
+  },
+  "icon": "⑂",
+  "color": "#f05032"
 }

@@ -1,0 +1,246 @@
+[
+ {
+  "id": "django",
+  "name": "Django Snippets",
+  "description": "Models, views, URLs",
+  "icon": "🎸",
+  "color": "#092e20",
+  "kinds": [
+   "Snippets"
+  ],
+  "snippets": 4,
+  "themes": [],
+  "sample": {
+   "prefix": "dmodel",
+   "body": "class ${1:Name}(models.Model):\n\t${2:name} = models.CharField(max_length=100)\n\n\tdef __str__(self):\n\t\treturn self.${2:name}",
+   "description": "model"
+  }
+ },
+ {
+  "id": "git",
+  "name": "Git Config Files",
+  "description": "Git file associations",
+  "icon": "⑂",
+  "color": "#f05032",
+  "kinds": [
+   "File types"
+  ],
+  "snippets": 0,
+  "themes": [],
+  "sample": null
+ },
+ {
+  "id": "javascript",
+  "name": "JavaScript Snippets",
+  "description": "JS/TS helpers",
+  "icon": "JS",
+  "color": "#f7df1e",
+  "kinds": [
+   "Snippets"
+  ],
+  "snippets": 6,
+  "themes": [],
+  "sample": {
+   "prefix": "clg",
+   "body": "console.log($1);",
+   "description": "log"
+  }
+ },
+ {
+  "id": "laravel",
+  "name": "Laravel Snippets",
+  "description": "Routes, controllers, Eloquent, Blade",
+  "icon": "🅻",
+  "color": "#ff2d20",
+  "kinds": [
+   "Snippets",
+   "File types"
+  ],
+  "snippets": 9,
+  "themes": [],
+  "sample": {
+   "prefix": "route",
+   "body": "Route::get('/$1', [${2:Controller}::class, '${3:index}']);",
+   "description": "Route"
+  }
+ },
+ {
+  "id": "mysql",
+  "name": "MySQL Snippets",
+  "description": "MySQL specifics",
+  "icon": "🐬",
+  "color": "#00618a",
+  "kinds": [
+   "Snippets"
+  ],
+  "snippets": 3,
+  "themes": [],
+  "sample": {
+   "prefix": "showt",
+   "body": "SHOW TABLES;",
+   "description": "show tables"
+  }
+ },
+ {
+  "id": "php",
+  "name": "PHP Snippets",
+  "description": "Common PHP snippets",
+  "icon": "🐘",
+  "color": "#777bb3",
+  "kinds": [
+   "Snippets"
+  ],
+  "snippets": 4,
+  "themes": [],
+  "sample": {
+   "prefix": "fn",
+   "body": "function ${1:name}(${2}) {\n\t$0\n}",
+   "description": "function"
+  }
+ },
+ {
+  "id": "python",
+  "name": "Python Snippets",
+  "description": "Python helpers",
+  "icon": "🐍",
+  "color": "#3776ab",
+  "kinds": [
+   "Snippets"
+  ],
+  "snippets": 4,
+  "themes": [],
+  "sample": {
+   "prefix": "def",
+   "body": "def ${1:name}(${2}):\n\t${0:pass}",
+   "description": "function"
+  }
+ },
+ {
+  "id": "react",
+  "name": "React Snippets",
+  "description": "React components and hooks",
+  "icon": "⚛",
+  "color": "#61dafb",
+  "kinds": [
+   "Snippets",
+   "File types"
+  ],
+  "snippets": 3,
+  "themes": [],
+  "sample": {
+   "prefix": "rfc",
+   "body": "export default function ${1:Component}() {\n\treturn (\n\t\t<div>$0</div>\n\t);\n}",
+   "description": "component"
+  }
+ },
+ {
+  "id": "sql",
+  "name": "SQL Snippets",
+  "description": "Common SQL",
+  "icon": "🛢",
+  "color": "#00758f",
+  "kinds": [
+   "Snippets"
+  ],
+  "snippets": 5,
+  "themes": [],
+  "sample": {
+   "prefix": "sel",
+   "body": "SELECT ${1:*}\nFROM ${2:table}\nWHERE ${3:1=1};",
+   "description": "select"
+  }
+ },
+ {
+  "id": "theme-forest",
+  "name": "Forest Theme",
+  "description": "Calm green dark theme",
+  "icon": "🌲",
+  "color": "#22c55e",
+  "kinds": [
+   "Theme"
+  ],
+  "snippets": 0,
+  "themes": [
+   "Forest"
+  ],
+  "sample": null
+ },
+ {
+  "id": "theme-neon",
+  "name": "Neon Night Theme",
+  "description": "High-energy purple and cyan",
+  "icon": "🌃",
+  "color": "#a855f7",
+  "kinds": [
+   "Theme"
+  ],
+  "snippets": 0,
+  "themes": [
+   "Neon Night"
+  ],
+  "sample": null
+ },
+ {
+  "id": "theme-ocean",
+  "name": "Ocean Theme",
+  "description": "Deep teal dark theme",
+  "icon": "🌊",
+  "color": "#06b6d4",
+  "kinds": [
+   "Theme"
+  ],
+  "snippets": 0,
+  "themes": [
+   "Ocean"
+  ],
+  "sample": null
+ },
+ {
+  "id": "theme-paper",
+  "name": "Paper Theme",
+  "description": "Soft light theme for daytime",
+  "icon": "📄",
+  "color": "#a8a29e",
+  "kinds": [
+   "Theme"
+  ],
+  "snippets": 0,
+  "themes": [
+   "Paper"
+  ],
+  "sample": null
+ },
+ {
+  "id": "theme-sunset",
+  "name": "Sunset Theme",
+  "description": "Warm dark theme",
+  "icon": "🌇",
+  "color": "#fb7185",
+  "kinds": [
+   "Theme"
+  ],
+  "snippets": 0,
+  "themes": [
+   "Sunset"
+  ],
+  "sample": null
+ },
+ {
+  "id": "vue",
+  "name": "Vue Snippets",
+  "description": "Vue 3 single-file components",
+  "icon": "V",
+  "color": "#42b883",
+  "kinds": [
+   "Snippets",
+   "File types"
+  ],
+  "snippets": 3,
+  "themes": [],
+  "sample": {
+   "prefix": "vue3",
+   "body": "<script setup>\nimport { ref } from 'vue'\n$0\n</script>\n\n<template>\n\t<div></div>\n</template>",
+   "description": "SFC script setup"
+  }
+ }
+]

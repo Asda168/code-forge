@@ -24,5 +24,7 @@
   },
   "fileAssociations": {
     ".vue": "html"
-  }
+  },
+  "icon": "V",
+  "color": "#42b883"
 }

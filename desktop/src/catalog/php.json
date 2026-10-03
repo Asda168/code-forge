@@ -26,5 +26,7 @@
         "description": "print_r"
       }
     ]
-  }
+  },
+  "icon": "🐘",
+  "color": "#777bb3"
 }

@@ -26,5 +26,7 @@
         "description": "ModelForm"
       }
     ]
-  }
+  },
+  "icon": "🎸",
+  "color": "#092e20"
 }

@@ -20,8 +20,15 @@ DOWNLOADS = [
 REQUIREMENTS = {"windows": "Windows 10 or 11 (x64 / ARM64)", "macos": "macOS 12+ (Apple Silicon & Intel)", "linux": "Ubuntu 20.04+, Fedora 36+ or similar (glibc 2.31+)"}
 
 
+def catalog():
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).parent / "catalog.json").read_text(encoding="utf-8"))
+
+
 def context():
     return {
-        "version": VERSION, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS,
+        "extensions": catalog(),
+        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS,
         "source_zip": f"{REPO}/archive/refs/heads/main.zip",
     }

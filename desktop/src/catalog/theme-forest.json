@@ -1,0 +1,29 @@
+{
+  "id": "theme-forest",
+  "name": "Forest Theme",
+  "version": "1.0.0",
+  "description": "Calm green dark theme",
+  "icon": "🌲",
+  "color": "#22c55e",
+  "themes": [
+    {
+      "id": "forest",
+      "name": "Forest",
+      "base": "vs-dark",
+      "ui": {
+        "--bg": "#0d1a14",
+        "--side": "#10231a",
+        "--panel": "#0e1d16",
+        "--border": "#1a3a2a",
+        "--hover": "#17332a",
+        "--sel": "#1f4a37",
+        "--accent": "#4ade80",
+        "--cyan": "#86efac"
+      },
+      "ed": {
+        "editor.background": "#0d1a14",
+        "editor.lineHighlightBackground": "#12281d"
+      }
+    }
+  ]
+}

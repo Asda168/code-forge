@@ -68,6 +68,11 @@
   .chip[aria-pressed=true]{border-color:var(--a);box-shadow:0 0 0 2px color-mix(in srgb,var(--a) 35%,transparent)}
   .note{margin:14px 0 4px;color:var(--mut);font-size:.88rem;min-height:1.3em}
   .steps{margin:12px 0 0;padding-left:20px;color:var(--mut);font-size:.92rem}.steps code{font-family:var(--mono);background:var(--bg2);padding:1px 6px;border-radius:5px;color:var(--fg)}
+  .ext-card p{margin:10px 0}.ext-top{display:flex;gap:14px;align-items:center}.ext-top h3{margin:0 0 4px}
+  .ext-ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:22px;font-weight:800;color:#fff;flex:none;text-shadow:0 1px 3px #0006}
+  .kinds,.sw{display:flex;gap:6px;flex-wrap:wrap}.sw{margin-top:10px}
+  pre.snip{margin:10px 0 0;background:#0b1020;color:#c3e88d;border-radius:8px;padding:9px 12px;font:12px/1.5 var(--mono);overflow:hidden;white-space:pre-wrap}
+  pre.snip .c{color:#82aaff}
   pre.cmd{background:#0b1020;color:#dfe4f5;border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow:auto;font:13px/1.8 var(--mono);margin:0}
   pre.cmd .c{color:#546089}
   .two{display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start}
@@ -78,7 +83,7 @@
 <body>
 <nav><div class="wrap">
   <a class="logo" href="#top"><svg viewBox="0 0 128 128"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f8cff"/><stop offset=".55" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0b1020"/><path d="M46 40 22 64l24 24M82 40l24 24-24 24" fill="none" stroke="url(#lg)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><rect x="56" y="82" width="16" height="7" rx="2" fill="#22d3ee"/></svg>CodeForge</a>
-  <span class="sp"></span><a class="l" href="#features">Features</a><a class="l" href="#stack">Languages</a><a class="l" href="#download">Download</a><a class="l" href="#source">Build from source</a>
+  <span class="sp"></span><a class="l" href="#features">Features</a><a class="l" href="#stack">Languages</a><a class="l" href="#extensions">Extensions</a><a class="l" href="#download">Download</a><a class="l" href="#source">Build from source</a>
   <a class="btn p sm" href="#download">Download</a>
 </div></nav>
 
@@ -133,9 +138,25 @@
   <div class="stack"><span>Laravel</span><span>PHP</span><span>Python</span><span>Django</span><span>JavaScript</span><span>TypeScript</span><span>Vue.js</span><span>React</span><span>HTML</span><span>CSS</span><span>SQL</span><span>MySQL</span><span>REST APIs</span></div>
 </div></section>
 
+<section id="extensions" style="padding-top:0"><div class="wrap">
+  <h2>Extensions &amp; themes</h2>
+  <p class="sec-sub">Snippet packs, file types and colour themes you can install in one click from inside CodeForge. Declarative JSON: nothing runs on your machine.</p>
+  <div class="grid ext-grid">
+    {% for e in extensions %}
+    <div class="card ext-card">
+      <div class="ext-top"><div class="ext-ic" style="background:{{ e.color }}">{{ e.icon }}</div>
+        <div><h3>{{ e.name }}</h3><div class="kinds">{% for k in e.kinds %}<span class="tag">{{ k }}</span>{% endfor %}</div></div></div>
+      <p>{{ e.description }}</p>
+      {% if e.sample %}<pre class="snip"><span class="c">{{ e.sample.prefix }}</span> &rarr; {{ e.sample.body|truncatechars:70 }}</pre>{% endif %}
+      {% if e.themes %}<div class="sw">{% for t in e.themes %}<span class="tag">&#127912; {{ t }}</span>{% endfor %}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div></section>
+
 <section id="download"><div class="wrap">
   <h2>Download CodeForge</h2>
-  <div class="meta"><span>Version <b>{{ version }}</b></span><span>Released <b>{{ released }}</b></span><span id="detected"></span></div>
+  <div class="meta"><span>Version <b id="ver">{{ version }}</b></span><span>Released <b>{{ released }}</b></span><span id="detected"></span></div>
   <div class="tabs" role="tablist" aria-label="Operating system">
     <button role="tab" data-tab="windows" aria-selected="false">🪟 Windows</button>
     <button role="tab" data-tab="macos" aria-selected="false"> macOS</button>
@@ -191,6 +212,7 @@ python manage.py runserver</pre>
 <footer><div class="wrap"><span>© CodeForge — Code. Build. Run. Ship.</span><span><a href="{{ repo }}">GitHub</a> · <a href="{{ repo }}/issues">Issues</a> · <a href="#top">Top ↑</a></span></div></footer>
 
 <script>
+  const REPO = "{{ repo_slug }}";
   const ua = navigator.userAgent;
   const detected = /Windows/.test(ua) ? "windows" : /Android|iPhone|iPad/.test(ua) ? null : /Mac/.test(ua) ? "macos" : /Linux|X11/.test(ua) ? "linux" : null;
   const names = {windows: "Windows", macos: "macOS", linux: "Linux"};
@@ -198,6 +220,7 @@ python manage.py runserver</pre>
   const tabs = [...document.querySelectorAll(".tabs [data-tab]")];
   const panels = [...document.querySelectorAll("[data-panel]")];
   const hero = document.getElementById("hero-dl");
+  const mb = n => (n / 1048576).toFixed(0) + " MB";
 
   function pick(panel, chip) {
     panel.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === chip));
@@ -205,7 +228,7 @@ python manage.py runserver</pre>
     if (chip.dataset.ok === "1") {
       main.href = chip.dataset.url; main.setAttribute("download", chip.dataset.name); main.removeAttribute("aria-disabled");
       main.textContent = "Download for " + names[panel.dataset.panel];
-      note.textContent = chip.dataset.name;
+      note.textContent = chip.dataset.name + (chip.dataset.size ? " · " + mb(+chip.dataset.size) : "");
     } else {
       main.href = "#source"; main.setAttribute("aria-disabled", "true"); main.textContent = "Coming soon";
       note.innerHTML = chip.dataset.name + " isn’t published yet. You can <a href=\"#source\">run CodeForge from source</a> today.";
@@ -217,26 +240,44 @@ python manage.py runserver</pre>
     history.replaceState(null, "", "#download-" + os);
     if (scroll) document.getElementById("download").scrollIntoView({behavior: "smooth"});
   }
-  panels.forEach(p => {
-    const chips = [...p.querySelectorAll(".chip")];
-    chips.forEach(c => c.addEventListener("click", () => pick(p, c)));
-    const os = p.dataset.panel;
-    pick(p, (os === "windows" && arm && chips.find(c => c.dataset.arch === "arm64")) || chips.find(c => c.dataset.ok === "1") || chips[0]);
-  });
+  function initPanels() {
+    panels.forEach(p => {
+      const chips = [...p.querySelectorAll(".chip")];
+      const os = p.dataset.panel;
+      pick(p, (os === "windows" && arm && chips.find(c => c.dataset.arch === "arm64" && c.dataset.ok === "1")) || chips.find(c => c.dataset.ok === "1") || chips[0]);
+    });
+    const target = detected || "windows";
+    const tp = document.querySelector('[data-panel="' + target + '"] [data-main]');
+    hero.textContent = "Download for " + names[target];
+    const live = tp && !tp.hasAttribute("aria-disabled");
+    if (live) hero.href = tp.href;
+    document.getElementById("hero-sub").textContent = live ? "Free & open source" : "Installer coming soon — run from source today";
+  }
+  panels.forEach(p => [...p.querySelectorAll(".chip")].forEach(c => c.addEventListener("click", () => pick(p, c))));
   tabs.forEach(t => t.addEventListener("click", () => select(t.dataset.tab)));
+  hero.addEventListener("click", e => {
+    const tp = document.querySelector('[data-panel="' + (detected || "windows") + '"] [data-main]');
+    if (tp && !tp.hasAttribute("aria-disabled")) { hero.href = tp.href; return; }
+    e.preventDefault(); select(detected || "windows", true);
+  });
 
   const fromHash = (location.hash.match(/^#download-(windows|macos|linux)$/) || [])[1];
   select(fromHash || detected || "windows");
   if (detected) document.getElementById("detected").textContent = "Detected: " + names[detected];
-  // Hero button: download directly if the installer is published, otherwise jump to the visitor's OS tab.
-  const target = detected || "windows";
-  const tp = document.querySelector('[data-panel="' + target + '"] [data-main]');
-  hero.textContent = "Download for " + names[target];
-  hero.addEventListener("click", e => {
-    if (tp && !tp.hasAttribute("aria-disabled")) { hero.href = tp.href; return; }
-    e.preventDefault(); select(target, true);
-  });
-  if (tp && tp.hasAttribute("aria-disabled")) document.getElementById("hero-sub").textContent = "Installer coming soon — run from source today";
+  initPanels();
+
+  // Live release data: whatever installers actually exist on the latest GitHub Release become real download links.
+  fetch("https://api.github.com/repos/" + REPO + "/releases/latest", {headers: {Accept: "application/vnd.github+json"}})
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(rel => {
+      const assets = Object.fromEntries((rel.assets || []).map(a => [a.name, a]));
+      document.querySelectorAll(".chip").forEach(c => {
+        const a = assets[c.dataset.name];
+        if (a) { c.dataset.ok = "1"; c.dataset.url = a.browser_download_url; c.dataset.size = a.size; }
+      });
+      if (rel.tag_name) document.getElementById("ver").textContent = rel.tag_name.replace(/^v/, "");
+      initPanels();
+    }).catch(() => {});
 </script>
 </body>
 </html>

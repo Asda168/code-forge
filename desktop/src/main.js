@@ -440,7 +440,8 @@ const extDir = () => path.join(userData(), 'extensions');
 const EXT_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 function cleanManifest(m, source) {
   if (!m || typeof m !== 'object' || !EXT_ID.test(String(m.id))) throw new Error('Invalid extension: "id" must be lowercase letters, digits, . _ -');
-  const out = { id: m.id, name: String(m.name || m.id).slice(0, 80), version: String(m.version || '0.0.0').slice(0, 20), description: String(m.description || '').slice(0, 300), source };
+  const out = { id: m.id, name: String(m.name || m.id).slice(0, 80), version: String(m.version || '0.0.0').slice(0, 20), description: String(m.description || '').slice(0, 300), source,
+    icon: String(m.icon || '').slice(0, 4), color: /^#[0-9a-f]{6}$/i.test(String(m.color)) ? m.color : '#8b5cf6' };
   out.themes = (Array.isArray(m.themes) ? m.themes : []).filter((t) => t && EXT_ID.test(String(t.id))).map((t) => ({ id: `${m.id}.${t.id}`, name: String(t.name || t.id), base: ['vs', 'vs-dark', 'hc-black'].includes(t.base) ? t.base : 'vs-dark', ui: Object.fromEntries(Object.entries(t.ui || {}).filter(([k, v]) => /^--[a-z0-9-]+$/.test(k) && /^#[0-9a-f]{3,8}$/i.test(String(v)))), ed: Object.fromEntries(Object.entries(t.ed || {}).filter(([k, v]) => /^[\w.]+$/.test(k) && /^#[0-9a-f]{3,8}$/i.test(String(v)))) }));
   out.snippets = {};
   for (const [lang, list] of Object.entries(m.snippets || {})) if (/^[\w-]+$/.test(lang) && Array.isArray(list)) out.snippets[lang] = list.slice(0, 500).filter((s) => s && s.prefix && s.body).map((s) => ({ prefix: String(s.prefix), body: Array.isArray(s.body) ? s.body.join('\n') : String(s.body), description: String(s.description || '') }));

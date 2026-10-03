@@ -1,0 +1,29 @@
+{
+  "id": "theme-neon",
+  "name": "Neon Night Theme",
+  "version": "1.0.0",
+  "description": "High-energy purple and cyan",
+  "icon": "🌃",
+  "color": "#a855f7",
+  "themes": [
+    {
+      "id": "neon",
+      "name": "Neon Night",
+      "base": "vs-dark",
+      "ui": {
+        "--bg": "#0a0614",
+        "--side": "#100a20",
+        "--panel": "#0c0818",
+        "--border": "#271a4a",
+        "--hover": "#1d1236",
+        "--sel": "#33205f",
+        "--accent": "#a855f7",
+        "--cyan": "#22d3ee"
+      },
+      "ed": {
+        "editor.background": "#0a0614",
+        "editor.lineHighlightBackground": "#150d2b"
+      }
+    }
+  ]
+}

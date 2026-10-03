@@ -56,5 +56,7 @@
   },
   "fileAssociations": {
     ".blade": "html"
-  }
+  },
+  "icon": "🅻",
+  "color": "#ff2d20"
 }

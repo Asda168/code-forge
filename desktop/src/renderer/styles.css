@@ -117,3 +117,5 @@ kbd{background:var(--hover);border-radius:4px;padding:1px 5px;font:11px var(--mo
 #watermark>div{text-align:right}
 
 [hidden]{display:none !important}
+
+.ext-ic{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:19px;font-weight:700;color:#fff;flex:none;text-shadow:0 1px 2px #0006}

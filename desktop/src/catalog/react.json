@@ -25,5 +25,7 @@
   "fileAssociations": {
     ".jsx": "javascript",
     ".tsx": "typescript"
-  }
+  },
+  "icon": "⚛",
+  "color": "#61dafb"
 }

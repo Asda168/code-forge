@@ -1,0 +1,29 @@
+{
+  "id": "theme-paper",
+  "name": "Paper Theme",
+  "version": "1.0.0",
+  "description": "Soft light theme for daytime",
+  "icon": "📄",
+  "color": "#a8a29e",
+  "themes": [
+    {
+      "id": "paper",
+      "name": "Paper",
+      "base": "vs",
+      "ui": {
+        "--bg": "#faf8f4",
+        "--side": "#f0ece3",
+        "--panel": "#f5f1e8",
+        "--fg": "#2b2a27",
+        "--mut": "#7a756b",
+        "--border": "#ddd6c7",
+        "--hover": "#e8e2d3",
+        "--sel": "#d9d1bd",
+        "--accent": "#b45309"
+      },
+      "ed": {
+        "editor.background": "#faf8f4"
+      }
+    }
+  ]
+}

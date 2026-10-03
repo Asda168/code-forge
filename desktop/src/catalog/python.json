@@ -26,5 +26,7 @@
         "description": "open file"
       }
     ]
-  }
+  },
+  "icon": "🐍",
+  "color": "#3776ab"
 }

@@ -21,5 +21,7 @@
         "editor.background": "#1f1220"
       }
     }
-  ]
+  ],
+  "icon": "🌇",
+  "color": "#fb7185"
 }

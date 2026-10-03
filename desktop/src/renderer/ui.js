@@ -40,6 +40,7 @@
     const m = await cf.ext.install(v.u); await CF.loadExtensions(); CF.toast(`Installed ${m.name} ${m.version}`); if ($('#side-title').dataset.view === 'extensions') CF.showView('extensions');
   });
   CF.openSettingsJson = CF.guard(async () => { const p = await cf.settings.file(); S.settingsFile = p; CF.closeOverlay(); CF.openFile(p); });
+  const extIcon = (e) => h('div', { class: 'ext-ic', style: `background:${e.color || '#8b5cf6'}` }, e.icon || (e.name || '?')[0].toUpperCase());
   async function renderExtensions(body) {
     const exts = S.extensions || [];
     const setDisabled = async (id, off) => { const cur = new Set(S.settings.disabledExtensions || []); off ? cur.add(id) : cur.delete(id); await CF.setSetting({ disabledExtensions: [...cur] }); await CF.loadExtensions(); CF.showView('extensions'); };
@@ -47,13 +48,13 @@
       h('div', { class: 'muted', style: 'font-size:11px' }, 'Add "extensions": ["https://…/ext.json"] to download, or "customExtensions": ["C:\\\\path\\\\my-ext"] for local ones, then run "Reload Extensions".')));
     body.append(h('div', { class: 'sec-head' }, 'Installed / Custom'));
     if (!exts.length) body.append(h('div', { class: 'pad muted' }, 'None yet.'));
-    exts.forEach((e) => body.append(h('div', { class: 'ext' }, h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'v' + e.version + (String(e.source).startsWith('custom') ? ' · custom' : ' · downloaded')),
+    exts.forEach((e) => body.append(h('div', { class: 'ext' }, extIcon(e), h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'v' + e.version + (String(e.source).startsWith('custom') ? ' · custom' : ' · downloaded')),
       e.error ? h('div', { style: 'color:var(--err)' }, e.error) : h('div', { class: 'muted' }, e.description || `${e.themes.length} themes, ${Object.values(e.snippets).flat().length} snippets`)),
       h('div', {}, !e.error ? h('button', { class: 'btn sec sm', onclick: () => setDisabled(e.id, e.enabled) }, e.enabled ? 'Disable' : 'Enable') : null, ' ',
         !String(e.source).startsWith('custom') ? h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { await cf.ext.uninstall(e.id); await CF.loadExtensions(); CF.showView('extensions'); }) }, 'Uninstall') : null))));
     body.append(h('div', { class: 'sec-head' }, 'Available'));
     const have = new Set(exts.map((x) => x.id));
-    (await cf.ext.catalog().catch(() => [])).filter((c) => !have.has(c.id)).forEach((c) => body.append(h('div', { class: 'ext' },
+    (await cf.ext.catalog().catch(() => [])).filter((c) => !have.has(c.id)).forEach((c) => body.append(h('div', { class: 'ext' }, extIcon(c),
       h('div', { class: 'info' }, h('b', {}, c.name), ' ', h('small', {}, 'v' + c.version), h('div', { class: 'muted' }, c.description)),
       h('div', {}, h('button', { class: 'btn sm', onclick: CF.guard(async () => { await cf.ext.installBundled(c.id); await CF.loadExtensions(); CF.toast('Installed ' + c.name); CF.showView('extensions'); }) }, 'Install')))));
     body.append(h('div', { class: 'pad' }, h('button', { class: 'btn sec sm', onclick: () => CF.checkUpdates(true) }, 'Check for app updates')));
