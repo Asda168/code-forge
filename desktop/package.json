@@ -2,7 +2,7 @@
   "name": "codeforge",
   "productName": "CodeForge",
   "version": "1.0.0",
-  "description": "CodeForge — Code. Build. Run. Ship.",
+  "description": "CodeForge - Code. Build. Run. Ship.",
   "main": "src/main.js",
   "author": "CodeForge",
   "license": "MIT",
@@ -30,13 +30,36 @@
   "build": {
     "appId": "dev.codeforge.app",
     "productName": "CodeForge",
-    "directories": { "output": "dist" },
-    "files": ["src/**", "assets/**", "node_modules/**", "package.json"],
-    "asarUnpack": ["**/node-pty/**"],
-    "fileAssociations": [{ "ext": "*", "name": "File", "role": "Editor" }],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**",
+      "assets/**",
+      "node_modules/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node-pty/**"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "*",
+        "name": "File",
+        "role": "Editor"
+      }
+    ],
     "win": {
-      "icon": "assets/icons/win/icon.ico",
-      "target": [{ "target": "nsis", "arch": ["x64", "arm64"] }],
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "artifactName": "CodeForge-Setup-${arch}.${ext}"
     },
     "nsis": {
@@ -47,15 +70,26 @@
       "include": "scripts/installer.nsh"
     },
     "mac": {
-      "icon": "assets/icons/mac/icon.icns",
+      "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "artifactName": "CodeForge-macOS-universal.${ext}"
     },
     "linux": {
       "icon": "assets/icons/png",
       "category": "Development",
-      "target": ["AppImage", "deb", "rpm"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
       "artifactName": "CodeForge.${ext}"
     }
   }

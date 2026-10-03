@@ -1,0 +1,9 @@
+{
+  "id": "hello-laravel",
+  "name": "Hello Laravel Snippets",
+  "version": "1.0.0",
+  "description": "Sample custom extension: a theme, PHP snippets and a .tpl association.",
+  "themes": [{ "id": "ocean", "name": "Ocean", "base": "vs-dark", "ui": { "--bg": "#06202b", "--side": "#082a38", "--accent": "#22d3ee" }, "ed": { "editor.background": "#06202b" } }],
+  "snippets": { "php": [{ "prefix": "ddd", "body": "dd($1);", "description": "Laravel dump & die" }, { "prefix": "route", "body": "Route::get('/$1', [${2:Controller}::class, '${3:index}']);", "description": "Laravel route" }] },
+  "fileAssociations": { ".tpl": "html" }
+}

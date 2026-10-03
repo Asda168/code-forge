@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; worker-src blob: data:; connect-src 'self'">
+<title>CodeForge</title>
+<link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/400.css">
+<link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/500.css">
+<link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/700.css">
+<link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <img src="../../assets/logo-dark.svg" class="logo" alt="">
+    <span class="brand">CodeForge</span><span class="tagline">Code. Build. Run. Ship.</span>
+    <button id="cmd-center" class="ghost">Search / Command Palette  <kbd>Ctrl+Shift+P</kbd></button>
+    <span id="update-banner" hidden></span>
+  </header>
+  <nav id="activitybar">
+    <button data-view="explorer" title="Explorer">🗂</button>
+    <button data-view="search" title="Search">🔍</button>
+    <button data-view="git" title="Source Control">⑂</button>
+    <button data-view="run" title="Run">▶</button>
+    <button data-view="extensions" title="Extensions">🧩</button>
+    <span class="grow"></span>
+    <button data-view="settings" title="Settings">⚙</button>
+  </nav>
+  <aside id="sidebar"><div id="side-title"></div><div id="side-body"></div></aside>
+  <main id="main">
+    <section id="editor-area">
+      <div id="groups"></div>
+      <div id="welcome" hidden></div>
+    </section>
+    <section id="panel">
+      <div id="panel-tabs">
+        <button data-panel="terminal" class="active">TERMINAL</button>
+        <button data-panel="problems">PROBLEMS <span id="prob-count"></span></button>
+        <button data-panel="debug">DEBUG CONSOLE</button>
+        <span class="grow"></span>
+        <select id="shell-select" title="Shell"></select>
+        <button id="term-new" title="New terminal">＋</button>
+        <button id="panel-close" title="Close panel">✕</button>
+      </div>
+      <div id="term-tabs"></div>
+      <div id="panel-terminal"></div>
+      <div id="panel-problems" hidden></div>
+      <div id="panel-debug" hidden></div>
+    </section>
+  </main>
+  <footer id="statusbar">
+    <span id="sb-branch">⑂ —</span><span id="sb-problems">⊗ 0  ⚠ 0</span><span class="grow"></span>
+    <span id="sb-pos">Ln 1, Col 1</span><span id="sb-indent">Spaces: 4</span><span id="sb-enc">UTF-8</span>
+    <span id="sb-eol">LF</span><span id="sb-lang">Plain Text</span><span id="sb-font">JetBrains Mono</span>
+  </footer>
+</div>
+<div id="overlay" hidden></div>
+<div id="ctx" hidden></div>
+
+<script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+<script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+<script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
+<script src="core.js"></script>
+<script src="explorer.js"></script>
+<script src="terminal.js"></script>
+<script src="git.js"></script>
+<script src="ui.js"></script>
+<script src="boot.js"></script>
+</body>
+</html>
