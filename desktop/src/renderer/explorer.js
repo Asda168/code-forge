@@ -100,7 +100,7 @@
   CF.setRoot = CF.guard(async (root) => {
     CF.closeAllEditors(); S.root = root; T.expanded.clear(); T.kids.clear(); T.sel = null; $('#welcome').hidden = true;
     document.title = `${base(root)} — CodeForge`;
-    CF.showView('explorer'); CF.gitRefresh && CF.gitRefresh(); CF.detectProject && CF.detectProject();
+    CF.watchRoot && CF.watchRoot(); CF.showView('explorer'); CF.gitRefresh && CF.gitRefresh(); CF.detectProject && CF.detectProject();
     CF.newTerminal && !S.terms.length && CF.newTerminal();
   });
   CF.openFolder = CF.guard(async () => { const r = await cf.ws.openDialog(); if (r) CF.setRoot(r); });

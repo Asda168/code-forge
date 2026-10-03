@@ -119,7 +119,7 @@
 
   // ---- command palette ------------------------------------------------------------------------------------
   const COMMANDS = () => [
-    ['Open Folder', CF.openFolder, 'Ctrl+O'], ['New File', () => CF.newFile()], ['New Folder', () => CF.newFolder()], ['Open Terminal', () => CF.newTerminal()], ['Open Git Bash', () => CF.newTerminal('gitbash')],
+    ['Open Folder', CF.openFolder, 'Ctrl+O'], ['Go to File…', () => CF.quickOpen(), 'Ctrl+P'], ['New File', () => CF.newFile()], ['New Folder', () => CF.newFolder()], ['Open Terminal', () => CF.newTerminal()], ['Open Git Bash', () => CF.newTerminal('gitbash')],
     ['Git Clone', () => CF.cloneDialog()], ['Git Commit', () => { CF.showView('git'); setTimeout(() => $('#commit-msg') && $('#commit-msg').focus(), 300); }], ['Git Push', () => CF.gitCmd('Push', ['push'])], ['Git Pull', () => CF.gitCmd('Pull', ['pull'])],
     ['Run Project', () => CF.runProject(), 'F5'], ['Stop', CF.stopRun], ['Restart', CF.restartRun], ['Format Document', () => CF.activeGroup().editor.getAction('editor.action.formatDocument').run()],
     ['Change Font Size: Increase', () => CF.fontStep(1)], ['Change Font Size: Decrease', () => CF.fontStep(-1)], ['Change Font Size: Reset', () => CF.fontStep(0)],
@@ -150,6 +150,8 @@
     'font-inc': () => CF.fontStep(1), 'font-dec': () => CF.fontStep(-1), 'font-reset': () => CF.fontStep(0), 'goto-line': () => ed().getAction('editor.action.gotoLine').run(), 'goto-def': () => ed().getAction('editor.action.revealDefinition').run(),
     run: () => CF.runProject(), stop: CF.stopRun, restart: CF.restartRun, 'new-terminal': () => CF.newTerminal(), 'new-gitbash': () => CF.newTerminal('gitbash'),
     'git-clone': () => CF.cloneDialog(), 'git-init': () => CF.gitInit(), 'git-commit': () => CF.showView('git'), 'git-push': () => CF.gitCmd('Push', ['push']), 'git-pull': () => CF.gitCmd('Pull', ['pull']), 'git-fetch': () => CF.gitCmd('Fetch', ['fetch', '--all']),
+    'quick-open': () => CF.quickOpen(), 'close-tab': () => CF.closeActiveTab(), 'next-tab': () => CF.cycleTab(1), 'prev-tab': () => CF.cycleTab(-1), split: () => CF.split(false),
+    'view-explorer': () => CF.showView('explorer'), 'view-git': () => CF.showView('git'), 'view-extensions': () => CF.showView('extensions'),
     'check-updates': () => CF.checkUpdates(true), settings: CF.settingsDialog,
   };
   CF.bindMenu = () => cf.onMenu((id) => MENU[id] && CF.guard(MENU[id])());

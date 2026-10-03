@@ -31,9 +31,21 @@ function createWindow() {
   });
   if (process.env.CODEFORGE_DEBUG) win.webContents.on('console-message', (_e, level, msg, line, src) => { if (level >= 2) console.log(`[renderer:${level}] ${msg} (${path.basename(src)}:${line})`); });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  if (process.env.CODEFORGE_E2E) win.webContents.once('did-finish-load', () => setTimeout(async () => {
+    try {
+      const dir = process.env.CODEFORGE_E2E_ROOT; if (dir) registerRoot(dir);
+      const out = await win.webContents.executeJavaScript(fs.readFileSync(process.env.CODEFORGE_E2E, 'utf8'));
+      console.log('[e2e]', typeof out === 'string' ? out : JSON.stringify(out, null, 1));
+    } catch (e) { console.log('[e2e-error]', e.message); }
+    app.quit();
+  }, 5000));
   if (process.env.CODEFORGE_DEBUG) setTimeout(() => win.webContents.executeJavaScript(
     `JSON.stringify({monaco:!!window.monaco,groups:document.querySelectorAll('.group').length,welcome:!document.getElementById('welcome').hidden,shells:CF.S.shells.map(s=>s.name),font:getComputedStyle(document.body).fontFamily})`
   ).then((r) => console.log('[selftest]', r)).catch((e) => console.log('[selftest-error]', e.message)), 8000);
+  let forceClose = false;
+  win.on('close', (e) => { if (!forceClose) { e.preventDefault(); send('ask-close'); } });
+  ipcMain.removeHandler('app:forceClose');
+  ipcMain.handle('app:forceClose', () => { forceClose = true; win.close(); });
   win.webContents.setWindowOpenHandler(({ url }) => { openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) e.preventDefault(); });
   buildMenu();
@@ -47,10 +59,10 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(mac ? [{ role: 'appMenu' }] : []),
     { label: 'File', submenu: [cmd('Open Folder…', 'open-folder', 'CmdOrCtrl+O'), cmd('New File', 'new-file', 'CmdOrCtrl+N'), cmd('New Folder', 'new-folder'),
-      cmd('Save', 'save', 'CmdOrCtrl+S'), cmd('Save All', 'save-all', 'CmdOrCtrl+Alt+S'), { type: 'separator' }, cmd('Save Workspace', 'save-workspace'), cmd('Open Workspace', 'open-workspace'), cmd('Close Workspace', 'close-workspace'), { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
+      cmd('Quick Open…', 'quick-open', 'CmdOrCtrl+P'), cmd('Save', 'save', 'CmdOrCtrl+S'), cmd('Close Editor', 'close-tab', 'CmdOrCtrl+W'), cmd('Next Editor', 'next-tab', 'Ctrl+Tab'), cmd('Previous Editor', 'prev-tab', 'Ctrl+Shift+Tab'), cmd('Split Editor', 'split', 'CmdOrCtrl+\\'), cmd('Save All', 'save-all', 'CmdOrCtrl+Alt+S'), { type: 'separator' }, cmd('Save Workspace', 'save-workspace'), cmd('Open Workspace', 'open-workspace'), cmd('Close Workspace', 'close-workspace'), { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, cmd('Find in Files', 'search', 'CmdOrCtrl+Shift+F')] },
     { label: 'Selection', submenu: [cmd('Select All', 'select-all')] },
-    { label: 'View', submenu: [cmd('Command Palette…', 'palette', 'CmdOrCtrl+Shift+P'), cmd('Toggle Sidebar', 'toggle-sidebar', 'CmdOrCtrl+B'), cmd('Toggle Terminal', 'toggle-terminal', 'CmdOrCtrl+`'),
+    { label: 'View', submenu: [cmd('Command Palette…', 'palette', 'CmdOrCtrl+Shift+P'), cmd('Toggle Sidebar', 'toggle-sidebar', 'CmdOrCtrl+B'), cmd('Toggle Terminal', 'toggle-terminal', 'CmdOrCtrl+`'), cmd('Explorer', 'view-explorer', 'CmdOrCtrl+Shift+E'), cmd('Source Control', 'view-git', 'Ctrl+Shift+G'), cmd('Extensions', 'view-extensions', 'CmdOrCtrl+Shift+X'),
       { type: 'separator' }, cmd('Increase Font Size', 'font-inc', 'CmdOrCtrl+='), cmd('Decrease Font Size', 'font-dec', 'CmdOrCtrl+-'), cmd('Reset Font Size', 'font-reset', 'CmdOrCtrl+0'), { type: 'separator' }, { role: 'toggleDevTools' }, { role: 'togglefullscreen' }] },
     { label: 'Go', submenu: [cmd('Go to Line…', 'goto-line', 'CmdOrCtrl+G'), cmd('Go to Definition', 'goto-def', 'F12')] },
     { label: 'Run', submenu: [cmd('Run Project', 'run', 'F5'), cmd('Stop', 'stop', 'Shift+F5'), cmd('Restart', 'restart', 'CmdOrCtrl+Shift+F5')] },
@@ -224,6 +236,35 @@ ipcMain.handle('fs:replaceInFile', async (_e, p, query, repl, opts = {}) => {
   const out = text.replace(re, repl);
   if (out !== text) await fsp.writeFile(p, out, 'utf8');
   return out !== text;
+});
+
+// quick-open index (bounded, skips heavy dirs)
+ipcMain.handle('fs:files', async (_e, root) => {
+  root = assertInRoot(root); const out = []; const MAX = 50000;
+  async function walk(dir) {
+    if (out.length >= MAX) return;
+    let ents; try { ents = await fsp.readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const d of ents) {
+      if (d.isDirectory()) { if (!IGNORE_SEARCH.has(d.name) && !d.isSymbolicLink()) await walk(path.join(dir, d.name)); }
+      else if (d.isFile()) out.push(path.relative(root, path.join(dir, d.name)));
+    }
+  }
+  await walk(root); return out;
+});
+let watcher = null, watchTimer = null;
+ipcMain.handle('fs:watch', (_e, root) => {
+  root = assertInRoot(root);
+  if (watcher) { watcher.close(); watcher = null; }
+  try {
+    watcher = fs.watch(root, { recursive: true }, (_ev, name) => {
+      if (!name) return;
+      const parts = String(name).split(/[\\/]/);
+      if (parts.some((p) => p === '.git' || IGNORE_SEARCH.has(p))) return;
+      clearTimeout(watchTimer); watchTimer = setTimeout(() => send('fs:changed'), 400);
+    });
+    watcher.on('error', () => {});
+  } catch { /* unsupported: manual refresh still works */ }
+  return true;
 });
 
 // ---------------------------------------------------------------- shells & terminals
