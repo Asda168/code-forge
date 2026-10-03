@@ -35,6 +35,7 @@ function createWindow() {
     try {
       const dir = process.env.CODEFORGE_E2E_ROOT; if (dir) registerRoot(dir);
       const out = await win.webContents.executeJavaScript(fs.readFileSync(process.env.CODEFORGE_E2E, 'utf8'));
+      if (process.env.CODEFORGE_SHOT) { win.show(); win.focus(); await new Promise((r) => setTimeout(r, 2000)); fs.writeFileSync(process.env.CODEFORGE_SHOT, (await win.webContents.capturePage()).toPNG()); }
       console.log('[e2e]', typeof out === 'string' ? out : JSON.stringify(out, null, 1));
     } catch (e) { console.log('[e2e-error]', e.message); }
     app.quit();
@@ -416,7 +417,7 @@ ipcMain.handle('project:openRoot', (_e, p) => {            // after scaffold com
 const DEFAULT_SETTINGS = {
   fontFamily: 'JetBrains Mono', fontSize: 14, fontWeight: '400', lineHeight: 1.5, letterSpacing: 0, ligatures: true, smoothFonts: true,
   minimap: true, wordWrap: false, tabSize: 4, insertSpaces: true, autoSave: 'afterDelay', autoSaveDelay: 1000,
-  theme: 'codeforge-dark', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
+  theme: 'vsc-dark-modern', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
   defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true,
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
   extensions: [], customExtensions: [], disabledExtensions: [],
@@ -442,7 +443,8 @@ function cleanManifest(m, source) {
   if (!m || typeof m !== 'object' || !EXT_ID.test(String(m.id))) throw new Error('Invalid extension: "id" must be lowercase letters, digits, . _ -');
   const out = { id: m.id, name: String(m.name || m.id).slice(0, 80), version: String(m.version || '0.0.0').slice(0, 20), description: String(m.description || '').slice(0, 300), source,
     icon: String(m.icon || '').slice(0, 4), color: /^#[0-9a-f]{6}$/i.test(String(m.color)) ? m.color : '#8b5cf6' };
-  out.themes = (Array.isArray(m.themes) ? m.themes : []).filter((t) => t && EXT_ID.test(String(t.id))).map((t) => ({ id: `${m.id}.${t.id}`, name: String(t.name || t.id), base: ['vs', 'vs-dark', 'hc-black'].includes(t.base) ? t.base : 'vs-dark', ui: Object.fromEntries(Object.entries(t.ui || {}).filter(([k, v]) => /^--[a-z0-9-]+$/.test(k) && /^#[0-9a-f]{3,8}$/i.test(String(v)))), ed: Object.fromEntries(Object.entries(t.ed || {}).filter(([k, v]) => /^[\w.]+$/.test(k) && /^#[0-9a-f]{3,8}$/i.test(String(v)))) }));
+  out.themes = (Array.isArray(m.themes) ? m.themes : []).filter((t) => t && EXT_ID.test(String(t.id))).map((t) => ({ id: `${m.id}.${t.id}`, name: String(t.name || t.id), base: ['vs', 'vs-dark', 'hc-black'].includes(t.base) ? t.base : 'vs-dark', ui: Object.fromEntries(Object.entries(t.ui || {}).filter(([k, v]) => /^--[a-z0-9-]+$/.test(k) && /^#[0-9a-f]{3,8}$/i.test(String(v)))), ed: Object.fromEntries(Object.entries(t.ed || {}).filter(([k, v]) => /^[\w.]+$/.test(k) && /^#[0-9a-f]{3,8}$/i.test(String(v)))),
+    rules: (Array.isArray(t.rules) ? t.rules : []).slice(0, 400).filter((r) => r && /^[\w.-]{1,80}$/.test(String(r.token))).map((r) => ({ token: String(r.token), foreground: /^[0-9a-f]{6}$/i.test(String(r.foreground)) ? String(r.foreground) : undefined, fontStyle: /^(italic|bold|underline|\s)*$/.test(String(r.fontStyle || '')) ? String(r.fontStyle || '') : '' })) }));
   out.snippets = {};
   for (const [lang, list] of Object.entries(m.snippets || {})) if (/^[\w-]+$/.test(lang) && Array.isArray(list)) out.snippets[lang] = list.slice(0, 500).filter((s) => s && s.prefix && s.body).map((s) => ({ prefix: String(s.prefix), body: Array.isArray(s.body) ? s.body.join('\n') : String(s.body), description: String(s.description || '') }));
   out.fileAssociations = Object.fromEntries(Object.entries(m.fileAssociations || {}).filter(([k, v]) => /^\.[\w.-]+$/.test(k) && /^[\w-]+$/.test(String(v))));
@@ -483,6 +485,16 @@ ipcMain.handle('ext:installBundled', (_e, id) => {
   const f = path.join(catalogDir, id + '.json'); if (!fs.existsSync(f)) throw new Error('Unknown extension');
   const m = cleanManifest(JSON.parse(fs.readFileSync(f, 'utf8')), 'bundled');
   fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), m.id + '.json'), JSON.stringify(m, null, 2)); return m;
+});
+ipcMain.handle('ext:pickThemeFile', async () => {       // user explicitly picks a VS Code theme .json
+  const r = await dialog.showOpenDialog(win, { title: 'Import VS Code theme', properties: ['openFile'], filters: [{ name: 'Theme JSON', extensions: ['json', 'jsonc'] }] });
+  if (r.canceled) return null;
+  const st = fs.statSync(r.filePaths[0]); if (st.size > 2 * 1024 * 1024) throw new Error('Theme file too large (>2 MB)');
+  return { name: path.basename(r.filePaths[0]), text: fs.readFileSync(r.filePaths[0], 'utf8') };
+});
+ipcMain.handle('ext:saveManifest', (_e, m) => {          // used for imported themes; same sanitizer as downloads
+  const clean = cleanManifest(m, 'imported');
+  fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), clean.id + '.json'), JSON.stringify(clean, null, 2)); return clean;
 });
 ipcMain.handle('ext:list', () => listExtensions());
 ipcMain.handle('ext:install', async (_e, url) => installFromUrl(String(url)));

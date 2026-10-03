@@ -27,7 +27,7 @@
     snipDisposables.splice(0).forEach((d) => d.dispose()); Object.keys(assoc).forEach((k) => delete assoc[k]);
     Object.keys(CF.THEMES).filter((k) => CF.THEMES[k].ext).forEach((k) => delete CF.THEMES[k]);
     for (const e of list.filter((x) => x.enabled && !x.error)) {
-      e.themes.forEach((t) => (CF.THEMES[t.id] = { name: t.name + ' (' + e.name + ')', base: t.base, ui: t.ui, ed: t.ed, ext: true }));
+      e.themes.forEach((t) => (CF.THEMES[t.id] = { name: e.source === 'imported' ? e.name.replace(' (imported)', '') + ' (imported)' : t.name + ' (' + e.name + ')', base: t.base, ui: t.ui, ed: t.ed, rules: t.rules, ext: true }));
       Object.assign(assoc, e.fileAssociations);
       for (const [lang, snips] of Object.entries(e.snippets)) snipDisposables.push(monaco.languages.registerCompletionItemProvider(lang, { provideCompletionItems: (model, pos) => {
         const w = model.getWordUntilPosition(pos); const range = { startLineNumber: pos.lineNumber, endLineNumber: pos.lineNumber, startColumn: w.startColumn, endColumn: w.endColumn };
@@ -82,7 +82,7 @@
       h('b', {}, 'Terminal'), h('span'), ...row('Default Shell', sel('defaultShell', [['', 'Auto'], ...S.shells.map((x) => [x.id, x.name])])),
       ...row('Git Bash Path (Windows)', txt('gitBashPath', detect)), ...row('PowerShell Path', txt('powershellPath')), ...row('CMD Path', txt('cmdPath')),
       h('b', {}, 'Git'), h('span'), ...row('Git Path', txt('gitPath')), ...row('Default Branch', txt('gitDefaultBranch')),
-      h('b', {}, 'Appearance'), h('span'), ...row('Theme', sel('theme', Object.entries(CF.THEMES).map(([k, v]) => [k, v.name]))),
+      h('b', {}, 'Appearance'), h('span'), ...row('Theme', h('div', { style: 'display:flex;gap:6px' }, sel('theme', Object.entries(CF.THEMES).map(([k, v]) => [k, v.name])), h('button', { class: 'btn sec sm', onclick: () => { CF.closeOverlay(); CF.themePicker(); } }, 'Preview…'), h('button', { class: 'btn sec sm', onclick: () => { CF.closeOverlay(); CF.importVscodeTheme(); } }, 'Import VS Code theme…'))),
       ...row('Sidebar', chk('sidebar')), ...row('Status Bar', chk('statusBar')), ...row('Activity Bar', chk('activityBar')),
       h('b', {}, 'Updates'), h('span'), ...row('Automatic Updates', chk('autoUpdate')));
     const loggedIn = await cf.api.loggedIn();
@@ -99,7 +99,7 @@
 
   // ---- updates -------------------------------------------------------------------------------------
   CF.checkUpdates = CF.guard(async (manual) => {
-    const r = await cf.api.checkUpdates();
+    const r = await cf.app.checkUpdates();
     const b = $('#update-banner');
     if (r.update_available) { b.hidden = false; b.textContent = `New version available: ${r.release.version} — Update`; b.onclick = () => { const dl = r.release.downloads.find((d) => d.platform === ({ win32: 'windows', darwin: 'macos', linux: 'linux' })[S.platform.platform]); if (dl) cf.app.openExternal(dl.url); }; }
     else if (manual) CF.toast('You are on the latest version.');
@@ -131,8 +131,8 @@
     ['New Project…', () => CF.newProjectWizard()], ['Split Editor Right', () => CF.split(false)], ['Split Editor Down', () => CF.split(true)], ['Save All', CF.saveAll],
     ['Find in Files', () => CF.showView('search'), 'Ctrl+Shift+F'], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
     ['Save Workspace', saveWorkspace], ['Open Workspace', openWorkspace], ['Close Workspace', closeWorkspace], ['Check for Updates', () => CF.checkUpdates(true)],
-    ['Install Extension from URL…', () => CF.installExtensionUrl()], ['Reload Extensions (download from settings.json)', () => CF.loadExtensions(true)], ['Open settings.json', () => CF.openSettingsJson()],
-    ['Initialize Repository', () => CF.gitInit()], ['Show Problems', () => CF.showPanel('problems')], ['Theme: ' + 'Switch…', async () => { const v = await CF.ask('Theme', [{ id: 't', label: 'Theme', type: 'select', options: Object.keys(CF.THEMES), value: S.settings.theme }]); v && CF.setSetting({ theme: v.t }); }],
+    ['Preferences: Color Theme', () => CF.themePicker(), 'Ctrl+K Ctrl+T'], ['Preferences: Import VS Code Theme…', () => CF.importVscodeTheme()], ['Install Extension from URL…', () => CF.installExtensionUrl()], ['Reload Extensions (download from settings.json)', () => CF.loadExtensions(true)], ['Open settings.json', () => CF.openSettingsJson()],
+    ['Initialize Repository', () => CF.gitInit()], ['Show Problems', () => CF.showPanel('problems')], 
     ['AI: Explain Code (requires consent — not enabled)', () => CF.toast('AI features are not enabled. Nothing is ever sent without your explicit consent.')],
   ];
   CF.palette = () => {

@@ -62,7 +62,7 @@ kbd{background:var(--hover);border-radius:4px;padding:1px 5px;font:11px var(--mo
 #panel-problems,#panel-debug{flex:1;overflow:auto;padding:6px 10px;font:12px var(--mono)}
 .prob{padding:3px 6px;border-radius:4px;cursor:pointer;display:flex;gap:8px}.prob:hover{background:var(--hover)}
 .prob .e{color:var(--err)}.prob .w{color:var(--warn)}.prob .i{color:var(--cyan)}.prob small{color:var(--mut)}
-#statusbar{grid-area:st;display:flex;align-items:center;background:linear-gradient(90deg,#1e3a8a,#5b21b6);color:#fff;font-size:12px;padding:0 10px;gap:16px}
+#statusbar{grid-area:st;display:flex;align-items:center;background:var(--status,linear-gradient(90deg,#1e3a8a,#5b21b6));color:var(--status-fg,#fff);font-size:12px;padding:0 10px;gap:16px}
 #statusbar span{cursor:default;white-space:nowrap}
 
 /* sidebar parts */

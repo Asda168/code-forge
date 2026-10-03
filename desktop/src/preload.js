@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('cf', {
   git: { run: inv('git:run'), clone: inv('git:clone'), detect: inv('git:detect') },
   project: { detect: inv('project:detect'), confirmDangerous: inv('project:confirmDangerous'), scaffold: inv('project:scaffold'), openRoot: inv('project:openRoot') },
   settings: { get: inv('settings:get'), set: inv('settings:set'), file: inv('settings:file') },
-  ext: { catalog: inv('ext:catalog'), installBundled: inv('ext:installBundled'), list: inv('ext:list'), install: inv('ext:install'), uninstall: inv('ext:uninstall'), sync: inv('ext:sync') },
+  ext: { pickThemeFile: inv('ext:pickThemeFile'), saveManifest: inv('ext:saveManifest'), catalog: inv('ext:catalog'), installBundled: inv('ext:installBundled'), list: inv('ext:list'), install: inv('ext:install'), uninstall: inv('ext:uninstall'), sync: inv('ext:sync') },
   api: { login: inv('api:login'), logout: inv('api:logout'), loggedIn: inv('api:loggedIn'), request: inv('api:request') },
   app: { checkUpdates: inv('app:checkUpdates'), openExternal: inv('app:openExternal'), platform: inv('app:platform') },
   app2: { forceClose: inv('app:forceClose') },

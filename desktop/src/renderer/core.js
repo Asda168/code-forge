@@ -66,9 +66,9 @@ CF.THEMES = THEMES;
 CF.applyTheme = (id) => {
   const t = THEMES[id] || THEMES['codeforge-dark'];
   const root = document.documentElement.style;
-  ['--bg', '--side', '--panel', '--fg', '--mut', '--accent', '--accent2', '--cyan', '--border', '--hover', '--sel'].forEach((k) => root.removeProperty(k));
+  ['--bg', '--side', '--panel', '--fg', '--mut', '--accent', '--accent2', '--cyan', '--border', '--hover', '--sel', '--status', '--status-fg'].forEach((k) => root.removeProperty(k));
   Object.entries(t.ui).forEach(([k, v]) => root.setProperty(k, v));
-  if (window.monaco) { monaco.editor.defineTheme('cf-' + id, { base: t.base, inherit: true, rules: [], colors: t.ed }); monaco.editor.setTheme('cf-' + id); }
+  if (window.monaco) { const mid = 'cf-' + id.replace(/[^a-z0-9-]/gi, '-'); monaco.editor.defineTheme(mid, { base: t.base, inherit: true, rules: t.rules || [], colors: t.ed }); monaco.editor.setTheme(mid); }
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   CF.S.terms && CF.S.terms.forEach((x) => x.xterm.options.theme = CF.termTheme());
   return bg;
