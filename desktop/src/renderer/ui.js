@@ -41,23 +41,47 @@
   });
   CF.openSettingsJson = CF.guard(async () => { const p = await cf.settings.file(); S.settingsFile = p; CF.closeOverlay(); CF.openFile(p); });
   const extIcon = (e) => h('div', { class: 'ext-ic', style: `background:${e.color || '#8b5cf6'}` }, e.icon || (e.name || '?')[0].toUpperCase());
+  let extQuery = '';
   async function renderExtensions(body) {
     const exts = S.extensions || [];
-    const setDisabled = async (id, off) => { const cur = new Set(S.settings.disabledExtensions || []); off ? cur.add(id) : cur.delete(id); await CF.setSetting({ disabledExtensions: [...cur] }); await CF.loadExtensions(); CF.showView('extensions'); };
-    body.append(h('div', { class: 'pad' }, h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: CF.installExtensionUrl }, '⬇ Install from URL'), h('button', { class: 'btn sec sm', onclick: CF.openSettingsJson }, 'Edit settings.json')),
-      h('div', { class: 'muted', style: 'font-size:11px' }, 'Add "extensions": ["https://…/ext.json"] to download, or "customExtensions": ["C:\\\\path\\\\my-ext"] for local ones, then run "Reload Extensions".')));
-    body.append(h('div', { class: 'sec-head' }, 'Installed / Custom'));
-    if (!exts.length) body.append(h('div', { class: 'pad muted' }, 'None yet.'));
-    exts.forEach((e) => body.append(h('div', { class: 'ext' }, extIcon(e), h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'v' + e.version + (String(e.source).startsWith('custom') ? ' · custom' : ' · downloaded')),
-      e.error ? h('div', { style: 'color:var(--err)' }, e.error) : h('div', { class: 'muted' }, e.description || `${e.themes.length} themes, ${Object.values(e.snippets).flat().length} snippets`)),
-      h('div', {}, !e.error ? h('button', { class: 'btn sec sm', onclick: () => setDisabled(e.id, e.enabled) }, e.enabled ? 'Disable' : 'Enable') : null, ' ',
-        !String(e.source).startsWith('custom') ? h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { await cf.ext.uninstall(e.id); await CF.loadExtensions(); CF.showView('extensions'); }) }, 'Uninstall') : null))));
-    body.append(h('div', { class: 'sec-head' }, 'Available'));
+    const catalog = await cf.ext.catalog().catch(() => []);
     const have = new Set(exts.map((x) => x.id));
-    (await cf.ext.catalog().catch(() => [])).filter((c) => !have.has(c.id)).forEach((c) => body.append(h('div', { class: 'ext' }, extIcon(c),
-      h('div', { class: 'info' }, h('b', {}, c.name), ' ', h('small', {}, 'v' + c.version), h('div', { class: 'muted' }, c.description)),
-      h('div', {}, h('button', { class: 'btn sm', onclick: CF.guard(async () => { await cf.ext.installBundled(c.id); await CF.loadExtensions(); CF.toast('Installed ' + c.name); CF.showView('extensions'); }) }, 'Install')))));
-    body.append(h('div', { class: 'pad' }, h('button', { class: 'btn sec sm', onclick: () => CF.checkUpdates(true) }, 'Check for app updates')));
+    const available = catalog.filter((c) => !have.has(c.id));
+    const refresh = async () => { await CF.loadExtensions(); CF.showView('extensions'); };
+    const setDisabled = async (id, off) => { const cur = new Set(S.settings.disabledExtensions || []); off ? cur.add(id) : cur.delete(id); await CF.setSetting({ disabledExtensions: [...cur] }); await refresh(); };
+    const matches = (e, q) => !q || [e.name, e.id, e.description, ...(e.themes || []).map((t) => (typeof t === 'string' ? t : t.name))].join(' ').toLowerCase().includes(q);
+
+    const tags = (e) => [(e.themes || []).length ? 'Theme' : null, Object.keys(e.snippets || {}).length ? 'Snippets' : null, Object.keys(e.fileAssociations || {}).length ? 'File types' : null].filter(Boolean);
+    const row = (e, installed) => h('div', { class: 'ext' }, extIcon(e),
+      h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'v' + e.version + (installed ? (String(e.source).startsWith('custom') ? ' · custom' : e.source === 'imported' ? ' · imported' : ' · installed') : '')),
+        e.error ? h('div', { style: 'color:var(--err)' }, e.error) : h('div', { class: 'muted' }, e.description || ''),
+        h('div', { style: 'margin-top:3px' }, tags(e).map((t) => h('span', { class: 'badge', style: 'margin-right:4px;background:var(--hover);color:var(--mut)' }, t)))),
+      h('div', { style: 'display:flex;flex-direction:column;gap:4px' },
+        installed ? [!e.error ? h('button', { class: 'btn sec sm', onclick: () => setDisabled(e.id, e.enabled) }, e.enabled ? 'Disable' : 'Enable') : null,
+          !String(e.source).startsWith('custom') ? h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { await cf.ext.uninstall(e.id); await refresh(); }) }, 'Uninstall') : null]
+          : h('button', { class: 'btn sm', onclick: CF.guard(async () => { await cf.ext.installBundled(e.id); CF.toast('Installed ' + e.name); await refresh(); }) }, 'Install')));
+
+    const results = h('div');
+    const draw = () => {
+      const q = extQuery.trim().toLowerCase(); results.innerHTML = '';
+      const inst = exts.filter((e) => matches(e, q)), avail = available.filter((e) => matches(e, q));
+      if (!q) {
+        // default view: only extensions you have NOT installed yet; installed ones appear when you search for them
+        results.append(h('div', { class: 'sec-head' }, 'Available', ' ', h('span', { class: 'badge' }, avail.length)));
+        if (!avail.length) results.append(h('div', { class: 'pad muted' }, 'Everything in the catalog is installed.'));
+        avail.forEach((e) => results.append(row(e, false)));
+        if (exts.length) results.append(h('div', { class: 'pad muted', style: 'font-size:12px' }, `${exts.length} installed. Search by name to show, disable or uninstall them.`));
+        return;
+      }
+      if (inst.length) { results.append(h('div', { class: 'sec-head' }, 'Installed', ' ', h('span', { class: 'badge' }, inst.length))); inst.forEach((e) => results.append(row(e, true))); }
+      if (avail.length) { results.append(h('div', { class: 'sec-head' }, 'Available', ' ', h('span', { class: 'badge' }, avail.length))); avail.forEach((e) => results.append(row(e, false))); }
+      if (!inst.length && !avail.length) results.append(h('div', { class: 'pad muted' }, `No extensions match "${extQuery}".`, h('div', { style: 'margin-top:8px' }, h('button', { class: 'btn sm', onclick: CF.installExtensionUrl }, 'Install from URL…'))));
+    };
+
+    const search = h('input', { type: 'search', placeholder: 'Search extensions by name…', value: extQuery, oninput: (e) => { extQuery = e.target.value; draw(); }, onkeydown: (e) => { if (e.key === 'Escape') { extQuery = ''; search.value = ''; draw(); } } });
+    body.append(h('div', { class: 'pad' }, search, h('div', { class: 'row' }, h('button', { class: 'btn sec sm', onclick: CF.installExtensionUrl }, '⬇ From URL'), h('button', { class: 'btn sec sm', onclick: CF.openSettingsJson }, 'settings.json'), h('button', { class: 'btn sec sm', onclick: () => CF.importVscodeTheme() }, 'Import theme'))),
+      results, h('div', { class: 'pad' }, h('button', { class: 'btn sec sm', onclick: () => CF.checkUpdates(true) }, 'Check for app updates')));
+    draw(); setTimeout(() => search.focus(), 0);
   }
 
   // ---- settings dialog --------------------------------------------------------------------------
