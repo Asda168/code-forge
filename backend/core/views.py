@@ -71,11 +71,30 @@ class WorkspaceViewSet(OwnedViewSet):
         s.save(owner=self.request.user)
 
 
-class ReleaseList(generics.ListAPIView):
+def _static_release():
+    from . import site
+    return {"version": site.VERSION, "channel": "stable", "notes": "", "released_at": site.RELEASED, "min_os": site.REQUIREMENTS,
+            "downloads": [d for d in site.DOWNLOADS if d["available"]]}
+
+
+def _db_releases():
+    """Releases from the database, or None when no usable database/tables exist (e.g. Vercel without DATABASE_URL)."""
+    from django.db import DatabaseError
+    try:
+        return list(models.Release.objects.prefetch_related("downloads"))
+    except DatabaseError:
+        return None
+
+
+class ReleaseList(APIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
-    serializer_class = serializers.ReleaseSerializer
-    queryset = models.Release.objects.prefetch_related("downloads")
+
+    def get(self, request):
+        rels = _db_releases()
+        if not rels:
+            return Response([_static_release()])
+        return Response(serializers.ReleaseSerializer(rels, many=True).data)
 
 
 class LatestRelease(APIView):
@@ -84,14 +103,10 @@ class LatestRelease(APIView):
     authentication_classes = []
 
     def get(self, request):
-        rel = models.Release.objects.filter(channel=request.query_params.get("channel", "stable")).first()
-        if not rel:
-            return Response({"update_available": False})
+        rels = [r for r in (_db_releases() or []) if r.channel == request.query_params.get("channel", "stable")]
+        data = serializers.ReleaseSerializer(rels[0]).data if rels else _static_release()
         current = request.query_params.get("current", "0")
-        return Response({
-            "update_available": _vtuple(rel.version) > _vtuple(current),
-            "release": serializers.ReleaseSerializer(rel).data,
-        })
+        return Response({"update_available": _vtuple(data["version"]) > _vtuple(current), "release": data})
 
 
 def _vtuple(v):
