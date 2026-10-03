@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Download CodeForge</title>
+<style>
+  :root{--bg:#0b1020;--fg:#e6e9f5;--mut:#8b93b5;--card:#131a33;--a:#4f8cff;--b:#8b5cf6;--c:#22d3ee}
+  @media (prefers-color-scheme: light){:root{--bg:#f6f7fb;--fg:#10152b;--mut:#5b6385;--card:#fff}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+  main{max-width:860px;margin:0 auto;padding:56px 16px}
+  h1{font-size:2.4rem;margin:0} .tag{color:var(--mut);margin:.25rem 0 2rem}
+  h1 span{background:linear-gradient(90deg,var(--a),var(--b),var(--c));-webkit-background-clip:text;color:transparent}
+  .hero{background:var(--card);border-radius:14px;padding:28px;margin-bottom:24px}
+  .btn{display:inline-block;padding:12px 22px;border-radius:10px;color:#fff;text-decoration:none;font-weight:600;
+       background:linear-gradient(90deg,var(--a),var(--b))}
+  .meta{color:var(--mut);margin-top:14px;font-size:.9rem}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden}
+  td,th{padding:10px 14px;text-align:left;border-bottom:1px solid rgba(128,128,160,.2)} a{color:var(--c)}
+  tr.hl{outline:2px solid var(--a);outline-offset:-2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Code<span>Forge</span></h1>
+  <p class="tag">Code. Build. Run. Ship.</p>
+{% if release %}
+  <div class="hero">
+    <a id="primary" class="btn" href="#">Download</a>
+    <div class="meta">Version {{ release.version }} · Released {{ release.released_at }} · <span id="size"></span></div>
+    <div class="meta" id="req"></div>
+  </div>
+  <table>
+    <tr><th>Platform</th><th>File</th><th>Arch</th><th>Size</th></tr>
+    {% for d in release.downloads.all %}
+    <tr data-os="{{ d.platform }}" data-arch="{{ d.arch }}" data-size="{{ d.size_bytes }}">
+      <td>{{ d.get_platform_display }}</td><td><a href="{{ d.url }}">{{ d.filename }}</a></td>
+      <td>{{ d.arch }}</td><td>{% if d.size_bytes %}{{ d.size_bytes|filesizeformat }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {{ release.min_os|json_script:"req-data" }}
+  <script>
+    const ua = navigator.userAgent;
+    const os = /Windows/.test(ua) ? "windows" : /Mac/.test(ua) ? "macos" : /Linux|X11/.test(ua) ? "linux" : "windows";
+    const names = {windows: "Windows", macos: "macOS", linux: "Linux"};
+    const reqs = JSON.parse(document.getElementById("req-data").textContent);
+    const rows = [...document.querySelectorAll("tr[data-os]")];
+    const mine = rows.filter(r => r.dataset.os === os);
+    const pick = mine.find(r => /arm/i.test(navigator.userAgent) && r.dataset.arch === "arm64") || mine[0];
+    mine.forEach(r => r.classList.add("hl"));
+    const btn = document.getElementById("primary");
+    if (pick) {
+      btn.textContent = "Download for " + names[os];
+      btn.href = pick.querySelector("a").href;
+      const s = +pick.dataset.size; if (s) document.getElementById("size").textContent = (s/1048576).toFixed(0) + " MB";
+    } else { btn.textContent = "No build for " + names[os] + " yet"; }
+    document.getElementById("req").textContent = "Requires: " + (reqs[os] || "see release notes");
+  </script>
+{% else %}
+  <p>No release published yet.</p>
+{% endif %}
+</main>
+</body>
+</html>
