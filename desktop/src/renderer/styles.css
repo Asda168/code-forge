@@ -119,3 +119,8 @@ kbd{background:var(--hover);border-radius:4px;padding:1px 5px;font:11px var(--mo
 [hidden]{display:none !important}
 
 .ext-ic{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:19px;font-weight:700;color:#fff;flex:none;text-shadow:0 1px 2px #0006}
+
+#side-body>*:not(#tree){flex-shrink:0}
+.ext{flex-shrink:0}
+#app{grid-template-rows:34px minmax(0,1fr) 24px}
+#sidebar,#activitybar{min-height:0;overflow:hidden}
