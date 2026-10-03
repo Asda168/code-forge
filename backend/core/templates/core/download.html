@@ -56,6 +56,18 @@
   .file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
   .file small{display:block;color:var(--mut);font:400 .78rem var(--mono)} .tag{font-size:.72rem;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--mut)}
   .meta{display:flex;gap:26px;flex-wrap:wrap;color:var(--mut);font-size:.9rem;margin-bottom:26px}.meta b{color:var(--fg)}
+  .tabs{display:inline-flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:18px}
+  .tabs button{border:0;background:none;color:var(--mut);font:inherit;font-weight:600;padding:9px 20px;border-radius:9px;cursor:pointer}
+  .tabs button[aria-selected=true]{background:linear-gradient(90deg,var(--a),var(--b));color:#fff}
+  .panel[hidden]{display:none} .panel{padding:26px}
+  .ph{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+  .ph h3{margin:0;font-size:1.4rem}.req{color:var(--mut);font-size:.9rem}
+  .btn.big{padding:15px 30px;font-size:1.05rem}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--bg2);color:var(--fg);padding:8px 16px;border-radius:99px;font:500 .88rem var(--mono);cursor:pointer}
+  .chip[aria-pressed=true]{border-color:var(--a);box-shadow:0 0 0 2px color-mix(in srgb,var(--a) 35%,transparent)}
+  .note{margin:14px 0 4px;color:var(--mut);font-size:.88rem;min-height:1.3em}
+  .steps{margin:12px 0 0;padding-left:20px;color:var(--mut);font-size:.92rem}.steps code{font-family:var(--mono);background:var(--bg2);padding:1px 6px;border-radius:5px;color:var(--fg)}
   pre.cmd{background:#0b1020;color:#dfe4f5;border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow:auto;font:13px/1.8 var(--mono);margin:0}
   pre.cmd .c{color:#546089}
   .two{display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start}
@@ -124,22 +136,37 @@
 <section id="download"><div class="wrap">
   <h2>Download CodeForge</h2>
   <div class="meta"><span>Version <b>{{ version }}</b></span><span>Released <b>{{ released }}</b></span><span id="detected"></span></div>
-  <div class="os">
-    {% regroup downloads by platform as groups %}
-    {% for g in groups %}
-    <div class="card" data-os="{{ g.grouper }}">
-      <h3>{% if g.grouper == "windows" %}🪟 Windows{% elif g.grouper == "macos" %} macOS{% else %}🐧 Linux{% endif %}</h3>
-      <div class="req">{% if g.grouper == "windows" %}{{ requirements.windows }}{% elif g.grouper == "macos" %}{{ requirements.macos }}{% else %}{{ requirements.linux }}{% endif %}</div>
+  <div class="tabs" role="tablist" aria-label="Operating system">
+    <button role="tab" data-tab="windows" aria-selected="false">🪟 Windows</button>
+    <button role="tab" data-tab="macos" aria-selected="false"> macOS</button>
+    <button role="tab" data-tab="linux" aria-selected="false">🐧 Linux</button>
+  </div>
+  {% regroup downloads by platform as groups %}
+  {% for g in groups %}
+  <div class="panel card" role="tabpanel" data-panel="{{ g.grouper }}" hidden>
+    <div class="ph">
+      <div>
+        <h3>{% if g.grouper == "windows" %}CodeForge for Windows{% elif g.grouper == "macos" %}CodeForge for macOS{% else %}CodeForge for Linux{% endif %}</h3>
+        <div class="req">{% if g.grouper == "windows" %}{{ requirements.windows }}{% elif g.grouper == "macos" %}{{ requirements.macos }}{% else %}{{ requirements.linux }}{% endif %}</div>
+      </div>
+      <a class="btn p big" data-main href="#source" aria-disabled="true">Download</a>
+    </div>
+    <div class="chips">
       {% for d in g.list %}
-      <div class="file"><div>{{ d.filename }}<small>{{ d.arch }} · .{{ d.kind }}</small></div>
-        {% if d.available %}<a class="btn p sm" href="{{ d.url }}" data-dl="{{ g.grouper }}" data-arch="{{ d.arch }}">Download</a>
-        {% else %}<span class="tag">Coming soon</span>{% endif %}</div>
+      <button class="chip" data-url="{{ d.url }}" data-ok="{{ d.available|yesno:'1,0' }}" data-name="{{ d.filename }}" data-arch="{{ d.arch }}" data-kind="{{ d.kind }}">
+        {% if g.grouper == "linux" %}.{{ d.kind }}{% elif g.grouper == "macos" %}Universal (Apple Silicon + Intel){% else %}{{ d.arch }}{% if d.arch == "x64" %} · Intel/AMD{% else %} · ARM{% endif %}{% endif %}
+      </button>
       {% endfor %}
     </div>
-    {% endfor %}
+    <div class="note" data-note></div>
+    <ol class="steps">
+      {% if g.grouper == "windows" %}<li>Run the installer and follow the wizard.</li><li>A Desktop shortcut and Start Menu entry are created; optionally add "Open with CodeForge" to Explorer.</li><li>Windows SmartScreen may warn about an unknown publisher: choose <b>More info → Run anyway</b>.</li>
+      {% elif g.grouper == "macos" %}<li>Open the <code>.dmg</code> and drag <b>CodeForge</b> to Applications.</li><li>First launch: right-click the app → <b>Open</b> (the build is not notarized yet).</li>
+      {% else %}<li><b>AppImage:</b> <code>chmod +x CodeForge.AppImage &amp;&amp; ./CodeForge.AppImage</code></li><li><b>Debian/Ubuntu:</b> <code>sudo apt install ./CodeForge.deb</code></li><li><b>Fedora/RHEL:</b> <code>sudo dnf install ./CodeForge.rpm</code></li>{% endif %}
+    </ol>
   </div>
-  <p class="sub" style="margin-top:22px">Installers are published to <a href="{{ repo }}/releases" target="_blank" rel="noopener">GitHub Releases</a>. Until then, grab the source or build it in a minute — see below.</p>
-  <p><a class="btn s" href="{{ source_zip }}">⬇ Download source (ZIP)</a></p>
+  {% endfor %}
+  <p class="sub" style="margin-top:22px">Installers are published to <a href="{{ repo }}/releases" target="_blank" rel="noopener">GitHub Releases</a>. Prefer the source? <a href="{{ source_zip }}">Download ZIP</a> or <a href="#source">build it yourself</a>.</p>
 </div></section>
 
 <section id="source"><div class="wrap two">
@@ -165,18 +192,51 @@ python manage.py runserver</pre>
 
 <script>
   const ua = navigator.userAgent;
-  const os = /Windows/.test(ua) ? "windows" : /Android|iPhone|iPad/.test(ua) ? null : /Mac/.test(ua) ? "macos" : /Linux|X11/.test(ua) ? "linux" : null;
+  const detected = /Windows/.test(ua) ? "windows" : /Android|iPhone|iPad/.test(ua) ? null : /Mac/.test(ua) ? "macos" : /Linux|X11/.test(ua) ? "linux" : null;
   const names = {windows: "Windows", macos: "macOS", linux: "Linux"};
-  if (os) {
-    const card = document.querySelector('.card[data-os="' + os + '"]');
-    if (card) { card.classList.add("me"); document.getElementById("detected").textContent = "Detected: " + names[os]; }
-    const arm = /arm|aarch64/i.test(ua);
-    const links = [...document.querySelectorAll('a[data-dl="' + os + '"]')];
-    const pick = links.find(a => arm && a.dataset.arch === "arm64") || links[0];
-    const hero = document.getElementById("hero-dl");
-    if (pick) { hero.href = pick.href; hero.textContent = "Download for " + names[os]; }
-    else { hero.textContent = "Get CodeForge for " + names[os]; document.getElementById("hero-sub").textContent = "Installer coming soon — run from source today"; }
+  const arm = /arm|aarch64/i.test(ua);
+  const tabs = [...document.querySelectorAll(".tabs [data-tab]")];
+  const panels = [...document.querySelectorAll("[data-panel]")];
+  const hero = document.getElementById("hero-dl");
+
+  function pick(panel, chip) {
+    panel.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === chip));
+    const main = panel.querySelector("[data-main]"), note = panel.querySelector("[data-note]");
+    if (chip.dataset.ok === "1") {
+      main.href = chip.dataset.url; main.setAttribute("download", chip.dataset.name); main.removeAttribute("aria-disabled");
+      main.textContent = "Download for " + names[panel.dataset.panel];
+      note.textContent = chip.dataset.name;
+    } else {
+      main.href = "#source"; main.setAttribute("aria-disabled", "true"); main.textContent = "Coming soon";
+      note.innerHTML = chip.dataset.name + " isn’t published yet. You can <a href=\"#source\">run CodeForge from source</a> today.";
+    }
   }
+  function select(os, scroll) {
+    tabs.forEach(t => t.setAttribute("aria-selected", t.dataset.tab === os));
+    panels.forEach(p => p.hidden = p.dataset.panel !== os);
+    history.replaceState(null, "", "#download-" + os);
+    if (scroll) document.getElementById("download").scrollIntoView({behavior: "smooth"});
+  }
+  panels.forEach(p => {
+    const chips = [...p.querySelectorAll(".chip")];
+    chips.forEach(c => c.addEventListener("click", () => pick(p, c)));
+    const os = p.dataset.panel;
+    pick(p, (os === "windows" && arm && chips.find(c => c.dataset.arch === "arm64")) || chips.find(c => c.dataset.ok === "1") || chips[0]);
+  });
+  tabs.forEach(t => t.addEventListener("click", () => select(t.dataset.tab)));
+
+  const fromHash = (location.hash.match(/^#download-(windows|macos|linux)$/) || [])[1];
+  select(fromHash || detected || "windows");
+  if (detected) document.getElementById("detected").textContent = "Detected: " + names[detected];
+  // Hero button: download directly if the installer is published, otherwise jump to the visitor's OS tab.
+  const target = detected || "windows";
+  const tp = document.querySelector('[data-panel="' + target + '"] [data-main]');
+  hero.textContent = "Download for " + names[target];
+  hero.addEventListener("click", e => {
+    if (tp && !tp.hasAttribute("aria-disabled")) { hero.href = tp.href; return; }
+    e.preventDefault(); select(target, true);
+  });
+  if (tp && tp.hasAttribute("aria-disabled")) document.getElementById("hero-sub").textContent = "Installer coming soon — run from source today";
 </script>
 </body>
 </html>
