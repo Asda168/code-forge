@@ -115,3 +115,5 @@ kbd{background:var(--hover);border-radius:4px;padding:1px 5px;font:11px var(--mo
 .splitter:hover{background:var(--accent);opacity:.6}
 #watermark{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;opacity:.35;pointer-events:none;line-height:2}
 #watermark>div{text-align:right}
+
+[hidden]{display:none !important}
