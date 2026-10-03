@@ -1,0 +1,10 @@
+{
+  "id": "git",
+  "name": "Git Config Files",
+  "version": "1.0.0",
+  "description": "Git file associations",
+  "fileAssociations": {
+    ".gitignore": "ini",
+    ".gitattributes": "ini"
+  }
+}

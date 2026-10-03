@@ -109,5 +109,5 @@ class ExtensionList(generics.ListAPIView):
 
 
 def download_page(request):
-    rel = models.Release.objects.prefetch_related("downloads").first()
-    return render(request, "core/download.html", {"release": rel})
+    from . import site
+    return render(request, "core/download.html", site.context())

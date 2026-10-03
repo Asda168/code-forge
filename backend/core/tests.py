@@ -32,6 +32,12 @@ class ApiTests(TestCase):
         self.login()
         self.assertEqual(len(self.c.get("/api/projects/").json()), 0)
 
+    def test_download_page_without_db_rows(self):
+        r = self.c.get("/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Download CodeForge")
+        self.assertContains(r, "CodeForge-Setup-x64.exe")
+
     def test_update_check_and_download_page(self):
         r = Release.objects.create(version="1.2.0", released_at="2026-01-01")
         Download.objects.create(release=r, platform="windows", arch="x64", filename="a.exe", url="https://x/a.exe")

@@ -475,6 +475,14 @@ function listExtensions() {
   try { installed = fs.readdirSync(extDir()).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join('extensions', f), null)).filter(Boolean); } catch { /* none */ }
   return [...installed, ...readLocalManifests()].map((m) => ({ ...m, enabled: !dis.has(m.id) }));
 }
+const catalogDir = path.join(__dirname, 'catalog');
+ipcMain.handle('ext:catalog', () => fs.readdirSync(catalogDir).filter((f) => f.endsWith('.json')).map((f) => cleanManifest(JSON.parse(fs.readFileSync(path.join(catalogDir, f), 'utf8')), 'bundled')));
+ipcMain.handle('ext:installBundled', (_e, id) => {
+  if (!EXT_ID.test(String(id))) throw new Error('Bad id');
+  const f = path.join(catalogDir, id + '.json'); if (!fs.existsSync(f)) throw new Error('Unknown extension');
+  const m = cleanManifest(JSON.parse(fs.readFileSync(f, 'utf8')), 'bundled');
+  fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), m.id + '.json'), JSON.stringify(m, null, 2)); return m;
+});
 ipcMain.handle('ext:list', () => listExtensions());
 ipcMain.handle('ext:install', async (_e, url) => installFromUrl(String(url)));
 ipcMain.handle('ext:uninstall', (_e, id) => { if (!EXT_ID.test(String(id))) throw new Error('Bad id'); try { fs.unlinkSync(path.join(extDir(), id + '.json')); } catch { /* not installed */ } return true; });

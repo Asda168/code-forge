@@ -51,8 +51,11 @@
       e.error ? h('div', { style: 'color:var(--err)' }, e.error) : h('div', { class: 'muted' }, e.description || `${e.themes.length} themes, ${Object.values(e.snippets).flat().length} snippets`)),
       h('div', {}, !e.error ? h('button', { class: 'btn sec sm', onclick: () => setDisabled(e.id, e.enabled) }, e.enabled ? 'Disable' : 'Enable') : null, ' ',
         !String(e.source).startsWith('custom') ? h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { await cf.ext.uninstall(e.id); await CF.loadExtensions(); CF.showView('extensions'); }) }, 'Uninstall') : null))));
-    body.append(h('div', { class: 'sec-head' }, 'Language packs (built in)'));
-    BUILTIN_EXT.forEach((e) => body.append(h('div', { class: 'ext' }, h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'built-in'), h('div', { class: 'muted' }, e.description)))));
+    body.append(h('div', { class: 'sec-head' }, 'Available'));
+    const have = new Set(exts.map((x) => x.id));
+    (await cf.ext.catalog().catch(() => [])).filter((c) => !have.has(c.id)).forEach((c) => body.append(h('div', { class: 'ext' },
+      h('div', { class: 'info' }, h('b', {}, c.name), ' ', h('small', {}, 'v' + c.version), h('div', { class: 'muted' }, c.description)),
+      h('div', {}, h('button', { class: 'btn sm', onclick: CF.guard(async () => { await cf.ext.installBundled(c.id); await CF.loadExtensions(); CF.toast('Installed ' + c.name); CF.showView('extensions'); }) }, 'Install')))));
     body.append(h('div', { class: 'pad' }, h('button', { class: 'btn sec sm', onclick: () => CF.checkUpdates(true) }, 'Check for app updates')));
   }
 

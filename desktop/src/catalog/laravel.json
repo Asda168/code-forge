@@ -1,0 +1,60 @@
+{
+  "id": "laravel",
+  "name": "Laravel Snippets",
+  "version": "1.0.0",
+  "description": "Routes, controllers, Eloquent, Blade",
+  "snippets": {
+    "php": [
+      {
+        "prefix": "route",
+        "body": "Route::get('/$1', [${2:Controller}::class, '${3:index}']);",
+        "description": "Route"
+      },
+      {
+        "prefix": "dd",
+        "body": "dd($1);",
+        "description": "dump & die"
+      },
+      {
+        "prefix": "mig",
+        "body": "Schema::create('${1:table}', function (Blueprint $table) {\n\t$table->id();\n\t$0\n\t$table->timestamps();\n});",
+        "description": "migration"
+      },
+      {
+        "prefix": "hasmany",
+        "body": "public function ${1:items}()\n{\n\treturn $this->hasMany(${2:Item}::class);\n}",
+        "description": "hasMany"
+      },
+      {
+        "prefix": "belongsto",
+        "body": "public function ${1:user}()\n{\n\treturn $this->belongsTo(${2:User}::class);\n}",
+        "description": "belongsTo"
+      },
+      {
+        "prefix": "valid",
+        "body": "$request->validate([\n\t'${1:field}' => 'required',\n]);",
+        "description": "validate"
+      }
+    ],
+    "html": [
+      {
+        "prefix": "@foreach",
+        "body": "@foreach ($${1:items} as $${2:item})\n\t$0\n@endforeach",
+        "description": "Blade foreach"
+      },
+      {
+        "prefix": "@if",
+        "body": "@if (${1:condition})\n\t$0\n@endif",
+        "description": "Blade if"
+      },
+      {
+        "prefix": "@extends",
+        "body": "@extends('${1:layouts.app}')\n\n@section('content')\n\t$0\n@endsection",
+        "description": "Blade layout"
+      }
+    ]
+  },
+  "fileAssociations": {
+    ".blade": "html"
+  }
+}

@@ -67,11 +67,9 @@ TEMPLATES = [
     }
 ]
 
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=60
-    )
-}
+# Vercel's filesystem is read-only except /tmp, so without DATABASE_URL use a throwaway sqlite there.
+_default_db = "sqlite:////tmp/db.sqlite3" if os.environ.get("VERCEL") else f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+DATABASES = {"default": dj_database_url.config(default=_default_db, conn_max_age=60)}
 
 REDIS_URL = os.environ.get("REDIS_URL")
 if REDIS_URL:

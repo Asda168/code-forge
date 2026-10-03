@@ -1,0 +1,25 @@
+{
+  "id": "theme-sunset",
+  "name": "Sunset Theme",
+  "version": "1.0.0",
+  "description": "Warm dark theme",
+  "themes": [
+    {
+      "id": "sunset",
+      "name": "Sunset",
+      "base": "vs-dark",
+      "ui": {
+        "--bg": "#1f1220",
+        "--side": "#271628",
+        "--panel": "#221324",
+        "--border": "#3a2240",
+        "--hover": "#33203a",
+        "--sel": "#4a2c52",
+        "--accent": "#fb7185"
+      },
+      "ed": {
+        "editor.background": "#1f1220"
+      }
+    }
+  ]
+}

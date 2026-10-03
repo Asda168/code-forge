@@ -1,0 +1,42 @@
+{
+  "id": "javascript",
+  "name": "JavaScript Snippets",
+  "version": "1.0.0",
+  "description": "JS/TS helpers",
+  "snippets": {
+    "javascript": [
+      {
+        "prefix": "clg",
+        "body": "console.log($1);",
+        "description": "log"
+      },
+      {
+        "prefix": "af",
+        "body": "const ${1:name} = (${2}) => {\n\t$0\n};",
+        "description": "arrow fn"
+      },
+      {
+        "prefix": "fetch",
+        "body": "const res = await fetch(${1:url});\nconst data = await res.json();",
+        "description": "fetch json"
+      },
+      {
+        "prefix": "imp",
+        "body": "import ${1:name} from '${2:module}';",
+        "description": "import"
+      }
+    ],
+    "typescript": [
+      {
+        "prefix": "clg",
+        "body": "console.log($1);",
+        "description": "log"
+      },
+      {
+        "prefix": "iface",
+        "body": "interface ${1:Name} {\n\t$0\n}",
+        "description": "interface"
+      }
+    ]
+  }
+}

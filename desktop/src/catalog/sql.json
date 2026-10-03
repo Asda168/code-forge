@@ -1,0 +1,35 @@
+{
+  "id": "sql",
+  "name": "SQL Snippets",
+  "version": "1.0.0",
+  "description": "Common SQL",
+  "snippets": {
+    "sql": [
+      {
+        "prefix": "sel",
+        "body": "SELECT ${1:*}\nFROM ${2:table}\nWHERE ${3:1=1};",
+        "description": "select"
+      },
+      {
+        "prefix": "ins",
+        "body": "INSERT INTO ${1:table} (${2:cols})\nVALUES (${3:vals});",
+        "description": "insert"
+      },
+      {
+        "prefix": "upd",
+        "body": "UPDATE ${1:table}\nSET ${2:col} = ${3:val}\nWHERE ${4:cond};",
+        "description": "update"
+      },
+      {
+        "prefix": "ct",
+        "body": "CREATE TABLE ${1:name} (\n\tid INT AUTO_INCREMENT PRIMARY KEY,\n\t$0\n);",
+        "description": "create table"
+      },
+      {
+        "prefix": "join",
+        "body": "SELECT *\nFROM ${1:a}\nJOIN ${2:b} ON ${1:a}.id = ${2:b}.${1:a}_id;",
+        "description": "join"
+      }
+    ]
+  }
+}

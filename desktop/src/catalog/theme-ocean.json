@@ -1,0 +1,25 @@
+{
+  "id": "theme-ocean",
+  "name": "Ocean Theme",
+  "version": "1.0.0",
+  "description": "Deep teal dark theme",
+  "themes": [
+    {
+      "id": "ocean",
+      "name": "Ocean",
+      "base": "vs-dark",
+      "ui": {
+        "--bg": "#06202b",
+        "--side": "#082a38",
+        "--panel": "#07242f",
+        "--border": "#0f3b4d",
+        "--hover": "#0d3548",
+        "--sel": "#124a63",
+        "--accent": "#22d3ee"
+      },
+      "ed": {
+        "editor.background": "#06202b"
+      }
+    }
+  ]
+}

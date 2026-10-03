@@ -1,0 +1,29 @@
+{
+  "id": "react",
+  "name": "React Snippets",
+  "version": "1.0.0",
+  "description": "React components and hooks",
+  "snippets": {
+    "javascript": [
+      {
+        "prefix": "rfc",
+        "body": "export default function ${1:Component}() {\n\treturn (\n\t\t<div>$0</div>\n\t);\n}",
+        "description": "component"
+      },
+      {
+        "prefix": "us",
+        "body": "const [${1:state}, set${1/(.*)/${1:/capitalize}/}] = useState(${2});",
+        "description": "useState"
+      },
+      {
+        "prefix": "ue",
+        "body": "useEffect(() => {\n\t$0\n}, [${1}]);",
+        "description": "useEffect"
+      }
+    ]
+  },
+  "fileAssociations": {
+    ".jsx": "javascript",
+    ".tsx": "typescript"
+  }
+}

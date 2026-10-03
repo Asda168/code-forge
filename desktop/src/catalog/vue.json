@@ -1,0 +1,28 @@
+{
+  "id": "vue",
+  "name": "Vue Snippets",
+  "version": "1.0.0",
+  "description": "Vue 3 single-file components",
+  "snippets": {
+    "html": [
+      {
+        "prefix": "vue3",
+        "body": "<script setup>\nimport { ref } from 'vue'\n$0\n</script>\n\n<template>\n\t<div></div>\n</template>",
+        "description": "SFC script setup"
+      },
+      {
+        "prefix": "vfor",
+        "body": "<li v-for=\"${1:item} in ${2:items}\" :key=\"${1:item}.id\">{{ ${1:item} }}</li>",
+        "description": "v-for"
+      },
+      {
+        "prefix": "vif",
+        "body": "<div v-if=\"${1:cond}\">$0</div>",
+        "description": "v-if"
+      }
+    ]
+  },
+  "fileAssociations": {
+    ".vue": "html"
+  }
+}

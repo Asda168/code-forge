@@ -1,0 +1,25 @@
+{
+  "id": "mysql",
+  "name": "MySQL Snippets",
+  "version": "1.0.0",
+  "description": "MySQL specifics",
+  "snippets": {
+    "sql": [
+      {
+        "prefix": "showt",
+        "body": "SHOW TABLES;",
+        "description": "show tables"
+      },
+      {
+        "prefix": "desc",
+        "body": "DESCRIBE ${1:table};",
+        "description": "describe"
+      },
+      {
+        "prefix": "idx",
+        "body": "CREATE INDEX ${1:idx_name} ON ${2:table} (${3:col});",
+        "description": "index"
+      }
+    ]
+  }
+}

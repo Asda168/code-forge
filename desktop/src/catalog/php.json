@@ -1,0 +1,30 @@
+{
+  "id": "php",
+  "name": "PHP Snippets",
+  "version": "1.0.0",
+  "description": "Common PHP snippets",
+  "snippets": {
+    "php": [
+      {
+        "prefix": "fn",
+        "body": "function ${1:name}(${2}) {\n\t$0\n}",
+        "description": "function"
+      },
+      {
+        "prefix": "cls",
+        "body": "class ${1:Name}\n{\n\t$0\n}",
+        "description": "class"
+      },
+      {
+        "prefix": "foreach",
+        "body": "foreach ($${1:items} as $${2:item}) {\n\t$0\n}",
+        "description": "foreach"
+      },
+      {
+        "prefix": "pr",
+        "body": "print_r($1);",
+        "description": "print_r"
+      }
+    ]
+  }
+}

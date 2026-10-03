@@ -3,63 +3,180 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Download CodeForge</title>
+<title>CodeForge — Code. Build. Run. Ship.</title>
+<meta name="description" content="CodeForge is a lightweight desktop IDE for Laravel, Django, Python, JavaScript, Vue and React with an integrated terminal, Git and project runner.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='28' fill='%230b1020'/%3E%3Cpath d='M46 40 22 64l24 24M82 40l24 24-24 24' fill='none' stroke='%238b5cf6' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#0b1020;--fg:#e6e9f5;--mut:#8b93b5;--card:#131a33;--a:#4f8cff;--b:#8b5cf6;--c:#22d3ee}
-  @media (prefers-color-scheme: light){:root{--bg:#f6f7fb;--fg:#10152b;--mut:#5b6385;--card:#fff}}
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
-  main{max-width:860px;margin:0 auto;padding:56px 16px}
-  h1{font-size:2.4rem;margin:0} .tag{color:var(--mut);margin:.25rem 0 2rem}
-  h1 span{background:linear-gradient(90deg,var(--a),var(--b),var(--c));-webkit-background-clip:text;color:transparent}
-  .hero{background:var(--card);border-radius:14px;padding:28px;margin-bottom:24px}
-  .btn{display:inline-block;padding:12px 22px;border-radius:10px;color:#fff;text-decoration:none;font-weight:600;
-       background:linear-gradient(90deg,var(--a),var(--b))}
-  .meta{color:var(--mut);margin-top:14px;font-size:.9rem}
-  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden}
-  td,th{padding:10px 14px;text-align:left;border-bottom:1px solid rgba(128,128,160,.2)} a{color:var(--c)}
-  tr.hl{outline:2px solid var(--a);outline-offset:-2px}
+  :root{--bg:#070b19;--bg2:#0d1329;--card:#111a36;--line:#1f2a52;--fg:#e8ecfa;--mut:#8f99bd;
+        --a:#4f8cff;--b:#8b5cf6;--c:#22d3ee;--ok:#4ade80;--mono:"JetBrains Mono",ui-monospace,monospace}
+  @media (prefers-color-scheme: light){:root{--bg:#f6f7fc;--bg2:#eceff9;--card:#fff;--line:#d9def0;--fg:#121733;--mut:#586089}}
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 Inter,system-ui,sans-serif}
+  a{color:inherit} .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:color-mix(in srgb,var(--bg) 80%,transparent);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:22px;height:60px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none;font-size:1.1rem}
+  .logo svg{width:28px;height:28px} nav .sp{flex:1} nav a.l{color:var(--mut);text-decoration:none;font-size:.92rem} nav a.l:hover{color:var(--fg)}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:10px;font-weight:600;text-decoration:none;border:1px solid transparent;cursor:pointer;font:inherit;font-weight:600}
+  .btn.p{color:#fff;background:linear-gradient(90deg,var(--a),var(--b));box-shadow:0 8px 30px -8px var(--b)}
+  .btn.s{background:var(--card);border-color:var(--line)} .btn.sm{padding:7px 14px;font-size:.88rem}
+  .btn[aria-disabled=true]{opacity:.55;pointer-events:none}
+  .hero{padding:80px 0 40px;text-align:center;background:radial-gradient(60% 50% at 50% 0,color-mix(in srgb,var(--b) 28%,transparent),transparent)}
+  .pill{display:inline-block;border:1px solid var(--line);background:var(--card);border-radius:99px;padding:4px 14px;font-size:.82rem;color:var(--mut);margin-bottom:22px}
+  h1{font-size:clamp(2.4rem,6vw,4.4rem);line-height:1.05;margin:0 0 18px;letter-spacing:-.03em;font-weight:800}
+  .grad{background:linear-gradient(90deg,var(--a),var(--b),var(--c));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{max-width:640px;margin:0 auto 30px;color:var(--mut);font-size:1.15rem}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap} .sub{color:var(--mut);font-size:.85rem;margin-top:14px}
+  /* IDE mockup */
+  .ide{margin:56px auto 0;max-width:980px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b1020;color:#dfe4f5;box-shadow:0 40px 100px -30px #000c,0 0 0 1px #ffffff08;text-align:left;font:13px/1.55 var(--mono)}
+  .ide .bar{display:flex;gap:7px;align-items:center;padding:10px 14px;background:#0f1630;border-bottom:1px solid #1d2647;font:12px Inter;color:#8089ab}
+  .ide .bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.ide .bar i:nth-child(2){background:#febc2e}.ide .bar i:nth-child(3){background:#28c840}
+  .ide .body{display:grid;grid-template-columns:44px 200px 1fr;min-height:330px}
+  .ide .act{background:#0f1630;border-right:1px solid #1d2647;display:flex;flex-direction:column;gap:14px;align-items:center;padding-top:14px;font-size:16px}
+  .ide .side{background:#0f1630;border-right:1px solid #1d2647;padding:10px 12px;font-size:12px;color:#aab3d4}
+  .ide .side b{display:block;font:700 10px Inter;letter-spacing:1px;color:#8089ab;margin-bottom:8px} .ide .side div{padding:1px 0}.ide .side .sel{background:#223066;margin:0 -12px;padding:1px 12px;color:#fff}
+  .ide .ed{padding:0}.ide .tabs{display:flex;background:#0f1630;font:12px var(--mono)} .ide .tabs span{padding:8px 16px;border-right:1px solid #1d2647;color:#8089ab}.ide .tabs .on{background:#0b1020;color:#fff;box-shadow:inset 0 2px #4f8cff}
+  .ide pre{margin:0;padding:14px 18px;white-space:pre;overflow:hidden;font-family:var(--mono)}
+  .k{color:#c792ea}.s{color:#c3e88d}.f{color:#82aaff}.c{color:#546089}.v{color:#f78c6c}
+  .ide .term{border-top:1px solid #1d2647;background:#0d1329;padding:10px 18px;font-size:12px;color:#8fd9a8}
+  .ide .st{display:flex;gap:16px;padding:3px 12px;font:11px Inter;color:#fff;background:linear-gradient(90deg,#1e3a8a,#5b21b6)}
+  section{padding:76px 0} h2{font-size:clamp(1.7rem,3.4vw,2.4rem);letter-spacing:-.02em;margin:0 0 10px;font-weight:800}
+  .sec-sub{color:var(--mut);max-width:620px;margin:0 0 36px}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .card h3{margin:10px 0 6px;font-size:1.05rem}.card p{margin:0;color:var(--mut);font-size:.93rem}
+  .ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--a) 30%,transparent),color-mix(in srgb,var(--b) 30%,transparent))}
+  .stack{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.stack span{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 14px;font:500 .85rem var(--mono)}
+  #download{background:var(--bg2);border-block:1px solid var(--line)}
+  .os{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+  .os .card.me{outline:2px solid var(--a);box-shadow:0 0 40px -12px var(--a)}
+  .os h3{display:flex;align-items:center;gap:10px;margin:0 0 4px;font-size:1.2rem}.os .req{color:var(--mut);font-size:.85rem;margin-bottom:14px}
+  .file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
+  .file small{display:block;color:var(--mut);font:400 .78rem var(--mono)} .tag{font-size:.72rem;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--mut)}
+  .meta{display:flex;gap:26px;flex-wrap:wrap;color:var(--mut);font-size:.9rem;margin-bottom:26px}.meta b{color:var(--fg)}
+  pre.cmd{background:#0b1020;color:#dfe4f5;border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow:auto;font:13px/1.8 var(--mono);margin:0}
+  pre.cmd .c{color:#546089}
+  .two{display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start}
+  footer{padding:36px 0;color:var(--mut);font-size:.88rem;border-top:1px solid var(--line)} footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  @media (max-width:760px){.ide .body{grid-template-columns:40px 1fr}.ide .side{display:none}nav .l{display:none}.hero{padding-top:56px}}
 </style>
 </head>
 <body>
-<main>
-  <h1>Code<span>Forge</span></h1>
-  <p class="tag">Code. Build. Run. Ship.</p>
-{% if release %}
-  <div class="hero">
-    <a id="primary" class="btn" href="#">Download</a>
-    <div class="meta">Version {{ release.version }} · Released {{ release.released_at }} · <span id="size"></span></div>
-    <div class="meta" id="req"></div>
+<nav><div class="wrap">
+  <a class="logo" href="#top"><svg viewBox="0 0 128 128"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f8cff"/><stop offset=".55" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="#0b1020"/><path d="M46 40 22 64l24 24M82 40l24 24-24 24" fill="none" stroke="url(#lg)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><rect x="56" y="82" width="16" height="7" rx="2" fill="#22d3ee"/></svg>CodeForge</a>
+  <span class="sp"></span><a class="l" href="#features">Features</a><a class="l" href="#stack">Languages</a><a class="l" href="#download">Download</a><a class="l" href="#source">Build from source</a>
+  <a class="btn p sm" href="#download">Download</a>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <span class="pill">v{{ version }} · Windows · macOS · Linux</span>
+  <h1>Code. Build. Run. <span class="grad">Ship.</span></h1>
+  <p class="lead">A lightweight desktop IDE for Laravel, Django, Python and the modern web — editor, terminal, Git and project runner in one fast, clean workspace.</p>
+  <div class="cta"><a id="hero-dl" class="btn p" href="#download">Download CodeForge</a><a class="btn s" href="{{ repo }}" target="_blank" rel="noopener">View on GitHub</a></div>
+  <div class="sub" id="hero-sub">Free &amp; open source</div>
+
+  <div class="ide" aria-label="CodeForge editor preview">
+    <div class="bar"><i></i><i></i><i></i><span style="margin-left:10px">my-laravel-app — CodeForge</span></div>
+    <div class="body">
+      <div class="act"><span>🗂</span><span>🔍</span><span>⑂</span><span>▶</span><span>🧩</span></div>
+      <div class="side"><b>EXPLORER</b><div>▼ app</div><div>&nbsp;&nbsp;▼ Http</div><div class="sel">&nbsp;&nbsp;&nbsp;&nbsp;UserController.php</div><div>&nbsp;&nbsp;▶ Models</div><div>▶ database</div><div>▼ routes</div><div>&nbsp;&nbsp;web.php</div><div>.env</div><div>artisan</div><div>composer.json</div></div>
+      <div class="ed">
+        <div class="tabs"><span class="on">UserController.php</span><span>web.php</span><span>User.php</span></div>
+<pre><span class="k">namespace</span> App\Http\Controllers;
+
+<span class="k">class</span> <span class="f">UserController</span> <span class="k">extends</span> Controller
+{
+    <span class="k">public function</span> <span class="f">index</span>()
+    {
+        <span class="c">// JetBrains Mono, ligatures: =&gt; !== &lt;=</span>
+        <span class="k">return</span> <span class="f">view</span>(<span class="s">'users.index'</span>, [
+            <span class="s">'users'</span> =&gt; User::<span class="f">latest</span>()-&gt;<span class="f">paginate</span>(<span class="v">20</span>),
+        ]);
+    }
+}</pre>
+        <div class="term">$ php artisan serve<br>INFO Server running on [http://127.0.0.1:8000]</div>
+      </div>
+    </div>
+    <div class="st"><span>⑂ main</span><span>⊗ 0 ⚠ 2</span><span style="margin-left:auto">Ln 7, Col 15</span><span>Spaces: 4</span><span>UTF-8</span><span>PHP</span></div>
   </div>
-  <table>
-    <tr><th>Platform</th><th>File</th><th>Arch</th><th>Size</th></tr>
-    {% for d in release.downloads.all %}
-    <tr data-os="{{ d.platform }}" data-arch="{{ d.arch }}" data-size="{{ d.size_bytes }}">
-      <td>{{ d.get_platform_display }}</td><td><a href="{{ d.url }}">{{ d.filename }}</a></td>
-      <td>{{ d.arch }}</td><td>{% if d.size_bytes %}{{ d.size_bytes|filesizeformat }}{% else %}—{% endif %}</td>
-    </tr>
+</div></header>
+
+<section id="features"><div class="wrap">
+  <h2>Everything you need, nothing you don't</h2>
+  <p class="sec-sub">VS Code's speed, PhpStorm's framework awareness, a Git client and a terminal — in one simpler interface.</p>
+  <div class="grid">
+    <div class="card"><div class="ico">✎</div><h3>Monaco editor</h3><p>Syntax highlighting, IntelliSense, multi-cursor, folding, minimap, split editor and tabs. JetBrains Mono with ligatures by default.</p></div>
+    <div class="card"><div class="ico">⌨</div><h3>Integrated terminal</h3><p>Real PTY terminals with Git Bash, PowerShell, CMD, zsh and bash — running on your own machine.</p></div>
+    <div class="card"><div class="ico">⑂</div><h3>Git built in</h3><p>Stage, commit, push, pull, branches, history graph and a side-by-side diff viewer. Clone over HTTPS or SSH.</p></div>
+    <div class="card"><div class="ico">▶</div><h3>One-click run</h3><p>Detects Laravel, Django, Node, Vue, React and PHP projects and starts the right dev server. Custom run configurations too.</p></div>
+    <div class="card"><div class="ico">🧩</div><h3>Extensions</h3><p>Install snippet packs and themes from the built-in catalog, a URL, or your own folder — declarative JSON, no code execution.</p></div>
+    <div class="card"><div class="ico">🔒</div><h3>Private by design</h3><p>Files, terminal and Git stay local. Your source code is never sent to a server unless you turn sync on. Tokens live in the OS keychain.</p></div>
+  </div>
+</div></section>
+
+<section id="stack" style="padding-top:0"><div class="wrap">
+  <h2>Built for your stack</h2>
+  <div class="stack"><span>Laravel</span><span>PHP</span><span>Python</span><span>Django</span><span>JavaScript</span><span>TypeScript</span><span>Vue.js</span><span>React</span><span>HTML</span><span>CSS</span><span>SQL</span><span>MySQL</span><span>REST APIs</span></div>
+</div></section>
+
+<section id="download"><div class="wrap">
+  <h2>Download CodeForge</h2>
+  <div class="meta"><span>Version <b>{{ version }}</b></span><span>Released <b>{{ released }}</b></span><span id="detected"></span></div>
+  <div class="os">
+    {% regroup downloads by platform as groups %}
+    {% for g in groups %}
+    <div class="card" data-os="{{ g.grouper }}">
+      <h3>{% if g.grouper == "windows" %}🪟 Windows{% elif g.grouper == "macos" %} macOS{% else %}🐧 Linux{% endif %}</h3>
+      <div class="req">{% if g.grouper == "windows" %}{{ requirements.windows }}{% elif g.grouper == "macos" %}{{ requirements.macos }}{% else %}{{ requirements.linux }}{% endif %}</div>
+      {% for d in g.list %}
+      <div class="file"><div>{{ d.filename }}<small>{{ d.arch }} · .{{ d.kind }}</small></div>
+        {% if d.available %}<a class="btn p sm" href="{{ d.url }}" data-dl="{{ g.grouper }}" data-arch="{{ d.arch }}">Download</a>
+        {% else %}<span class="tag">Coming soon</span>{% endif %}</div>
+      {% endfor %}
+    </div>
     {% endfor %}
-  </table>
-  {{ release.min_os|json_script:"req-data" }}
-  <script>
-    const ua = navigator.userAgent;
-    const os = /Windows/.test(ua) ? "windows" : /Mac/.test(ua) ? "macos" : /Linux|X11/.test(ua) ? "linux" : "windows";
-    const names = {windows: "Windows", macos: "macOS", linux: "Linux"};
-    const reqs = JSON.parse(document.getElementById("req-data").textContent);
-    const rows = [...document.querySelectorAll("tr[data-os]")];
-    const mine = rows.filter(r => r.dataset.os === os);
-    const pick = mine.find(r => /arm/i.test(navigator.userAgent) && r.dataset.arch === "arm64") || mine[0];
-    mine.forEach(r => r.classList.add("hl"));
-    const btn = document.getElementById("primary");
-    if (pick) {
-      btn.textContent = "Download for " + names[os];
-      btn.href = pick.querySelector("a").href;
-      const s = +pick.dataset.size; if (s) document.getElementById("size").textContent = (s/1048576).toFixed(0) + " MB";
-    } else { btn.textContent = "No build for " + names[os] + " yet"; }
-    document.getElementById("req").textContent = "Requires: " + (reqs[os] || "see release notes");
-  </script>
-{% else %}
-  <p>No release published yet.</p>
-{% endif %}
-</main>
+  </div>
+  <p class="sub" style="margin-top:22px">Installers are published to <a href="{{ repo }}/releases" target="_blank" rel="noopener">GitHub Releases</a>. Until then, grab the source or build it in a minute — see below.</p>
+  <p><a class="btn s" href="{{ source_zip }}">⬇ Download source (ZIP)</a></p>
+</div></section>
+
+<section id="source"><div class="wrap two">
+  <div><h2>Run it from source</h2><p class="sec-sub" style="margin:0">Works today on Windows, macOS and Linux with Node 20+ and Python 3.12+.</p></div>
+<pre class="cmd"><span class="c"># desktop app</span>
+git clone {{ repo }}.git
+cd code-forge/desktop
+npm install
+npm run icons
+npm start
+
+<span class="c"># build an installer for your OS</span>
+npm run dist:win   <span class="c"># or dist:mac / dist:linux</span>
+
+<span class="c"># optional backend (accounts, sync, updates)</span>
+cd ../backend
+pip install -r requirements.txt
+python manage.py migrate &amp;&amp; python manage.py seed
+python manage.py runserver</pre>
+</div></section>
+
+<footer><div class="wrap"><span>© CodeForge — Code. Build. Run. Ship.</span><span><a href="{{ repo }}">GitHub</a> · <a href="{{ repo }}/issues">Issues</a> · <a href="#top">Top ↑</a></span></div></footer>
+
+<script>
+  const ua = navigator.userAgent;
+  const os = /Windows/.test(ua) ? "windows" : /Android|iPhone|iPad/.test(ua) ? null : /Mac/.test(ua) ? "macos" : /Linux|X11/.test(ua) ? "linux" : null;
+  const names = {windows: "Windows", macos: "macOS", linux: "Linux"};
+  if (os) {
+    const card = document.querySelector('.card[data-os="' + os + '"]');
+    if (card) { card.classList.add("me"); document.getElementById("detected").textContent = "Detected: " + names[os]; }
+    const arm = /arm|aarch64/i.test(ua);
+    const links = [...document.querySelectorAll('a[data-dl="' + os + '"]')];
+    const pick = links.find(a => arm && a.dataset.arch === "arm64") || links[0];
+    const hero = document.getElementById("hero-dl");
+    if (pick) { hero.href = pick.href; hero.textContent = "Download for " + names[os]; }
+    else { hero.textContent = "Get CodeForge for " + names[os]; document.getElementById("hero-sub").textContent = "Installer coming soon — run from source today"; }
+  }
+</script>
 </body>
 </html>

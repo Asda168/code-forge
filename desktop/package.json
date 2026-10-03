@@ -11,7 +11,11 @@
     "icons": "node scripts/make-icons.js",
     "dist:win": "electron-builder --win --x64 --arm64",
     "dist:mac": "electron-builder --mac --universal",
-    "dist:linux": "electron-builder --linux AppImage deb rpm"
+    "dist:linux": "electron-builder --linux AppImage deb rpm",
+    "shortcut": "node scripts/make-shortcut.js",
+    "predist:win": "npm run icons",
+    "predist:mac": "npm run icons",
+    "predist:linux": "npm run icons"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.1.0",
@@ -50,7 +54,7 @@
       }
     ],
     "win": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -65,9 +69,14 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "include": "scripts/installer.nsh"
+      "include": "scripts/installer.nsh",
+      "shortcutName": "CodeForge",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "mac": {
       "icon": "build/icon.png",
@@ -90,7 +99,13 @@
         "deb",
         "rpm"
       ],
-      "artifactName": "CodeForge.${ext}"
+      "artifactName": "CodeForge.${ext}",
+      "desktop": {
+        "Name": "CodeForge",
+        "Comment": "Code. Build. Run. Ship.",
+        "Categories": "Development;IDE;TextEditor;",
+        "MimeType": "inode/directory;text/plain;"
+      }
     }
   }
 }

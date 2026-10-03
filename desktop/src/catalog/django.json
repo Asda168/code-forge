@@ -1,0 +1,30 @@
+{
+  "id": "django",
+  "name": "Django Snippets",
+  "version": "1.0.0",
+  "description": "Models, views, URLs",
+  "snippets": {
+    "python": [
+      {
+        "prefix": "dmodel",
+        "body": "class ${1:Name}(models.Model):\n\t${2:name} = models.CharField(max_length=100)\n\n\tdef __str__(self):\n\t\treturn self.${2:name}",
+        "description": "model"
+      },
+      {
+        "prefix": "dview",
+        "body": "def ${1:view}(request):\n\treturn render(request, '${2:template.html}', {$0})",
+        "description": "view"
+      },
+      {
+        "prefix": "durl",
+        "body": "path('${1:route}/', views.${2:view}, name='${3:name}'),",
+        "description": "url"
+      },
+      {
+        "prefix": "dform",
+        "body": "class ${1:Name}Form(forms.ModelForm):\n\tclass Meta:\n\t\tmodel = ${1:Name}\n\t\tfields = '__all__'",
+        "description": "ModelForm"
+      }
+    ]
+  }
+}
