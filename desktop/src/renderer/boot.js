@@ -28,7 +28,30 @@
 
   cf.onOpenPath(async ({ root, file }) => { await CF.setRoot(root); if (file) CF.openFile(file); });
   CF.showView('explorer');
-  CF.renderWelcome();
+
+  // ---- session: reopen the last project, files and layout --------------------------------------
+  const KEY = 'cf.session';
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+  const save = () => {
+    try {
+      if (!S.root) return localStorage.setItem(KEY, JSON.stringify({ root: null }));
+      const g = CF.activeGroup();
+      localStorage.setItem(KEY, JSON.stringify({ root: S.root, files: [...new Set(S.groups.flatMap((x) => x.tabs))].filter((p) => p.startsWith(S.root)), active: g && g.active, split: S.groups.length > 1 ? (S.vertical ? 'down' : 'right') : null, panel: !$('#panel').classList.contains('hidden'), sidebar: S.settings.sidebar !== false }));
+    } catch { /* storage unavailable */ }
+  };
+  CF.saveSession = save; setInterval(save, 1500); window.addEventListener('beforeunload', save);
+  const sess = load(); let restored = false;
+  if (sess && sess.root) {
+    try {
+      const root = await cf.ws.openRecent(sess.root);
+      await CF.setRoot(root); restored = true;
+      if (sess.split) CF.split(sess.split === 'down');
+      for (const f of sess.files || []) await CF.openFile(f).catch(() => {});
+      if (sess.active && (sess.files || []).includes(sess.active)) await CF.openFile(sess.active).catch(() => {});
+      if (sess.panel === false) $('#panel').classList.add('hidden');
+    } catch { /* folder moved or deleted: fall back to the welcome screen */ }
+  }
+  if (!restored) CF.renderWelcome();
   CF.updateProblems();
   if (S.settings.autoUpdate) setTimeout(() => CF.checkUpdates(false).catch(() => {}), 4000);   // silent when offline / signed out
 })();
