@@ -219,3 +219,5 @@ input,select,textarea{border-radius:var(--r)}
 .pane-div::after{content:"";position:absolute;left:3px;top:0;bottom:0;width:1px;background:var(--border)}
 .pane-div:hover::after{background:var(--accent);width:2px;left:2px}
 .term+.term{border-left:0}
+.toast.suggest{max-width:360px}
+.toast.suggest .row{display:flex;gap:6px;flex-wrap:wrap}

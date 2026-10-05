@@ -39,6 +39,24 @@
     const v = await CF.ask('Install Extension from URL', [{ id: 'u', label: 'https:// URL of an extension .json manifest' }], 'Download'); if (!v || !v.u) return;
     const m = await cf.ext.install(v.u); await CF.loadExtensions(); CF.toast(`Installed ${m.name} ${m.version}`); if ($('#side-title').dataset.view === 'extensions') CF.showView('extensions');
   });
+  // Suggest a not-yet-installed catalog extension when a file it supports is opened (once per extension per session; "Don't ask again" persists).
+  const suggested = new Set();
+  CF.suggestExtension = CF.guard(async (path) => {
+    if (S.settings.suggestExtensions === false) return;
+    const n = CF.base(path).toLowerCase(), ext = n.includes('.') ? n.slice(n.lastIndexOf('.')) : n, lang = CF.langFor(path);
+    const skip = new Set([...(S.settings.dismissedSuggestions || []), ...(S.extensions || []).map((x) => x.id), ...suggested]);
+    const cands = (await cf.ext.catalog().catch(() => [])).filter((c) => !skip.has(c.id) && !(c.themes || []).length);
+    // exact file-type match first, then the extension named after the language (python -> "python"), then any snippet provider
+    const hit = cands.find((c) => c.fileAssociations && c.fileAssociations[ext]) || cands.find((c) => c.id === lang && (c.snippets || {})[lang]) || cands.find((c) => (c.snippets || {})[lang]);
+    if (!hit) return;
+    suggested.add(hit.id);
+    const t = h('div', { class: 'toast suggest' }, h('div', {}, `💡 ${hit.name} extension is recommended for ${CF.base(path)}`), h('div', { class: 'muted' }, hit.description || ''),
+      h('div', { class: 'row', style: 'margin-top:8px' },
+        h('button', { class: 'btn sm', onclick: CF.guard(async () => { t.remove(); await cf.ext.installBundled(hit.id); await CF.loadExtensions(); CF.toast('Installed ' + hit.name); if ($('#side-title').dataset.view === 'extensions') CF.showView('extensions'); }) }, 'Install'),
+        h('button', { class: 'btn sec sm', onclick: () => t.remove() }, 'Not now'),
+        h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { t.remove(); await CF.setSetting({ dismissedSuggestions: [...(S.settings.dismissedSuggestions || []), hit.id] }); }) }, "Don't ask again")));
+    document.body.append(t); setTimeout(() => t.remove(), 15000);
+  });
   CF.openSettingsJson = CF.guard(async () => { const p = await cf.settings.file(); S.settingsFile = p; CF.closeOverlay(); CF.openFile(p); });
   const extIcon = (e) => h('div', { class: 'ext-ic', style: `background:${e.color || '#8b5cf6'}` }, e.icon || (e.name || '?')[0].toUpperCase());
   let extQuery = '';

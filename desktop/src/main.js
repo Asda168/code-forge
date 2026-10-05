@@ -420,7 +420,7 @@ const DEFAULT_SETTINGS = {
   theme: 'vsc-dark-modern', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
   defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true,
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
-  extensions: [], customExtensions: [], disabledExtensions: [],
+  extensions: [], customExtensions: [], disabledExtensions: [], dismissedSuggestions: [], suggestExtensions: true,
 };
 ipcMain.handle('settings:get', () => ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }));
 ipcMain.handle('settings:set', (_e, patch) => {

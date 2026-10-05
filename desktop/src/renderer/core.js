@@ -170,7 +170,7 @@ CF.openFile = CF.guard(async (path, { group, line, col } = {}) => {
       if (d && S.settings.autoSave === 'afterDelay') { clearTimeout(m.timer); m.timer = setTimeout(() => CF.save(path), S.settings.autoSaveDelay); }
       CF.updateProblems();
     });
-    S.models.set(path, m);
+    S.models.set(path, m); CF.suggestExtension(path);
   }
   if (!g.tabs.includes(path)) g.tabs.push(path);
   g.active = path; g.editor.setModel(m.model); $('#welcome').hidden = true;
