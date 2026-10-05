@@ -36,6 +36,7 @@ for f in sorted(cat.glob('*.json')):
     if m.get('snippets'): kinds.append('Snippets')
     if m.get('themes'): kinds.append('Theme')
     if m.get('fileAssociations'): kinds.append('File types')
+    if m.get('navigation'): kinds.append('Go to definition')
     n = sum(len(v) for v in m.get('snippets', {}).values())
     items.append({"id": m['id'], "name": m['name'], "description": m['description'], "icon": m.get('icon', '🧩'), "color": m.get('color', '#8b5cf6'),
                   "kinds": kinds, "snippets": n, "themes": [t['name'] for t in m.get('themes', [])],

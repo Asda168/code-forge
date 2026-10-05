@@ -16,6 +16,8 @@ Set `CODEFORGE_API` to point the app at a deployed backend (default `http://127.
 Build installers: `npm run dist:win | dist:mac | dist:linux` (run on the matching OS).
 
 ## Extensions & settings.json
+The bundled **Laravel** extension adds Ctrl+click / F12 go-to-definition for views, classes, controller methods, route names, config keys, Blade `<x-…>` components and asset paths.
+
 Open it from Settings → *Open settings.json* (or the palette). Extensions are declarative JSON (themes, snippets, file associations) and never execute code.
 ```json
 {

@@ -49,12 +49,13 @@
  {
   "id": "laravel",
   "name": "Laravel Snippets",
-  "description": "Routes, controllers, Eloquent, Blade",
+  "description": "Snippets plus Ctrl+click / F12 go-to-definition for views, classes, controller methods, routes, config and Blade components",
   "icon": "🅻",
   "color": "#ff2d20",
   "kinds": [
    "Snippets",
-   "File types"
+   "File types",
+   "Go to definition"
   ],
   "snippets": 9,
   "themes": [],

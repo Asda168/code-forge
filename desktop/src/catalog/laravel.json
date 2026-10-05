@@ -1,8 +1,8 @@
 {
   "id": "laravel",
   "name": "Laravel Snippets",
-  "version": "1.0.0",
-  "description": "Routes, controllers, Eloquent, Blade",
+  "version": "1.1.0",
+  "description": "Snippets plus Ctrl+click / F12 go-to-definition for views, classes, controller methods, routes, config and Blade components",
   "snippets": {
     "php": [
       {
@@ -54,6 +54,9 @@
       }
     ]
   },
+  "navigation": [
+    "laravel"
+  ],
   "fileAssociations": {
     ".blade": "html"
   },

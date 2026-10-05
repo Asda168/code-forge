@@ -232,3 +232,12 @@ input,select,textarea{border-radius:var(--r)}
 
 .git-summary .sum-ic{display:inline-flex;color:var(--accent)}.git-summary .sum-ic svg{stroke:currentColor;fill:none}
 .sb-pending{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-weight:600}.sb-pending svg{stroke:currentColor;fill:none}
+
+.cf-nav-link{text-decoration:underline;cursor:pointer;color:var(--cyan,#22d3ee)!important}
+
+.diff-dlg{width:min(1400px,96vw)!important;max-width:96vw}
+.diff-dlg .diff-host{height:68vh}
+.diff-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.diff-bar .btn.on{background:var(--accent);color:#fff}
+.diff-stats{margin-left:auto;font-size:12px;color:var(--mut)}
+.diff-labels{font-size:12px;color:var(--mut);margin-bottom:6px}

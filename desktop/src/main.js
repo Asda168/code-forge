@@ -447,6 +447,7 @@ function cleanManifest(m, source) {
     rules: (Array.isArray(t.rules) ? t.rules : []).slice(0, 400).filter((r) => r && /^[\w.-]{1,80}$/.test(String(r.token))).map((r) => ({ token: String(r.token), foreground: /^[0-9a-f]{6}$/i.test(String(r.foreground)) ? String(r.foreground) : undefined, fontStyle: /^(italic|bold|underline|\s)*$/.test(String(r.fontStyle || '')) ? String(r.fontStyle || '') : '' })) }));
   out.snippets = {};
   for (const [lang, list] of Object.entries(m.snippets || {})) if (/^[\w-]+$/.test(lang) && Array.isArray(list)) out.snippets[lang] = list.slice(0, 500).filter((s) => s && s.prefix && s.body).map((s) => ({ prefix: String(s.prefix), body: Array.isArray(s.body) ? s.body.join('\n') : String(s.body), description: String(s.description || '') }));
+  out.navigation = (Array.isArray(m.navigation) ? m.navigation : []).filter((n) => n === 'laravel');   // built-in navigation features an extension can switch on
   out.fileAssociations = Object.fromEntries(Object.entries(m.fileAssociations || {}).filter(([k, v]) => /^\.[\w.-]+$/.test(k) && /^[\w-]+$/.test(String(v))));
   return out;
 }
@@ -468,14 +469,19 @@ function readLocalManifests() {
     try {
       let p = path.resolve(String(entry)); if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'extension.json');
       out.push(cleanManifest(JSON.parse(fs.readFileSync(p, 'utf8')), 'custom:' + p));
-    } catch (e) { out.push({ id: 'invalid-' + out.length, name: String(entry), error: e.message, source: 'custom', themes: [], snippets: {}, fileAssociations: {} }); }
+    } catch (e) { out.push({ id: 'invalid-' + out.length, name: String(entry), error: e.message, source: 'custom', themes: [], snippets: {}, fileAssociations: {}, navigation: [] }); }
   }
   return out;
+}
+// bundled extensions installed earlier pick up newer catalog manifests (e.g. new navigation features)
+function refreshBundled(m) {
+  if (m.source !== 'bundled' || !EXT_ID.test(String(m.id))) return m;
+  try { return cleanManifest(JSON.parse(fs.readFileSync(path.join(catalogDir, m.id + '.json'), 'utf8')), 'bundled'); } catch { return m; }
 }
 function listExtensions() {
   const dis = new Set(readJson('settings.json', {}).disabledExtensions || []);
   let installed = [];
-  try { installed = fs.readdirSync(extDir()).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join('extensions', f), null)).filter(Boolean); } catch { /* none */ }
+  try { installed = fs.readdirSync(extDir()).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join('extensions', f), null)).filter(Boolean).map(refreshBundled); } catch { /* none */ }
   return [...installed, ...readLocalManifests()].map((m) => ({ ...m, enabled: !dis.has(m.id) }));
 }
 const catalogDir = path.join(__dirname, 'catalog');

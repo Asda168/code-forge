@@ -108,17 +108,44 @@
       mod = staged ? (await git(['show', `:${f.path}`])).stdout : (await cf.fs.read(abs(f.path)).then((r) => r.text, () => ''));
     }
     const host = h('div', { class: 'diff-host' });
-    const stats = h('div', { class: 'muted', style: 'margin:8px 0' });
-    const d = CF.modal(`Diff — ${f.path}`, [stats, host], [
+    const stats = h('span', { class: 'diff-stats' });
+    const opts = { sideBySide: true, ignoreWs: false, collapse: false };
+    let cur = -1, ed, mo, mm;
+    const lang = CF.langFor(f.path);
+    const title = commitRef ? `${commitRef.slice(0, 7)}^  ↔  ${commitRef.slice(0, 7)}` : staged ? 'HEAD  ↔  Index (staged)' : f.x === '?' ? 'New file (untracked)' : 'Index  ↔  Working tree';
+    const tb = (label, tip, fn, on) => { const b = h('button', { class: 'btn sec sm' + (on ? ' on' : ''), title: tip, onclick: () => fn(b) }, label); return b; };
+    const changes = () => (ed.getLineChanges() || []);
+    const jump = (dir) => {
+      const ch = changes(); if (!ch.length) return CF.toast('No changes');
+      cur = (cur + dir + ch.length) % ch.length; const c = ch[cur];
+      const line = c.modifiedEndLineNumber ? c.modifiedStartLineNumber : Math.max(1, c.modifiedStartLineNumber);
+      ed.getModifiedEditor().revealLineInCenter(line); ed.getModifiedEditor().setPosition({ lineNumber: line, column: 1 });
+      stats.dataset.pos = `${cur + 1}/${ch.length}`; updateStats();
+    };
+    const updateStats = () => {
+      const ch = changes(); let add = 0, del = 0;
+      ch.forEach((c) => { del += c.originalEndLineNumber ? c.originalEndLineNumber - c.originalStartLineNumber + 1 : 0; add += c.modifiedEndLineNumber ? c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1 : 0; });
+      stats.innerHTML = ''; stats.append(h('b', { style: 'color:var(--green,#73c991)' }, `+${add}`), ' ', h('b', { style: 'color:var(--err,#f87171)' }, `−${del}`), `  ·  ${ch.length} change${ch.length === 1 ? '' : 's'}`, ch.length && cur >= 0 ? `  ·  ${cur + 1}/${ch.length}` : '');
+      if (!ch.length && ed.getModel().original.getValue() === ed.getModel().modified.getValue()) stats.append('  ·  no differences');
+    };
+    const bar = h('div', { class: 'diff-bar' },
+      tb('↑', 'Previous change (Shift+F7)', () => jump(-1)), tb('↓', 'Next change (F7)', () => jump(1)),
+      tb('Inline', 'Toggle side-by-side / inline view', (b) => { opts.sideBySide = !opts.sideBySide; ed.updateOptions({ renderSideBySide: opts.sideBySide }); b.textContent = opts.sideBySide ? 'Inline' : 'Side by side'; }),
+      tb('Ignore whitespace', 'Ignore trimmed whitespace differences', (b) => { opts.ignoreWs = !opts.ignoreWs; ed.updateOptions({ ignoreTrimWhitespace: opts.ignoreWs }); b.classList.toggle('on', opts.ignoreWs); cur = -1; }),
+      tb('Collapse unchanged', 'Hide unchanged regions', (b) => { opts.collapse = !opts.collapse; ed.updateOptions({ hideUnchangedRegions: { enabled: opts.collapse, contextLineCount: 3, minimumLineCount: 5 } }); b.classList.toggle('on', opts.collapse); }),
+      stats);
+    const labels = h('div', { class: 'diff-labels' }, h('span', {}, title));
+    const d = CF.modal(`Diff — ${f.path}`, [bar, labels, host], [
       commitRef ? null : { label: staged ? 'Unstage' : 'Stage', cls: 'sec', run: () => { CF.closeOverlay(); (staged ? unstage : stage)(f.path); } },
       commitRef || staged ? null : { label: 'Discard', cls: 'danger', run: () => { CF.closeOverlay(); discard(f); } },
-      { label: 'Open File', cls: 'sec', run: () => { CF.closeOverlay(); CF.openFile(abs(f.path)); } }, { label: 'Close' }].filter(Boolean), { wide: true });
-    const ed = monaco.editor.createDiffEditor(host, { ...CF.editorOptions(), readOnly: true, renderSideBySide: true, automaticLayout: true });
-    const lang = CF.langFor(f.path);
-    const mo = monaco.editor.createModel(orig, lang), mm = monaco.editor.createModel(mod, lang);
+      { label: 'Open File', cls: 'sec', run: () => { CF.closeOverlay(); CF.openFile(abs(f.path), { line: Math.max(1, ed.getModifiedEditor().getPosition().lineNumber) }); } }, { label: 'Close' }].filter(Boolean), { wide: true });
+    d.classList.add('diff-dlg');
+    ed = monaco.editor.createDiffEditor(host, { ...CF.editorOptions(), readOnly: true, renderSideBySide: true, renderSideBySideInlineBreakpoint: 700, automaticLayout: true, ignoreTrimWhitespace: false, renderOverviewRuler: true, enableSplitViewResizing: true, originalEditable: false, diffAlgorithm: 'advanced', renderIndicators: true });
+    mo = monaco.editor.createModel(orig, lang); mm = monaco.editor.createModel(mod, lang);
     ed.setModel({ original: mo, modified: mm });
-    ed.onDidUpdateDiff(() => { const ch = ed.getLineChanges() || []; let a = 0, dl = 0; ch.forEach((c) => { dl += c.originalEndLineNumber ? c.originalEndLineNumber - c.originalStartLineNumber + 1 : 0; a += c.modifiedEndLineNumber ? c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1 : 0; }); stats.textContent = `+${a} added  −${dl} removed  (${ch.length} hunks)`; });
-    new MutationObserver(() => { if ($('#overlay').hidden) { ed.dispose(); mo.dispose(); mm.dispose(); } }).observe($('#overlay'), { attributes: true });
+    ed.onDidUpdateDiff(() => { updateStats(); if (cur < 0 && changes().length) { cur = 0; const c = changes()[0]; ed.getModifiedEditor().revealLineInCenter(c.modifiedStartLineNumber || 1); updateStats(); } });
+    d.addEventListener('keydown', (e) => { if (e.key === 'F7') { e.preventDefault(); jump(e.shiftKey ? -1 : 1); } });
+    const obs = new MutationObserver(() => { if ($('#overlay').hidden) { obs.disconnect(); ed.dispose(); mo.dispose(); mm.dispose(); } }); obs.observe($('#overlay'), { attributes: true });
   });
   CF.showCommit = CF.guard(async (hash) => {
     const info = (await must(['show', '--no-patch', '--date=iso', '--pretty=format:%an <%ae>%n%ad%n%B', hash])).split('\n');
