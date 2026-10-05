@@ -45,14 +45,22 @@
     else { paint(); CF.openFile(node.path); }
   });
   // Highlight the active editor file in the tree: expand its folders, select it and scroll it into view.
+  // Paths mix "/" (root, editor) and backslash (fs.list), so walk the tree level by level matching normalized paths.
+  const norm = (p) => p.split('\\').join('/').toLowerCase();
   let lastRevealed = null;
   CF.revealInTree = CF.guard(async (path, force) => {
-    if (!path || !S.root || !path.startsWith(S.root) || (!force && path === lastRevealed && T.sel === path)) return;
+    if (!path || !S.root || !norm(path).startsWith(norm(S.root) + '/') || (!force && path === lastRevealed)) return;
     lastRevealed = path;
-    const dirs = []; for (let d = dirOf(path); d.length > S.root.length && d.startsWith(S.root); d = dirOf(d)) dirs.unshift(d);
-    for (const d of dirs) { if (!T.kids.has(d)) { try { await load(d); } catch { return; } } T.expanded.add(d); }
-    T.sel = path; flatten();
-    const i = T.flat.findIndex((x) => x.path === path), tree = $('#tree');
+    const target = norm(path); let dir = S.root, real = null;
+    while (true) {
+      if (!T.kids.has(dir)) { try { await load(dir); } catch { return; } }
+      const hit = (T.kids.get(dir) || []).find((k) => { const n = norm(k.path); return n === target || (k.dir && target.startsWith(n + '/')); });
+      if (!hit) return;
+      if (norm(hit.path) === target) { real = hit.path; break; }
+      T.expanded.add(hit.path); dir = hit.path;
+    }
+    T.sel = real; flatten();
+    const i = T.flat.findIndex((x) => x.path === real), tree = $('#tree');
     if (i >= 0 && tree) { const y = i * ROW; if (y < tree.scrollTop || y + ROW > tree.scrollTop + tree.clientHeight) tree.scrollTop = Math.max(0, y - tree.clientHeight / 2); }
     paint();
   });
