@@ -17,6 +17,7 @@
     minus: '<path d="M5 12h14"/>',
     refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
     chevronRight: '<path d="m9 6 6 6-6 6"/>',
+    chevronUp: '<path d="m6 15 6-6 6 6"/>',
     chevronDown: '<path d="m6 9 6 6 6-6"/>',
     newFile: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9 14h6"/>',
     newFolder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10.5v5M9.5 13h5"/>',

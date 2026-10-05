@@ -11,7 +11,7 @@
 
   $$('#activitybar [data-view]').forEach((b) => (b.onclick = () => CF.showView(b.dataset.view)));
   $$('#panel-tabs [data-panel]').forEach((b) => (b.onclick = () => CF.showPanel(b.dataset.panel)));
-  $('#panel-close').onclick = CF.togglePanel;
+  $('#panel-close').onclick = CF.togglePanel; $('#panel-max').onclick = CF.toggleMaxPanel;
   $('#cmd-center').onclick = CF.palette;
   $('#sb-branch').onclick = () => CF.showView('git');
   $('#sb-problems').onclick = () => CF.showPanel('problems');

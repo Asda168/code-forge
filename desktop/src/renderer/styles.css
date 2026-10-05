@@ -207,3 +207,15 @@ input,select,textarea{border-radius:var(--r)}
 .ext{border-radius:0;gap:12px;padding:10px 14px}.ext-ic{border-radius:10px}
 .palette{border-radius:12px;box-shadow:0 24px 70px #000b}.dlg{border-radius:12px}
 .toast{border-radius:10px}
+
+/* resizable panel & panes */
+.splitter.h{height:9px;margin:-5px 0 -4px;z-index:25;background:transparent;position:relative}
+.splitter.h::after{content:"";position:absolute;left:0;right:0;top:4px;height:1px;background:var(--border)}
+.splitter.h:hover,.splitter.h:active{background:color-mix(in srgb,var(--accent) 45%,transparent);opacity:1}
+.splitter.h:hover::after{background:var(--accent)}
+#main{position:relative}
+#panel.max{position:absolute;inset:0;height:auto!important;z-index:15}
+.pane-div{flex:none;width:7px;margin:0 -3px;cursor:col-resize;z-index:6;position:relative}
+.pane-div::after{content:"";position:absolute;left:3px;top:0;bottom:0;width:1px;background:var(--border)}
+.pane-div:hover::after{background:var(--accent);width:2px;left:2px}
+.term+.term{border-left:0}

@@ -92,9 +92,27 @@
   function selectTerm(t) {
     activeTerm = t; t.grp.last = t;
     S.terms.forEach((x) => { x.host.classList.toggle('hidden', x.grp !== t.grp); x.host.classList.toggle('focus', x === t && t.grp.terms.length > 1); });
-    t.grp.terms.forEach((x, i) => { x.host.style.order = i; });
+    t.grp.terms.forEach((x, i) => { x.host.style.order = i * 2; });
+    layoutDividers();
     renderTermTabs();
     requestAnimationFrame(() => { t.grp.terms.forEach((x) => x.fit()); t.xterm.focus(); });
+  }
+  // draggable dividers between split panes
+  function layoutDividers() {
+    $$('#panel-terminal .pane-div').forEach((d) => d.remove());
+    const g = activeTerm && activeTerm.grp; if (!g) return;
+    g.terms.slice(0, -1).forEach((a, i) => {
+      const b = g.terms[i + 1]; const d = h('div', { class: 'pane-div', style: `order:${i * 2 + 1}` });
+      d.onmousedown = (e) => {
+        e.preventDefault(); document.body.style.userSelect = 'none';
+        const wa = a.host.getBoundingClientRect().width, wb = b.host.getBoundingClientRect().width, x0 = e.clientX;
+        const mv = (ev) => { const dx = Math.max(-wa + 120, Math.min(wb - 120, ev.clientX - x0)); a.host.style.flex = `0 0 ${wa + dx}px`; b.host.style.flex = `0 0 ${wb - dx}px`; a.fit(); b.fit(); };
+        const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.userSelect = ''; };
+        document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+      };
+      d.ondblclick = () => { g.terms.forEach((x) => (x.host.style.flex = '')); g.terms.forEach((x) => x.fit()); };
+      $('#panel-terminal').append(d);
+    });
   }
   function closeTerm(t) {
     cf.term.kill(t.id); t.xterm.dispose(); t.host.remove();

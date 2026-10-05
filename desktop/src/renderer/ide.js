@@ -50,12 +50,15 @@
   });
   const mk = (cls) => h('div', { class: 'splitter ' + cls });
   const sv = mk('v'), sh = mk('h');
-  $('#app').append(sv); $('#main').prepend(sh);
+  $('#app').append(sv); $('#panel').before(sh);
   const place = () => { const sb = $('#sidebar'); sv.style.left = (sb.offsetLeft + sb.offsetWidth - 2) + 'px'; sv.style.display = S.settings.sidebar ? '' : 'none'; };
   const saved = JSON.parse(localStorage.getItem('cf.layout') || '{}');
   if (saved.side) $('#app').style.gridTemplateColumns = `48px ${saved.side}px 1fr`;
   if (saved.panel) $('#panel').style.height = saved.panel + 'px';
   drag(sv, (e) => { const w = Math.min(640, Math.max(160, e.clientX - 48)); $('#app').style.gridTemplateColumns = `48px ${w}px 1fr`; saved.side = w; localStorage.setItem('cf.layout', JSON.stringify(saved)); place(); });
+  const setPanel = (ph) => { $('#panel').classList.remove('max'); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); };
+  CF.toggleMaxPanel = () => { const p = $('#panel'); p.classList.remove('hidden'); const on = p.classList.toggle('max'); sh.hidden = on; $('#panel-max').innerHTML = CF.iconHtml(on ? 'chevronDown' : 'chevronUp', 15); setTimeout(() => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }, 30); };
+  sh.addEventListener('dblclick', () => setPanel(260));
   drag(sh, (e) => { const mainBox = $('#main').getBoundingClientRect(); const ph = Math.min(mainBox.height - 120, Math.max(80, mainBox.bottom - e.clientY)); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); });
   new ResizeObserver(place).observe($('#sidebar')); place();
 
