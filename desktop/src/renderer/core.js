@@ -139,7 +139,7 @@ function makeGroup() {
   const g = { el, tabsEl, host, tabs: [], active: null, pinned: new Set() };
   g.editor = monaco.editor.create(host, { model: null, ...CF.editorOptions() });
   g.editor.onDidChangeCursorPosition((e) => { if (S.groups[S.active] === g) $('#sb-pos').textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`; });
-  g.editor.onDidFocusEditorText(() => { S.active = S.groups.indexOf(g); CF.updateStatus(); });
+  g.editor.onDidFocusEditorText(() => { S.active = S.groups.indexOf(g); CF.updateStatus(); if (g.active && CF.revealInTree) CF.revealInTree(g.active); });
   g.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => CF.save());
   g.editor.onDidBlurEditorText(() => { if (S.settings.autoSave === 'onFocusChange') CF.saveAll(); });
   host.addEventListener('wheel', (e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); CF.fontStep(e.deltaY < 0 ? 1 : -1); } }, { passive: false, capture: true });
@@ -176,7 +176,7 @@ CF.openFile = CF.guard(async (path, { group, line, col } = {}) => {
   g.active = path; g.editor.setModel(m.model); $('#welcome').hidden = true;
   if (line) { g.editor.revealLineInCenter(line); g.editor.setPosition({ lineNumber: line, column: col || 1 }); }
   g.editor.focus(); S.active = S.groups.indexOf(g);
-  CF.renderTabs(); CF.updateStatus();
+  CF.renderTabs(); CF.updateStatus(); CF.revealInTree && CF.revealInTree(path);
 });
 CF.renderTabs = () => S.groups.forEach((g) => {
   g.tabsEl.innerHTML = '';
@@ -211,6 +211,7 @@ CF.closeTab = CF.guard(async (g, p, force) => {
   if (g.active === p) { g.active = g.tabs[g.tabs.length - 1] || null; g.editor.setModel(g.active ? S.models.get(g.active).model : null); }
   if (!S.groups.some((x) => x.tabs.includes(p)) && m) { clearTimeout(m.timer); m.model.dispose(); S.models.delete(p); }
   CF.renderTabs(); CF.closeGroupIfEmpty(g); CF.updateStatus(); CF.updateProblems();
+  { const ag = CF.activeGroup(); if (ag && ag.active && CF.revealInTree) CF.revealInTree(ag.active); }
   if (S.root && S.groups.every((x) => !x.tabs.length) && !S.root) $('#welcome').hidden = false;
 });
 CF.save = CF.guard(async (path) => {

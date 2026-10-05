@@ -44,6 +44,18 @@
     if (node.dir) { if (T.expanded.has(node.path)) T.expanded.delete(node.path); else { T.expanded.add(node.path); await load(node.path); } flatten(); paint(); }
     else { paint(); CF.openFile(node.path); }
   });
+  // Highlight the active editor file in the tree: expand its folders, select it and scroll it into view.
+  let lastRevealed = null;
+  CF.revealInTree = CF.guard(async (path, force) => {
+    if (!path || !S.root || !path.startsWith(S.root) || (!force && path === lastRevealed && T.sel === path)) return;
+    lastRevealed = path;
+    const dirs = []; for (let d = dirOf(path); d.length > S.root.length && d.startsWith(S.root); d = dirOf(d)) dirs.unshift(d);
+    for (const d of dirs) { if (!T.kids.has(d)) { try { await load(d); } catch { return; } } T.expanded.add(d); }
+    T.sel = path; flatten();
+    const i = T.flat.findIndex((x) => x.path === path), tree = $('#tree');
+    if (i >= 0 && tree) { const y = i * ROW; if (y < tree.scrollTop || y + ROW > tree.scrollTop + tree.clientHeight) tree.scrollTop = Math.max(0, y - tree.clientHeight / 2); }
+    paint();
+  });
   const targetDir = () => { const sel = T.sel; if (!sel) return S.root; const n = T.flat.find((x) => x.path === sel); return n && !n.dir ? dirOf(sel) : sel; };
 
   CF.newFile = CF.guard(async (dir) => {
