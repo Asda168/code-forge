@@ -1,4 +1,4 @@
-// Generates assets/icon.png (1024) and per-platform icons from assets/logo-dark.svg.
+// Generates assets/icon.png (1024) and per-platform icons from assets/logo-map.png (Cambodia map flag; see prep-logo.js).
 // Requires devDependency `sharp`. Windows .ico / macOS .icns are produced by electron-builder
 // automatically from a 1024px PNG placed at build/icon.png.
 const fs = require('fs');
@@ -6,7 +6,7 @@ const path = require('path');
 const sharp = require('sharp');
 
 const root = path.join(__dirname, '..');
-const svg = fs.readFileSync(path.join(root, 'assets', 'logo-dark.svg'));
+const svg = fs.readFileSync(path.join(root, 'assets', 'logo-map.png'));
 (async () => {
   fs.mkdirSync(path.join(root, 'build'), { recursive: true });
   fs.mkdirSync(path.join(root, 'assets', 'icons', 'png'), { recursive: true });

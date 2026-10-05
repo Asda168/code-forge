@@ -101,7 +101,7 @@
   });
 
   // ---- empty editor watermark ----------------------------------------------------------------------------------
-  const wm = h('div', { id: 'watermark' }, h('img', { src: '../../assets/logo-dark.svg', width: 96 }), h('div', {}, [['Quick Open', 'Ctrl+P'], ['Command Palette', 'Ctrl+Shift+P'], ['Toggle Terminal', 'Ctrl+`'], ['Find in Files', 'Ctrl+Shift+F']].map(([a, k]) => h('div', {}, a + '  ', h('kbd', {}, k)))));
+  const wm = h('div', { id: 'watermark' }, h('img', { src: '../../assets/logo-map.png', width: 96 }), h('div', {}, [['Quick Open', 'Ctrl+P'], ['Command Palette', 'Ctrl+Shift+P'], ['Toggle Terminal', 'Ctrl+`'], ['Find in Files', 'Ctrl+Shift+F']].map(([a, k]) => h('div', {}, a + '  ', h('kbd', {}, k)))));
   $('#editor-area').append(wm);
   const sync = () => { wm.style.display = !S.groups.some((g) => g.tabs.length) && $('#welcome').hidden ? '' : 'none'; };
   setInterval(sync, 300);
