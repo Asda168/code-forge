@@ -18,8 +18,10 @@
     G.sync = (head.match(/\[(.+)\]/) || [])[1] || '';
     CF.G = G;
     G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3).replace(/^"|"$/g, '').replace(/.* -> /, '') }));
-    setBadge(new Set(G.files.map((f) => f.path)).size);
-    $('#sb-branch').textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}`;
+    const total = new Set(G.files.map((f) => f.path)).size;
+    setBadge(total);
+    $('#sb-branch').textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}${total ? ' ●' + total : ''}`;
+    $('#sb-branch').title = total ? `${total} changed file${total === 1 ? '' : 's'}` : 'Working tree clean';
     if ($('#side-title').dataset.view === 'git') CF.showView('git');
   };
   const run = (label, args) => CF.guard(async () => { await must(args); CF.toast(label + ' done'); await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); });
@@ -64,7 +66,9 @@
       h('button', { class: 'btn sec sm', title: 'Pull', onclick: run('Pull', ['pull']) }, CF.icon('down', 13)), h('button', { class: 'btn sec sm', title: 'Push', onclick: pushIt }, CF.icon('up', 13)), h('button', { class: 'btn sec sm', title: 'Fetch', onclick: run('Fetch', ['fetch', '--all']) }, CF.icon('refresh', 13)),
       h('button', { class: 'btn sec sm', title: 'Stash', onclick: run('Stash', ['stash', 'push', '-u']) }, 'Stash'), h('button', { class: 'btn sec sm', title: 'Pop stash', onclick: run('Stash pop', ['stash', 'pop']) }, 'Pop'))));
     const total = new Set(G.files.map((f) => f.path)).size;
-    body.append(h('div', { class: 'pad muted', style: 'padding-top:0;font-size:11px' }, `${total} changed file${total === 1 ? '' : 's'} · ${staged.length} staged · ${changes.length} modified · ${untracked.length} untracked`));
+    if (total) { const t = $('#side-title'); if (t.dataset.view === 'git') t.append(h('span', { class: 'grow' }), h('span', { class: 'badge' }, total)); }
+    const chip = (n, label, cls) => n ? h('span', { class: 'chip ' + cls, title: `${n} ${label}` }, `${n} ${label}`) : null;
+    body.append(h('div', { class: 'pad git-summary' }, h('b', {}, `${total} changed file${total === 1 ? '' : 's'}`), chip(staged.length, 'staged', 'S'), chip(changes.length, 'modified', 'M'), chip(untracked.length, 'untracked', 'U')));
     const section = (title, list, stagedSec, extra) => { if (!list.length && !stagedSec) return; fold(body, title, title, list.length, extra, list.map((f) => fileRow(f, stagedSec))); };
     section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 14)));
     section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, CF.icon('plus', 14)));

@@ -223,3 +223,8 @@ input,select,textarea{border-radius:var(--r)}
 .term+.term{border-left:0}
 .toast.suggest{max-width:360px}
 .toast.suggest .row{display:flex;gap:6px;flex-wrap:wrap}
+
+.git-summary{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:0;font-size:11px;color:var(--mut)}
+.git-summary b{color:var(--fg);font-weight:600}
+.git-summary .chip{border-radius:8px;padding:0 6px;background:var(--hover)}
+.git-summary .chip.S{color:var(--green,#73c991)}.git-summary .chip.M{color:var(--yellow,#e2c08d)}.git-summary .chip.U{color:var(--cyan,#73c991)}
