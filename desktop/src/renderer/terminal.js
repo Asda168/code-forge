@@ -36,6 +36,8 @@
     });
   }
 
+  const APP_KEYS = new Set(['KeyB', 'KeyP', 'KeyJ', 'Backquote', 'Equal', 'Minus', 'Digit0', 'Comma', 'Backslash', 'Tab', 'NumpadAdd', 'NumpadSubtract']);
+  const APP_CHARS = new Set(['b', 'p', 'j', '`', '=', '+', '-', '0', ',', '\\', 'tab']);   // fallback when e.code is empty / non-QWERTY layouts
   CF.newTerminal = CF.guard(async (shellId, cwd, opts = {}) => {
     CF.showPanel('terminal');
     const host = h('div', { class: 'term' }); $('#panel-terminal').append(host);
@@ -57,6 +59,11 @@
       if (e.ctrlKey && e.shiftKey && e.code === 'KeyK') { xterm.clear(); return false; }
       if (e.altKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && t.grp.terms.length > 1) { CF.focusPane(e.code === 'ArrowLeft' ? -1 : 1); return false; }
       if (e.ctrlKey && (e.code === 'PageUp' || e.code === 'PageDown')) { CF.cycleTerminal(e.code === 'PageUp' ? -1 : 1); return false; }
+      // App shortcuts: xterm must not consume these (it would send them to the shell and cancel the menu accelerator).
+      // Readline keys (Ctrl+C/D/L/R/W/A/E/K/U...) still go to the shell.
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && (e.shiftKey || APP_KEYS.has(e.code) || APP_CHARS.has(e.key.toLowerCase()))) return false;
+      if ((e.altKey && (e.code === 'KeyG' || e.key.toLowerCase() === 'g')) || e.code === 'F5' || e.code === 'F12') return false;
       return true;
     });
     host.addEventListener('mousedown', () => { if (activeTerm !== t) selectTerm(t); });
