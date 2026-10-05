@@ -15,11 +15,13 @@ const svg = fs.readFileSync(path.join(root, 'assets', 'logo-map.png'));
   for (const s of [16, 32, 48, 64, 128, 256, 512, 1024]) {
     await sharp(svg, { density: 600 }).resize(s, s).png().toFile(path.join(root, 'assets', 'icons', 'png', `${s}x${s}.png`));
   }
-  // Windows .ico (PNG-compressed 256px entry, supported since Vista)
-  const png = fs.readFileSync(path.join(root, 'assets', 'icons', 'png', '256x256.png'));
-  const hdr = Buffer.alloc(22); hdr.writeUInt16LE(0, 0); hdr.writeUInt16LE(1, 2); hdr.writeUInt16LE(1, 4);
-  hdr[6] = 0; hdr[7] = 0; hdr.writeUInt16LE(1, 10); hdr.writeUInt16LE(32, 12); hdr.writeUInt32LE(png.length, 14); hdr.writeUInt32LE(22, 18);
-  fs.writeFileSync(path.join(root, 'build', 'icon.ico'), Buffer.concat([hdr, png]));
+  // Windows .ico: multi-size, PNG-compressed entries (supported since Vista); 256px is stored as 0.
+  const sizes = [16, 32, 48, 64, 128, 256];
+  const pngs = sizes.map((n) => fs.readFileSync(path.join(root, 'assets', 'icons', 'png', `${n}x${n}.png`)));
+  const hdr = Buffer.alloc(6 + 16 * sizes.length); hdr.writeUInt16LE(1, 2); hdr.writeUInt16LE(sizes.length, 4);
+  let off = hdr.length;
+  sizes.forEach((n, k) => { const e = 6 + 16 * k; hdr[e] = n % 256; hdr[e + 1] = n % 256; hdr.writeUInt16LE(1, e + 4); hdr.writeUInt16LE(32, e + 6); hdr.writeUInt32LE(pngs[k].length, e + 8); hdr.writeUInt32LE(off, e + 12); off += pngs[k].length; });
+  fs.writeFileSync(path.join(root, 'build', 'icon.ico'), Buffer.concat([hdr, ...pngs]));
   fs.copyFileSync(path.join(root, 'build', 'icon.ico'), path.join(root, 'assets', 'icon.ico'));
   console.log('Icons written.');
 })();
