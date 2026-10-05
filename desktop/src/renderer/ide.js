@@ -58,7 +58,7 @@
     draw(); input.focus();
   });
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR') { e.preventDefault(); e.stopPropagation(); CF.findProject(); }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR' && !(e.target.closest && e.target.closest('.xterm'))) {   // Ctrl+R stays reverse-search in the terminal e.preventDefault(); e.stopPropagation(); CF.findProject(); }
   }, true);
 
   // ---- tab shortcuts --------------------------------------------------------------------------

@@ -63,6 +63,8 @@
       // Readline keys (Ctrl+C/D/L/R/W/A/E/K/U...) still go to the shell.
       const mod = e.ctrlKey || e.metaKey;
       if (mod && (e.shiftKey || APP_KEYS.has(e.code) || APP_CHARS.has(e.key.toLowerCase()))) return false;
+      if (mod && e.altKey) return false;                       // Ctrl+Alt+S etc. are never readline keys
+      if (mod && ['KeyS', 'KeyO', 'KeyN', 'KeyG'].includes(e.code)) return false;   // Save / Open / New / Go to line (menu accelerators)
       if ((e.altKey && (e.code === 'KeyG' || e.key.toLowerCase() === 'g')) || e.code === 'F5' || e.code === 'F12') return false;
       return true;
     });
