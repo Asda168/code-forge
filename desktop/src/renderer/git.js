@@ -9,7 +9,7 @@
   CF.gitRefresh = async () => {
     if (!S.root) return;
     G.repo = await cf.git.detect(S.root).catch(() => false);
-    const setBadge = (n) => { const b = $('#activitybar [data-view="git"]'); if (!b) return; let el = b.querySelector('.act-badge'); if (!n) return el && el.remove(); if (!el) { el = h('span', { class: 'act-badge' }); b.append(el); } el.textContent = n > 99 ? '99+' : n; b.title = `Source Control (${n} changed file${n === 1 ? '' : 's'})`; };
+    const setBadge = (n) => { const b = $('#activitybar [data-view="git"]'); if (!b) return; let el = b.querySelector('.act-badge'); if (!n) return el && el.remove(); if (!el) { el = h('span', { class: 'act-badge' }); b.append(el); } el.textContent = n > 99 ? '99+' : n; b.title = `Source Control (${n} pending change${n === 1 ? '' : 's'})`; };
     if (!G.repo) { setBadge(0); $('#sb-branch').textContent = '⑂ no repo'; if ($('#side-title').dataset.view === 'git') CF.showView('git'); return; }
     const st = await git(['status', '--porcelain=v1', '-b', '-uall']);
     const lines = st.stdout.split('\n').filter(Boolean);
@@ -20,8 +20,9 @@
     G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3).replace(/^"|"$/g, '').replace(/.* -> /, '') }));
     const total = new Set(G.files.map((f) => f.path)).size;
     setBadge(total);
-    $('#sb-branch').textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}${total ? ' ●' + total : ''}`;
-    $('#sb-branch').title = total ? `${total} changed file${total === 1 ? '' : 's'}` : 'Working tree clean';
+    const sb = $('#sb-branch'); sb.textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}`;
+    if (total) sb.append(h('span', { class: 'sb-pending', html: CF.iconHtml('git', 12) + ' ' + total }));
+    sb.title = total ? `${total} pending change${total === 1 ? '' : 's'}` : 'Working tree clean';
     if ($('#side-title').dataset.view === 'git') CF.showView('git');
   };
   const run = (label, args) => CF.guard(async () => { await must(args); CF.toast(label + ' done'); await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); });
@@ -68,7 +69,7 @@
     const total = new Set(G.files.map((f) => f.path)).size;
     if (total) { const t = $('#side-title'); if (t.dataset.view === 'git') t.append(h('span', { class: 'grow' }), h('span', { class: 'badge' }, total)); }
     const chip = (n, label, cls) => n ? h('span', { class: 'chip ' + cls, title: `${n} ${label}` }, `${n} ${label}`) : null;
-    body.append(h('div', { class: 'pad git-summary' }, h('b', {}, `${total} changed file${total === 1 ? '' : 's'}`), chip(staged.length, 'staged', 'S'), chip(changes.length, 'modified', 'M'), chip(untracked.length, 'untracked', 'U')));
+    body.append(h('div', { class: 'pad git-summary' }, h('span', { class: 'sum-ic', html: CF.iconHtml('git', 14) }), h('b', {}, `${total} pending change${total === 1 ? '' : 's'}`), chip(staged.length, 'staged', 'S'), chip(changes.length, 'modified', 'M'), chip(untracked.length, 'untracked', 'U')));
     const section = (title, list, stagedSec, extra) => { if (!list.length && !stagedSec) return; fold(body, title, title, list.length, extra, list.map((f) => fileRow(f, stagedSec))); };
     section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 14)));
     section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, CF.icon('plus', 14)));

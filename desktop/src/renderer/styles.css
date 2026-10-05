@@ -228,3 +228,6 @@ input,select,textarea{border-radius:var(--r)}
 .git-summary b{color:var(--fg);font-weight:600}
 .git-summary .chip{border-radius:8px;padding:0 6px;background:var(--hover)}
 .git-summary .chip.S{color:var(--green,#73c991)}.git-summary .chip.M{color:var(--yellow,#e2c08d)}.git-summary .chip.U{color:var(--cyan,#73c991)}
+
+.git-summary .sum-ic{display:inline-flex;color:var(--accent)}.git-summary .sum-ic svg{stroke:currentColor;fill:none}
+.sb-pending{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-weight:600}.sb-pending svg{stroke:currentColor;fill:none}
