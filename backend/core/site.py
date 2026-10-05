@@ -5,7 +5,7 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 RELEASED = "2026-10-03"
 _REL = f"{REPO}/releases/latest/download"
 
