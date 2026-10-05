@@ -1,7 +1,7 @@
 // Source control: status, stage/commit, branches, history, diff viewer, clone/init.
 (() => {
   const { S, $, h, base, join, rel } = CF;
-  const G = { repo: false, branch: '', files: [], branches: [], commits: [], remotes: [], msg: '' };
+  const G = { repo: false, branch: '', files: [], branches: [], commits: [], remotes: [], msg: '', fold: {} };
   const git = async (args, opts) => cf.git.run(S.root, args, opts);
   const must = async (args) => { const r = await git(args); if (r.code !== 0) throw new Error((r.stderr || r.stdout || 'git failed').trim()); return r.stdout; };
   const abs = (p) => join(S.root, p.replace(/\//g, S.platform.platform === 'win32' ? '\\' : '/'));
@@ -44,6 +44,14 @@
       h('span', { class: 'acts' }, btn(CF.icon('open', 13), 'Open File', () => CF.openFile(abs(f.path))), staged ? btn(CF.icon('minus', 13), 'Unstage', () => unstage(f.path)) : [btn(CF.icon('undo', 13), 'Discard', () => discard(f)), btn(CF.icon('plus', 13), 'Stage', () => stage(f.path))]));
   }
 
+  // Collapsible section: header toggles a box; state survives refreshes.
+  const fold = (body, key, title, count, extra, items) => {
+    const box = h('div', {}); const arrow = h('span', { class: 'arr' });
+    const set = () => { const c = !!G.fold[key]; arrow.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); box.hidden = c; };
+    body.append(h('div', { class: 'sec-head clickable', onclick: () => { G.fold[key] = !G.fold[key]; set(); } }, arrow, title, count != null ? h('span', { class: 'badge' }, count) : null, h('span', { class: 'grow' }), extra ? h('span', { onclick: (e) => e.stopPropagation(), style: 'display:flex' }, extra) : null), box);
+    items.forEach((i) => box.append(i)); set(); return box;
+  };
+
   CF.renderGit = async (body) => {
     if (!S.root) return body.append(h('div', { class: 'pad muted' }, 'Open a folder first.'));
     if (!G.repo) return body.append(h('div', { class: 'pad' }, h('p', { class: 'muted' }, 'This folder is not a Git repository.'),
@@ -53,7 +61,9 @@
     body.append(h('div', { class: 'pad' }, msg, h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: commit }, CF.icon('check', 13), ' Commit'),
       h('button', { class: 'btn sec sm', title: 'Pull', onclick: run('Pull', ['pull']) }, CF.icon('down', 13)), h('button', { class: 'btn sec sm', title: 'Push', onclick: pushIt }, CF.icon('up', 13)), h('button', { class: 'btn sec sm', title: 'Fetch', onclick: run('Fetch', ['fetch', '--all']) }, CF.icon('refresh', 13)),
       h('button', { class: 'btn sec sm', title: 'Stash', onclick: run('Stash', ['stash', 'push', '-u']) }, 'Stash'), h('button', { class: 'btn sec sm', title: 'Pop stash', onclick: run('Stash pop', ['stash', 'pop']) }, 'Pop'))));
-    const section = (title, list, stagedSec, extra) => { if (!list.length && !stagedSec) return; body.append(h('div', { class: 'sec-head' }, title, ' ', h('span', { class: 'badge' }, list.length), h('span', { class: 'grow' }), extra || null)); list.forEach((f) => body.append(fileRow(f, stagedSec))); };
+    const total = new Set(G.files.map((f) => f.path)).size;
+    body.append(h('div', { class: 'pad muted', style: 'padding-top:0;font-size:11px' }, `${total} changed file${total === 1 ? '' : 's'} · ${staged.length} staged · ${changes.length} modified · ${untracked.length} untracked`));
+    const section = (title, list, stagedSec, extra) => { if (!list.length && !stagedSec) return; fold(body, title, title, list.length, extra, list.map((f) => fileRow(f, stagedSec))); };
     section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 14)));
     section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, CF.icon('plus', 14)));
     section('Untracked Files', untracked, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-A']) }, CF.icon('plus', 14)));
@@ -61,17 +71,17 @@
 
     const [br, log, rem] = await Promise.all([git(['branch', '-a', '--format=%(HEAD)|%(refname:short)']), git(['log', '--all', '--date=short', '--pretty=format:%h|%an|%ad|%s|%D', '-n', '100']), git(['remote', '-v'])]);
     G.branches = br.stdout.split('\n').filter(Boolean).map((l) => ({ cur: l[0] === '*', name: l.slice(2) }));
-    body.append(h('div', { class: 'sec-head' }, 'Branches', h('span', { class: 'grow' }), h('button', { class: 'icon-btn', title: 'Create branch', onclick: newBranch }, '＋')));
-    G.branches.forEach((b) => body.append(h('div', { class: 'gi', onclick: () => !b.cur && run('Checkout', ['checkout', b.name.replace(/^origin\//, '')])(), oncontextmenu: (e) => { e.preventDefault(); CF.menu(e, [
+    fold(body, 'Branches', 'Branches', G.branches.length, h('button', { class: 'icon-btn', title: 'Create branch', onclick: newBranch }, '＋'), G.branches.map((b) => h('div', { class: 'gi', onclick: () => !b.cur && run('Checkout', ['checkout', b.name.replace(/^origin\//, '')])(), oncontextmenu: (e) => { e.preventDefault(); CF.menu(e, [
       ['Checkout', run('Checkout', ['checkout', b.name.replace(/^origin\//, '')])], ['Merge into current', run('Merge', ['merge', b.name])], ['Rebase current onto this', run('Rebase', ['rebase', b.name])],
       ['Delete branch', CF.guard(async () => { if (await CF.confirm(`Delete branch ${b.name}?`, 'Delete')) run('Delete branch', ['branch', '-d', b.name])(); })]]); } },
     h('span', { class: 'st', style: 'color:var(--cyan)' }, b.cur ? '●' : ''), h('span', { class: 'nm' }, b.name))));
-    body.append(h('div', { class: 'sec-head' }, 'Commits'));
-    log.stdout.split('\n').filter(Boolean).forEach((l) => { const [hash, an, ad, subj, refs] = l.split('|');
-      body.append(h('div', { class: 'commit', onclick: () => CF.showCommit(hash) }, h('span', { class: 'dot' }, '●'), h('div', {}, h('div', {}, subj, refs ? h('span', { class: 'badge', style: 'margin-left:6px' }, refs.split(', ')[0]) : null), h('div', { class: 'meta' }, `${hash} · ${an} · ${ad}`)))); });
-    body.append(h('div', { class: 'sec-head' }, 'Remotes', h('span', { class: 'grow' }), h('button', { class: 'icon-btn', title: 'Add remote', onclick: addRemote }, '＋')));
-    const seen = new Set(); rem.stdout.split('\n').filter(Boolean).forEach((l) => { if (seen.has(l.split('\t')[0] + l.includes('(fetch)'))) return; seen.add(l.split('\t')[0] + l.includes('(fetch)')); if (l.includes('(fetch)')) body.append(h('div', { class: 'gi mono', style: 'font-size:11px' }, l.replace(' (fetch)', ''))); });
-    if (!seen.size) body.append(h('div', { class: 'pad muted' }, 'No remotes. Pull requests & issues live on your Git host.'));
+    const commitRows = log.stdout.split('\n').filter(Boolean).map((l) => { const [hash, an, ad, subj, refs] = l.split('|');
+      return h('div', { class: 'commit', onclick: () => CF.showCommit(hash) }, h('span', { class: 'dot' }, '●'), h('div', {}, h('div', {}, subj, refs ? h('span', { class: 'badge', style: 'margin-left:6px' }, refs.split(', ')[0]) : null), h('div', { class: 'meta' }, `${hash} · ${an} · ${ad}`))); });
+    fold(body, 'Commits', 'Commits', commitRows.length, null, commitRows);
+    const seen = new Set(), remRows = [];
+    rem.stdout.split('\n').filter(Boolean).forEach((l) => { if (!l.includes('(fetch)')) return; const k = l.split('\t')[0]; if (seen.has(k)) return; seen.add(k); remRows.push(h('div', { class: 'gi mono', style: 'font-size:11px' }, l.replace(' (fetch)', ''))); });
+    if (!remRows.length) remRows.push(h('div', { class: 'pad muted' }, 'No remotes. Pull requests & issues live on your Git host.'));
+    fold(body, 'Remotes', 'Remotes', seen.size, h('button', { class: 'icon-btn', title: 'Add remote', onclick: addRemote }, '＋'), remRows);
   };
   const pushIt = CF.guard(async () => {
     const r = await git(['push']);
