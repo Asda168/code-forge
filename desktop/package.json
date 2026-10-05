@@ -1,7 +1,7 @@
 {
   "name": "codeforge",
   "productName": "CodeCambo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CodeCambo - Code. Build. Run. Ship.",
   "main": "src/main.js",
   "author": "CodeCambo",
