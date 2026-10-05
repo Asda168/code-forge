@@ -1,4 +1,4 @@
-// CodeForge renderer core: state, helpers, themes, Monaco, editor groups & tabs.
+// CodeCambo renderer core: state, helpers, themes, Monaco, editor groups & tabs.
 const CF = (window.CF = { S: { root: null, settings: {}, groups: [], active: 0, models: new Map(), platform: {}, vertical: false } });
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -55,8 +55,8 @@ CF.confirm = (msg, ok = 'OK') => new Promise((res) => CF.modal('Confirm', [h('p'
 
 // ---- themes ---------------------------------------------------------------
 const THEMES = {
-  'codeforge-dark': { name: 'CodeForge Dark', base: 'vs-dark', ui: {}, ed: { 'editor.background': '#0b1020', 'editor.lineHighlightBackground': '#141c3d', 'editorCursor.foreground': '#22d3ee' } },
-  'codeforge-light': { name: 'CodeForge Light', base: 'vs', ui: { '--bg': '#f7f8fc', '--side': '#eceff8', '--panel': '#f1f3fa', '--fg': '#161b33', '--mut': '#5d668a', '--border': '#d5daec', '--hover': '#e1e6f6', '--sel': '#cdd8f7' }, ed: { 'editor.background': '#f7f8fc' } },
+  'codeforge-dark': { name: 'CodeCambo Dark', base: 'vs-dark', ui: {}, ed: { 'editor.background': '#0b1020', 'editor.lineHighlightBackground': '#141c3d', 'editorCursor.foreground': '#22d3ee' } },
+  'codeforge-light': { name: 'CodeCambo Light', base: 'vs', ui: { '--bg': '#f7f8fc', '--side': '#eceff8', '--panel': '#f1f3fa', '--fg': '#161b33', '--mut': '#5d668a', '--border': '#d5daec', '--hover': '#e1e6f6', '--sel': '#cdd8f7' }, ed: { 'editor.background': '#f7f8fc' } },
   'high-contrast': { name: 'High Contrast', base: 'hc-black', ui: { '--bg': '#000', '--side': '#000', '--panel': '#000', '--fg': '#fff', '--mut': '#cfcfcf', '--border': '#6fc3df', '--hover': '#1a1a1a', '--sel': '#05324a' }, ed: {} },
   midnight: { name: 'Midnight', base: 'vs-dark', ui: { '--bg': '#05060f', '--side': '#090b1a', '--panel': '#070916', '--border': '#14183a', '--hover': '#10142e' }, ed: { 'editor.background': '#05060f' } },
   vampire: { name: 'Vampire (Dracula-inspired)', base: 'vs-dark', ui: { '--bg': '#272935', '--side': '#21222c', '--panel': '#232430', '--border': '#343746', '--hover': '#343746', '--sel': '#44475a', '--accent': '#bd93f9', '--cyan': '#8be9fd' }, ed: { 'editor.background': '#272935', 'editor.lineHighlightBackground': '#2f3140' } },

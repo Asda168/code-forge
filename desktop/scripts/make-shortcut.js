@@ -1,4 +1,4 @@
-// Creates a CodeForge shortcut on the Desktop when running from source (installers do this themselves).
+// Creates a CodeCambo shortcut on the Desktop when running from source (installers do this themselves).
 // Usage: npm run shortcut
 const fs = require('fs');
 const os = require('os');
@@ -11,19 +11,19 @@ if (!fs.existsSync(desktop)) { console.error('Desktop folder not found: ' + desk
 const electron = require('electron'); // path to the electron binary
 
 if (process.platform === 'win32') {
-  const lnk = path.join(desktop, 'CodeForge.lnk');
+  const lnk = path.join(desktop, 'CodeCambo.lnk');
   const icon = path.join(root, 'build', 'icon.ico');
   const ps = `$s=(New-Object -ComObject WScript.Shell).CreateShortcut('${lnk}');$s.TargetPath='${electron}';` +
-    `$s.Arguments='"${root}"';$s.WorkingDirectory='${root}';$s.Description='CodeForge - Code. Build. Run. Ship.';` +
+    `$s.Arguments='"${root}"';$s.WorkingDirectory='${root}';$s.Description='CodeCambo - Code. Build. Run. Ship.';` +
     (fs.existsSync(icon) ? `$s.IconLocation='${icon}';` : '') + '$s.Save()';
   execFileSync('powershell', ['-NoProfile', '-Command', ps]);
   console.log('Shortcut created: ' + lnk);
 } else if (process.platform === 'linux') {
-  const f = path.join(desktop, 'codeforge.desktop');
-  fs.writeFileSync(f, `[Desktop Entry]\nType=Application\nName=CodeForge\nComment=Code. Build. Run. Ship.\nExec="${electron}" "${root}"\nPath=${root}\nIcon=${path.join(root, 'assets', 'icon.png')}\nTerminal=false\nCategories=Development;IDE;\n`, { mode: 0o755 });
+  const f = path.join(desktop, 'codecambo.desktop');
+  fs.writeFileSync(f, `[Desktop Entry]\nType=Application\nName=CodeCambo\nComment=Code. Build. Run. Ship.\nExec="${electron}" "${root}"\nPath=${root}\nIcon=${path.join(root, 'assets', 'icon.png')}\nTerminal=false\nCategories=Development;IDE;\n`, { mode: 0o755 });
   console.log('Shortcut created: ' + f + ' (right-click > Allow Launching if needed)');
 } else {
-  const f = path.join(desktop, 'CodeForge.command');
+  const f = path.join(desktop, 'CodeCambo.command');
   fs.writeFileSync(f, `#!/bin/bash\ncd "${root}" && "${electron}" . >/dev/null 2>&1 &\n`, { mode: 0o755 });
   console.log('Launcher created: ' + f);
 }

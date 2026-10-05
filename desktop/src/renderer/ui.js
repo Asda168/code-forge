@@ -117,7 +117,7 @@
     upd('fontSize', S.settings.fontSize);
   });
   const loginDialog = CF.guard(async () => {
-    const v = await CF.ask('Sign in to CodeForge', [{ id: 'u', label: 'Username' }, { id: 'p', label: 'Password', type: 'password' }], 'Sign in'); if (!v) return;
+    const v = await CF.ask('Sign in to CodeCambo', [{ id: 'u', label: 'Username' }, { id: 'p', label: 'Password', type: 'password' }], 'Sign in'); if (!v) return;
     await cf.api.login(v.u, v.p); CF.toast('Signed in (token stored in OS credential storage)');
   });
 

@@ -1,4 +1,4 @@
-"""CodeForge backend settings.
+"""CodeCambo backend settings.
 
 PostgreSQL via DATABASE_URL (falls back to SQLite for quick local dev).
 Redis via REDIS_URL (falls back to in-memory channel layer).

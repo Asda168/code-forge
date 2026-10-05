@@ -1,11 +1,11 @@
-; Extra NSIS steps: "Open with CodeForge" context menu + add to PATH (per-user).
+; Extra NSIS steps: "Open with CodeCambo" context menu + add to PATH (per-user).
 !macro customInstall
-  WriteRegStr HKCU "Software\Classes\*\shell\CodeForge" "" "Open with CodeForge"
-  WriteRegStr HKCU "Software\Classes\*\shell\CodeForge" "Icon" "$INSTDIR\CodeForge.exe"
-  WriteRegStr HKCU "Software\Classes\*\shell\CodeForge\command" "" '"$INSTDIR\CodeForge.exe" "%1"'
-  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeForge" "" "Open with CodeForge"
-  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeForge" "Icon" "$INSTDIR\CodeForge.exe"
-  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeForge\command" "" '"$INSTDIR\CodeForge.exe" "%V"'
+  WriteRegStr HKCU "Software\Classes\*\shell\CodeCambo" "" "Open with CodeCambo"
+  WriteRegStr HKCU "Software\Classes\*\shell\CodeCambo" "Icon" "$INSTDIR\CodeCambo.exe"
+  WriteRegStr HKCU "Software\Classes\*\shell\CodeCambo\command" "" '"$INSTDIR\CodeCambo.exe" "%1"'
+  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeCambo" "" "Open with CodeCambo"
+  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeCambo" "Icon" "$INSTDIR\CodeCambo.exe"
+  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeCambo\command" "" '"$INSTDIR\CodeCambo.exe" "%V"'
   ; PATH: append install dir for current user (simple form; does not dedupe).
   ReadRegStr $0 HKCU "Environment" "Path"
   StrCmp $0 "" +2
@@ -16,6 +16,6 @@
 !macroend
 
 !macro customUnInstall
-  DeleteRegKey HKCU "Software\Classes\*\shell\CodeForge"
-  DeleteRegKey HKCU "Software\Classes\Directory\shell\CodeForge"
+  DeleteRegKey HKCU "Software\Classes\*\shell\CodeCambo"
+  DeleteRegKey HKCU "Software\Classes\Directory\shell\CodeCambo"
 !macroend

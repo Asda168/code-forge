@@ -1,10 +1,10 @@
 {
   "name": "codeforge",
-  "productName": "CodeForge",
+  "productName": "CodeCambo",
   "version": "1.0.0",
-  "description": "CodeForge - Code. Build. Run. Ship.",
+  "description": "CodeCambo - Code. Build. Run. Ship.",
   "main": "src/main.js",
-  "author": "CodeForge",
+  "author": "CodeCambo",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -33,7 +33,7 @@
   },
   "build": {
     "appId": "dev.codeforge.app",
-    "productName": "CodeForge",
+    "productName": "CodeCambo",
     "directories": {
       "output": "dist"
     },
@@ -64,7 +64,7 @@
           ]
         }
       ],
-      "artifactName": "CodeForge-Setup-${arch}.${ext}",
+      "artifactName": "CodeCambo-Setup-${arch}.${ext}",
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -73,7 +73,7 @@
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "include": "scripts/installer.nsh",
-      "shortcutName": "CodeForge",
+      "shortcutName": "CodeCambo",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
@@ -90,7 +90,7 @@
           ]
         }
       ],
-      "artifactName": "CodeForge-macOS-universal.${ext}"
+      "artifactName": "CodeCambo-macOS-universal.${ext}"
     },
     "linux": {
       "icon": "assets/icons/png",
@@ -100,9 +100,9 @@
         "deb",
         "rpm"
       ],
-      "artifactName": "CodeForge.${ext}",
+      "artifactName": "CodeCambo.${ext}",
       "desktop": {
-        "Name": "CodeForge",
+        "Name": "CodeCambo",
         "Comment": "Code. Build. Run. Ship.",
         "Categories": "Development;IDE;TextEditor;",
         "MimeType": "inode/directory;text/plain;"

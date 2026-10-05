@@ -1,4 +1,4 @@
-"""CodeForge data model.
+"""CodeCambo data model.
 
 Privacy rule: these models store *metadata* only. Source code and absolute local paths are
 never stored unless the user explicitly enables sync (UserProfile.sync_enabled).

@@ -5,8 +5,8 @@ from django.core.management.base import BaseCommand
 from core.models import Download, Extension, Release, Theme
 
 THEMES = [
-    ("codeforge-dark", "CodeForge Dark", "vs-dark"),
-    ("codeforge-light", "CodeForge Light", "vs"),
+    ("codeforge-dark", "CodeCambo Dark", "vs-dark"),
+    ("codeforge-light", "CodeCambo Light", "vs"),
     ("high-contrast", "High Contrast", "hc-black"),
     ("midnight", "Midnight", "vs-dark"),
     ("vampire", "Vampire (Dracula-inspired)", "vs-dark"),
@@ -19,12 +19,12 @@ EXTENSIONS = [
     ("git", "Git", "tools"),
 ]
 DOWNLOADS = [
-    ("windows", "x64", "exe", "CodeForge-Setup-x64.exe"),
-    ("windows", "arm64", "exe", "CodeForge-Setup-arm64.exe"),
-    ("macos", "universal", "dmg", "CodeForge-macOS-universal.dmg"),
-    ("linux", "x64", "AppImage", "CodeForge.AppImage"),
-    ("linux", "x64", "deb", "CodeForge.deb"),
-    ("linux", "x64", "rpm", "CodeForge.rpm"),
+    ("windows", "x64", "exe", "CodeCambo-Setup-x64.exe"),
+    ("windows", "arm64", "exe", "CodeCambo-Setup-arm64.exe"),
+    ("macos", "universal", "dmg", "CodeCambo-macOS-universal.dmg"),
+    ("linux", "x64", "AppImage", "CodeCambo.AppImage"),
+    ("linux", "x64", "deb", "CodeCambo.deb"),
+    ("linux", "x64", "rpm", "CodeCambo.rpm"),
 ]
 
 

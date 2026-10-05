@@ -1,4 +1,4 @@
-// CodeForge main process: the secure local bridge.
+// CodeCambo main process: the secure local bridge.
 // Everything local (fs, terminal, git, processes) lives here and is reachable ONLY through
 // contextBridge -> ipcMain from our own window. No local HTTP/WebSocket server is opened.
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, session } = require('electron');
@@ -25,7 +25,7 @@ let win = null;
 // ---------------------------------------------------------------- window
 function createWindow() {
   win = new BrowserWindow({
-    width: 1400, height: 900, minWidth: 900, minHeight: 600, backgroundColor: '#0b1020', title: 'CodeForge',
+    width: 1400, height: 900, minWidth: 900, minHeight: 600, backgroundColor: '#0b1020', title: 'CodeCambo',
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
@@ -558,7 +558,7 @@ else {
   app.on('window-all-closed', () => { terms.forEach((t) => t.kill()); app.quit(); });
 }
 function openArgvPath(argv) {
-  // "Open with CodeForge": the user explicitly chose this path in the OS shell.
+  // "Open with CodeCambo": the user explicitly chose this path in the OS shell.
   const p = argv.slice(app.isPackaged ? 1 : 2).find((a) => !a.startsWith('-') && fs.existsSync(a));
   if (!p) return;
   try {

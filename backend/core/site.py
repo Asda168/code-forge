@@ -10,12 +10,12 @@ RELEASED = "2026-10-03"
 _REL = f"{REPO}/releases/latest/download"
 
 DOWNLOADS = [
-    {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "CodeForge-Setup-x64.exe", "url": f"{_REL}/CodeForge-Setup-x64.exe", "available": False},
-    {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "CodeForge-Setup-arm64.exe", "url": f"{_REL}/CodeForge-Setup-arm64.exe", "available": False},
-    {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "CodeForge-macOS-universal.dmg", "url": f"{_REL}/CodeForge-macOS-universal.dmg", "available": False},
-    {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "CodeForge.AppImage", "url": f"{_REL}/CodeForge.AppImage", "available": False},
-    {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeForge.deb", "url": f"{_REL}/CodeForge.deb", "available": False},
-    {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeForge.rpm", "url": f"{_REL}/CodeForge.rpm", "available": False},
+    {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "CodeCambo-Setup-x64.exe", "url": f"{_REL}/CodeCambo-Setup-x64.exe", "available": False},
+    {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "CodeCambo-Setup-arm64.exe", "url": f"{_REL}/CodeCambo-Setup-arm64.exe", "available": False},
+    {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "CodeCambo-macOS-universal.dmg", "url": f"{_REL}/CodeCambo-macOS-universal.dmg", "available": False},
+    {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "CodeCambo.AppImage", "url": f"{_REL}/CodeCambo.AppImage", "available": False},
+    {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": False},
+    {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeCambo.rpm", "url": f"{_REL}/CodeCambo.rpm", "available": False},
 ]
 REQUIREMENTS = {"windows": "Windows 10 or 11 (x64 / ARM64)", "macos": "macOS 12+ (Apple Silicon & Intel)", "linux": "Ubuntu 20.04+, Fedora 36+ or similar (glibc 2.31+)"}
 
