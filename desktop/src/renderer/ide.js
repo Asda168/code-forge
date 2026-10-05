@@ -57,8 +57,9 @@
     o.append(h('div', { class: 'palette' }, input, list)); o.onmousedown = (e) => { if (e.target === o) CF.closeOverlay(); };
     draw(); input.focus();
   });
+  // Ctrl+R stays reverse-search inside the terminal
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR' && !(e.target.closest && e.target.closest('.xterm'))) {   // Ctrl+R stays reverse-search in the terminal e.preventDefault(); e.stopPropagation(); CF.findProject(); }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR' && !(e.target.closest && e.target.closest('.xterm'))) { e.preventDefault(); e.stopPropagation(); CF.findProject(); }
   }, true);
 
   // ---- tab shortcuts --------------------------------------------------------------------------
