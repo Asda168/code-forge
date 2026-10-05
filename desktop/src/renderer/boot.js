@@ -4,7 +4,7 @@
   S.settings = await cf.settings.get();
   CF.applyTheme(S.settings.theme);                   // CSS vars first, Monaco theme after load
   await CF.initMonaco();
-  CF.initEditors(); CF.applySettings();
+  CF.initEditors(); CF.applySettings(); CF.initGitLens();
   CF.loadExtensions(true);                           // downloads URLs listed in settings.json "extensions", loads custom ones
   await CF.initTerminal();
   CF.bindMenu();

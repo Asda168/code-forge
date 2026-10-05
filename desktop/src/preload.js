@@ -1,9 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const inv = (ch) => (...a) => ipcRenderer.invoke(ch, ...a);
 const on = (ch, fn) => { const h = (_e, ...a) => fn(...a); ipcRenderer.on(ch, h); return () => ipcRenderer.removeListener(ch, h); };
 
 contextBridge.exposeInMainWorld('cf', {
+  pathFor: (file) => webUtils.getPathForFile(file),
   ws: { openDialog: inv('ws:openDialog'), recents: inv('ws:recents'), openRecent: inv('ws:openRecent'), pickDir: inv('ws:pickDir'),
         save: inv('ws:saveWorkspace'), list: inv('ws:listWorkspaces'), load: inv('ws:loadWorkspace') },
   fs: { list: inv('fs:list'), read: inv('fs:read'), write: inv('fs:write'), createFile: inv('fs:createFile'), mkdir: inv('fs:mkdir'),

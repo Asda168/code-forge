@@ -10,45 +10,107 @@
     cf.term.onData((id, d) => { const t = S.terms.find((x) => x.id === id); if (t) t.xterm.write(d); });
     cf.term.onExit((id) => { const t = S.terms.find((x) => x.id === id); if (t) { t.xterm.write('\r\n[process exited]\r\n'); t.exited = true; } });
     $('#term-new').onclick = () => CF.newTerminal($('#shell-select').value);
-    new ResizeObserver(() => activeTerm && activeTerm.fit()).observe($('#panel-terminal'));
+    $('#term-split').onclick = CF.splitTerminal; $('#term-kill').onclick = CF.killTerminal;
+    new ResizeObserver(() => activeTerm && activeTerm.grp.terms.forEach((x) => x.fit())).observe($('#panel-terminal'));
   });
 
-  CF.newTerminal = CF.guard(async (shellId, cwd) => {
+  S.tgroups = [];
+  const quoteFor = (t, p) => {
+    if (t.posix) { const x = S.platform.platform === 'win32' ? p.replace(/^([A-Za-z]):/, (_, d) => '/' + d.toLowerCase()).replace(/\\/g, '/') : p; return "'" + x.replace(/'/g, "'\\''") + "'"; }
+    return '"' + p.replace(/"/g, '') + '"';
+  };
+  const dropPaths = (e) => {
+    const out = []; const dt = e.dataTransfer;
+    const internal = dt.getData('text/cf-path'); if (internal) out.push(internal);
+    for (const f of dt.files || []) { try { const p = cf.pathFor(f); if (p) out.push(p); } catch { /* ignore */ } }
+    return out;
+  };
+  function wireDrop(t) {
+    const host = t.host;
+    host.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; host.classList.add('drop'); });
+    host.addEventListener('dragleave', () => host.classList.remove('drop'));
+    host.addEventListener('drop', (e) => {
+      e.preventDefault(); e.stopPropagation(); host.classList.remove('drop');
+      const paths = dropPaths(e); if (!paths.length) return;
+      selectTerm(t); cf.term.write(t.id, paths.map((p) => quoteFor(t, p)).join(' ') + ' ');
+    });
+  }
+
+  CF.newTerminal = CF.guard(async (shellId, cwd, opts = {}) => {
     CF.showPanel('terminal');
     const host = h('div', { class: 'term' }); $('#panel-terminal').append(host);
     const xterm = new Terminal({ fontFamily: `"${S.settings.fontFamily}", monospace`, fontSize: Math.max(11, S.settings.fontSize - 1), cursorBlink: true, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000 });
     const fitAddon = new FitAddon.FitAddon(); xterm.loadAddon(fitAddon); xterm.open(host);
     const fit = () => { try { fitAddon.fit(); cf.term.resize(t.id, xterm.cols, xterm.rows); } catch { /* hidden */ } };
-    const info = await cf.term.create({ shellId: shellId || S.settings.defaultShell || undefined, cwd: cwd || S.root, cols: xterm.cols, rows: xterm.rows });
-    const t = { id: info.id, name: `${info.name} ${S.terms.filter((x) => x.name.startsWith(info.name)).length + 1}`, host, xterm, fit, cwd };
+    const split = opts.split && activeTerm;
+    const sh = shellId || (split && activeTerm.shellId) || undefined;
+    const info = await cf.term.create({ shellId: sh || S.settings.defaultShell || undefined, cwd: cwd || (split && activeTerm.cwd) || S.root, cols: xterm.cols, rows: xterm.rows });
+    const t = { id: info.id, name: `${info.name} ${S.terms.filter((x) => x.name.startsWith(info.name)).length + 1}`, host, xterm, fit, cwd, shellId: sh, posix: /bash|zsh|wsl/i.test(info.name) || /(^|\s)sh$/i.test(info.name) };
     xterm.onData((d) => cf.term.write(t.id, d));
-    xterm.attachCustomKeyEventHandler((e) => { // Ctrl+Shift+C/V copy-paste
-      if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.code === 'KeyC') { navigator.clipboard.writeText(xterm.getSelection()); return false; }
-      if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.code === 'KeyV') { navigator.clipboard.readText().then((x) => cf.term.write(t.id, x)); return false; }
+    xterm.attachCustomKeyEventHandler((e) => {
+      if (e.type !== 'keydown') return true;
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') { navigator.clipboard.writeText(xterm.getSelection()); return false; }
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyV') { navigator.clipboard.readText().then((x) => cf.term.write(t.id, x)); return false; }
+      if (e.ctrlKey && e.shiftKey && e.code === 'Digit5') { CF.splitTerminal(); return false; }
+      if (e.ctrlKey && e.shiftKey && e.code === 'Backquote') { CF.newTerminal(); return false; }
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyW') { closeTerm(t); return false; }
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyK') { xterm.clear(); return false; }
+      if (e.altKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && t.grp.terms.length > 1) { CF.focusPane(e.code === 'ArrowLeft' ? -1 : 1); return false; }
+      if (e.ctrlKey && (e.code === 'PageUp' || e.code === 'PageDown')) { CF.cycleTerminal(e.code === 'PageUp' ? -1 : 1); return false; }
       return true;
     });
+    host.addEventListener('mousedown', () => { if (activeTerm !== t) selectTerm(t); });
+    wireDrop(t);
+    if (split) { t.grp = activeTerm.grp; t.grp.terms.splice(t.grp.terms.indexOf(activeTerm) + 1, 0, t); }
+    else { t.grp = { terms: [t] }; S.tgroups.push(t.grp); }
     S.terms.push(t); selectTerm(t);
     if (!info.pty) xterm.write('\x1b[33m[node-pty not installed: limited line-mode terminal. Run `npm i node-pty` for a full terminal.]\x1b[0m\r\n');
     return t;
   });
-  function selectTerm(t) {
-    activeTerm = t; S.terms.forEach((x) => x.host.classList.toggle('hidden', x !== t));
+  CF.splitTerminal = () => (activeTerm ? CF.newTerminal(undefined, undefined, { split: true }) : CF.newTerminal());
+  CF.cycleTerminal = (d) => { if (S.terms.length < 2) return; const i = S.terms.indexOf(activeTerm); selectTerm(S.terms[(i + d + S.terms.length) % S.terms.length]); };
+  CF.focusPane = (d) => { const l = activeTerm.grp.terms; selectTerm(l[(l.indexOf(activeTerm) + d + l.length) % l.length]); };
+  CF.clearTerminal = () => activeTerm && activeTerm.xterm.clear();
+  CF.killTerminal = () => activeTerm && closeTerm(activeTerm);
+  CF.renameTerminal = CF.guard(async () => { if (!activeTerm) return; const v = await CF.ask('Rename Terminal', [{ id: 'n', label: 'Name', value: activeTerm.name }], 'Rename'); if (v && v.n) { activeTerm.name = v.n; renderTermTabs(); } });
+
+  function renderTermTabs() {
     const tabs = $('#term-tabs'); tabs.innerHTML = '';
-    S.terms.forEach((x) => tabs.append(h('div', { class: 'tt' + (x === t ? ' active' : ''), onclick: () => selectTerm(x) }, x.name, ' ',
-      h('span', { onclick: (e) => { e.stopPropagation(); closeTerm(x); }, style: 'opacity:.6' }, '✕'))));
-    requestAnimationFrame(() => { t.fit(); t.xterm.focus(); });
+    S.tgroups.forEach((g) => {
+      const on = activeTerm && g === activeTerm.grp;
+      const tab = h('div', { class: 'tt' + (on ? ' active' : ''), draggable: 'true', onclick: () => selectTerm(g.last && g.terms.includes(g.last) ? g.last : g.terms[0]),
+        oncontextmenu: (e) => { e.preventDefault(); selectTerm(g.terms[0]); CF.menu(e, [['Split Terminal', CF.splitTerminal], ['New Terminal', () => CF.newTerminal()], ['Rename…', CF.renameTerminal], ['Clear', CF.clearTerminal], '-', ['Kill Terminal', CF.killTerminal]]); },
+        ondragstart: (e) => { e.dataTransfer.setData('text/cf-tab', String(S.tgroups.indexOf(g))); },
+        ondragover: (e) => { if (e.dataTransfer.types.includes('text/cf-tab')) { e.preventDefault(); tab.classList.add('drop'); } },
+        ondragleave: () => tab.classList.remove('drop'),
+        ondrop: (e) => { e.preventDefault(); tab.classList.remove('drop'); const from = +e.dataTransfer.getData('text/cf-tab'); const to = S.tgroups.indexOf(g); if (isNaN(from) || from === to) return; const [m] = S.tgroups.splice(from, 1); S.tgroups.splice(to, 0, m); renderTermTabs(); } },
+        CF.icon('terminal', 13), h('span', {}, g.terms.map((x) => x.name).join(' | ')),
+        h('span', { class: 'x', title: 'Kill terminal', onclick: (e) => { e.stopPropagation(); [...g.terms].forEach(closeTerm); } }, CF.icon('close', 12)));
+      tabs.append(tab);
+    });
+  }
+  function selectTerm(t) {
+    activeTerm = t; t.grp.last = t;
+    S.terms.forEach((x) => { x.host.classList.toggle('hidden', x.grp !== t.grp); x.host.classList.toggle('focus', x === t && t.grp.terms.length > 1); });
+    t.grp.terms.forEach((x, i) => { x.host.style.order = i; });
+    renderTermTabs();
+    requestAnimationFrame(() => { t.grp.terms.forEach((x) => x.fit()); t.xterm.focus(); });
   }
   function closeTerm(t) {
-    cf.term.kill(t.id); t.xterm.dispose(); t.host.remove(); S.terms.splice(S.terms.indexOf(t), 1);
+    cf.term.kill(t.id); t.xterm.dispose(); t.host.remove();
+    S.terms.splice(S.terms.indexOf(t), 1); const g = t.grp; g.terms.splice(g.terms.indexOf(t), 1);
+    if (!g.terms.length) S.tgroups.splice(S.tgroups.indexOf(g), 1);
     if (runTerm === t) runTerm = null;
-    if (S.terms.length) selectTerm(S.terms[S.terms.length - 1]); else { activeTerm = null; $('#term-tabs').innerHTML = ''; }
+    if (g.terms.length) selectTerm(g.terms[0]);
+    else if (S.terms.length) selectTerm(S.tgroups[S.tgroups.length - 1].terms[0]);
+    else { activeTerm = null; $('#term-tabs').innerHTML = ''; }
   }
   CF.showPanel = (name) => {
     $('#panel').classList.remove('hidden');
     $$('#panel-tabs [data-panel]').forEach((b) => b.classList.toggle('active', b.dataset.panel === name));
     ['terminal', 'problems', 'debug'].forEach((p) => ($('#panel-' + p).hidden = p !== name));
     $('#term-tabs').hidden = name !== 'terminal';
-    if (name === 'terminal' && activeTerm) setTimeout(() => activeTerm.fit(), 0);
+    if (name === 'terminal' && activeTerm) setTimeout(() => activeTerm.grp.terms.forEach((x) => x.fit()), 0);
   };
   const $$ = CF.$$;
   CF.togglePanel = () => $('#panel').classList.toggle('hidden');
@@ -95,10 +157,10 @@
     const runs = [...S.project.runs, ...customRuns()];
     body.append(h('div', { class: 'pad' },
       h('div', { class: 'muted', style: 'margin-bottom:8px' }, kinds.length ? 'Detected: ' + kinds.join(', ') : 'No project type detected'),
-      h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: () => CF.runProject() }, '▶ Run'), h('button', { class: 'btn sec sm', onclick: () => CF.runProject(null, true) }, '🐞 Debug'),
-        h('button', { class: 'btn sec sm', onclick: CF.stopRun }, '■ Stop'), h('button', { class: 'btn sec sm', onclick: CF.restartRun }, '↻ Restart'))));
-    body.append(h('div', { class: 'sec-head' }, 'Run configurations', h('span', { class: 'grow' }), h('button', { class: 'icon-btn', onclick: addConfig }, '＋')));
-    runs.forEach((c) => body.append(h('div', { class: 'gi', onclick: () => CF.runProject(c) }, h('span', {}, '▶'), h('span', { class: 'nm' }, c.name), h('span', { class: 'muted mono' }, c.command))));
+      h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: () => CF.runProject() }, CF.icon('play', 13), ' Run'), h('button', { class: 'btn sec sm', onclick: () => CF.runProject(null, true) }, CF.icon('bug', 13), ' Debug'),
+        h('button', { class: 'btn sec sm', onclick: CF.stopRun }, CF.icon('stop', 13), ' Stop'), h('button', { class: 'btn sec sm', onclick: CF.restartRun }, CF.icon('restart', 13), ' Restart'))));
+    body.append(h('div', { class: 'sec-head' }, 'Run configurations', h('span', { class: 'grow' }), h('button', { class: 'icon-btn', title: 'Add configuration', onclick: addConfig }, CF.icon('plus', 14))));
+    runs.forEach((c) => body.append(h('div', { class: 'gi run-cfg', onclick: () => CF.runProject(c) }, CF.icon('play', 12, 'ok'), h('span', { class: 'nm' }, c.name), h('span', { class: 'muted mono' }, c.command))));
     if (kinds.includes('laravel')) {
       body.append(h('div', { class: 'sec-head' }, 'Laravel'));
       [['route:list'], ['migrate'], ['optimize:clear'], ['make:model', 'Model name'], ['make:controller', 'Controller name'], ['make:migration', 'Migration name']].forEach(([a, ask]) =>

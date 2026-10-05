@@ -124,3 +124,86 @@ kbd{background:var(--hover);border-radius:4px;padding:1px 5px;font:11px var(--mo
 .ext{flex-shrink:0}
 #app{grid-template-rows:34px minmax(0,1fr) 24px}
 #sidebar,#activitybar{min-height:0;overflow:hidden}
+
+/* ===== v2 clean UI ===== */
+:root{--r:6px;--status-h:24px}
+.svg{display:inline-flex;vertical-align:middle;line-height:0}.svg svg{display:block}
+i[data-ic]{display:inline-flex;font-style:normal;line-height:0}
+.btn{background:var(--accent);border-radius:var(--r);font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:filter .12s}
+.btn:hover{filter:brightness(1.12)}.btn.sec{background:var(--hover)}.btn.sec:hover{filter:brightness(1.25)}
+.btn.sec.on{outline:1px solid var(--accent);background:var(--sel)}
+input,select,textarea{border-radius:var(--r)}
+::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--mut) 35%,transparent);border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--mut) 60%,transparent);background-clip:padding-box;border:2px solid transparent}
+
+#topbar{height:34px;gap:8px;border-bottom:1px solid var(--border)}
+.tagline{display:none}
+#cmd-center{border-radius:8px;font-size:12px;padding:4px 14px}
+#activitybar{padding-top:4px}
+#activitybar button{height:46px;opacity:.5;display:grid;place-items:center;border-left:2px solid transparent;transition:opacity .12s}
+#activitybar button:hover{opacity:.95}#activitybar button.active{opacity:1;border-left-color:var(--accent);color:var(--fg)}
+#activitybar button svg{stroke-width:1.5}
+#side-title{padding:12px 16px 8px;font-size:11px;font-weight:600;letter-spacing:.9px}
+.sec-head{padding:7px 14px 5px;font-size:11px;letter-spacing:.7px}
+.sec-head.clickable{cursor:pointer;user-select:none}.sec-head.clickable:hover{color:var(--fg)}
+.sec-head .arr{display:inline-flex;width:12px}
+.icon-btn{display:inline-grid;place-items:center;padding:3px 5px;border-radius:5px;color:var(--mut);opacity:1}.icon-btn:hover{background:var(--hover);color:var(--fg)}
+.pad input{margin-bottom:6px}
+.gi{padding:3px 14px;min-height:24px;gap:7px}
+.gi .ic,.file-h .ic{display:inline-flex;line-height:0;flex:none}
+.gi .st{margin-left:auto;width:auto}
+.gi small{font-size:11px;white-space:nowrap}
+.gi.run-cfg .ok{color:var(--ok)}
+.gl-body{padding-bottom:4px}.gl-file{display:flex;gap:7px;align-items:center;padding:4px 14px}
+.row-btns{display:flex;gap:5px;flex-wrap:wrap;padding:4px 14px 8px}
+.cur{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--mut);flex:none}.cur.on{background:var(--ok);border-color:var(--ok)}
+.badge{background:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--fg);font-weight:600}
+.badge.sync{background:var(--hover);color:var(--mut)}
+.avatar{display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-weight:700;flex:none}
+.commit{gap:9px;padding:5px 14px;align-items:center}.commit .nm-line{line-height:1.35}
+.commit .grow{min-width:0}.commit .grow>div:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-row{display:flex;gap:6px;align-items:center;padding:4px 2px;border-bottom:1px solid var(--border)}.sc-row kbd{margin-left:4px}
+
+/* explorer */
+.row-n{height:22px;line-height:22px;gap:2px}.row-n .arr{width:16px;display:inline-flex;justify-content:center;color:var(--mut)}
+.row-n .ic{width:20px;display:inline-flex;justify-content:center;align-items:center;line-height:0}
+.row-n.sel{background:var(--sel)}
+.file-h{display:flex;align-items:center;gap:6px;padding:4px 14px}.file-h .nm{font-weight:600}.file-h small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.hit{padding:2px 14px 2px 38px}
+
+/* editor tabs */
+.tabs{background:var(--side);min-height:36px}
+.tab{height:36px;border-right:0;border-radius:0;position:relative;padding:0 14px}
+.tab.active{background:var(--bg);box-shadow:inset 0 -2px var(--accent)}
+.tab:hover:not(.active){background:var(--hover)}
+
+/* panel + terminal split */
+#panel-tabs{padding:0 10px;gap:4px;min-height:34px}
+#panel-tabs button{padding:8px 10px;font-weight:500}
+#panel-tabs button[id]{display:grid;place-items:center;padding:5px 7px;border-radius:5px}#panel-tabs button[id]:hover{background:var(--hover)}
+#panel-tabs select{background:var(--hover);border-color:transparent}
+#term-tabs{gap:4px;padding:4px 10px;overflow-x:auto}
+#term-tabs .tt{display:flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:6px;white-space:nowrap;border:1px solid transparent}
+#term-tabs .tt:hover{background:var(--hover)}#term-tabs .tt.active{background:var(--hover);color:var(--fg);border-color:var(--border)}
+#term-tabs .tt.drop{outline:1px dashed var(--accent)}
+#term-tabs .tt .x{opacity:.5;display:inline-grid;border-radius:4px;padding:2px}#term-tabs .tt .x:hover{opacity:1;background:var(--sel)}
+#panel-terminal{display:flex;flex-direction:row;overflow:hidden}
+.term{position:relative;inset:auto;flex:1 1 0;min-width:0;padding:4px 0 0 8px}
+.term.hidden{display:none}
+.term+.term{border-left:1px solid var(--border)}
+.term.focus{box-shadow:inset 0 2px var(--accent)}
+.term.drop::after{content:"Drop to paste path";position:absolute;inset:4px;display:grid;place-items:center;font-size:13px;color:var(--fg);background:color-mix(in srgb,var(--accent) 22%,transparent);border:2px dashed var(--accent);border-radius:8px;pointer-events:none;z-index:5}
+
+/* gitlens */
+.blame-inline{color:var(--mut);opacity:.7;font-style:italic;font-size:.9em}
+.blame-gutter{display:inline-block;width:210px;color:var(--mut);opacity:.75;font-size:.85em;white-space:pre;overflow:hidden;border-right:1px solid var(--border);margin-right:12px;vertical-align:bottom}
+.blame-gutter:not(.first){opacity:.0}
+#sb-blame{opacity:.9;max-width:46vw;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+
+/* status bar */
+#statusbar{background:var(--status,var(--side));color:var(--status-fg,var(--mut));border-top:1px solid var(--border);gap:14px;font-size:11.5px}
+#statusbar span:hover{color:var(--fg)}
+#statusbar #sb-branch{font-weight:600;color:var(--fg)}
+.ext{border-radius:0;gap:12px;padding:10px 14px}.ext-ic{border-radius:10px}
+.palette{border-radius:12px;box-shadow:0 24px 70px #000b}.dlg{border-radius:12px}
+.toast{border-radius:10px}

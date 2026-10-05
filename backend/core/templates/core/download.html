@@ -77,6 +77,18 @@
   pre.cmd .c{color:#546089}
   .two{display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start}
   footer{padding:36px 0;color:var(--mut);font-size:.88rem;border-top:1px solid var(--line)} footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+  /* v2 clean UI */
+  .btn.p{background:var(--a);box-shadow:none}.btn.p:hover{filter:brightness(1.12)}.tabs button[aria-selected=true]{background:var(--a)}
+  .grad{background:linear-gradient(90deg,var(--a),var(--c));-webkit-background-clip:text;background-clip:text}
+  .ico{background:color-mix(in srgb,var(--a) 18%,transparent);color:var(--a)}
+  .card{transition:transform .15s,border-color .15s}.card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--a) 50%,var(--line))}
+  .ide .act span{display:grid;place-items:center;width:100%;height:30px;opacity:.5}.ide .act span.on{opacity:1;box-shadow:inset 2px 0 #4f8cff}.ide .act{gap:6px;padding-top:8px}
+  .ide .side div{display:flex;align-items:center;gap:6px;padding:2px 0}.ide .side .ind{padding-left:14px}.ide .side .ind2{padding-left:28px}
+  .fi{width:15px;height:15px;flex:none}
+  .ide .blame{color:#546089;font-style:italic;margin-left:10px}.ide .bl{opacity:.8}
+  .ide .st{background:#0f1630;border-top:1px solid #1d2647;color:#8089ab}.ide .st .br{color:#dfe4f5;font-weight:600}
+  .ide .panes{display:flex;border-top:1px solid #1d2647;background:#0d1329}.ide .panes .term{flex:1;border-top:0;padding:10px 18px}.ide .panes .term+.term{border-left:1px solid #1d2647;color:#9db4ff}
   @media (max-width:760px){.ide .body{grid-template-columns:40px 1fr}.ide .side{display:none}nav .l{display:none}.hero{padding-top:56px}}
 </style>
 </head>
@@ -97,8 +109,8 @@
   <div class="ide" aria-label="CodeForge editor preview">
     <div class="bar"><i></i><i></i><i></i><span style="margin-left:10px">my-laravel-app — CodeForge</span></div>
     <div class="body">
-      <div class="act"><span>🗂</span><span>🔍</span><span>⑂</span><span>▶</span><span>🧩</span></div>
-      <div class="side"><b>EXPLORER</b><div>▼ app</div><div>&nbsp;&nbsp;▼ Http</div><div class="sel">&nbsp;&nbsp;&nbsp;&nbsp;UserController.php</div><div>&nbsp;&nbsp;▶ Models</div><div>▶ database</div><div>▼ routes</div><div>&nbsp;&nbsp;web.php</div><div>.env</div><div>artisan</div><div>composer.json</div></div>
+      <div class="act"><span class="on"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H8a2 2 0 0 0-2 2v10"/><path d="M10 7h6l4 4v8a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/></svg></span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5.5" r="2.3"/><circle cx="6" cy="18.5" r="2.3"/><circle cx="18" cy="9" r="2.3"/><path d="M6 7.8v8.4"/><path d="M18 11.3c0 3.8-4 4.4-10 5.6"/></svg></span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="12" r="3.2"/><path d="M2 12h3.3M11.7 12h1.3"/><circle cx="17" cy="14" r="3.6"/><path d="m19.7 16.7 2.8 2.8"/></svg></span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5v13l10-6.5z"/><circle cx="17.5" cy="17.5" r="3"/></svg></span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="14.5" y="2.8" width="6.5" height="6.5" rx="1.5" transform="rotate(14 17.7 6)"/></svg></span></div>
+      <div class="side"><b>EXPLORER</b><div><svg class="fi" viewBox="0 0 16 16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 5.5v6.8A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z" fill="#4E9BD6"/></svg> app</div><div class="ind"><svg class="fi" viewBox="0 0 16 16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 5.5v6.8A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z" fill="#8FA1B3"/></svg> Http</div><div class="sel ind2"><svg class="fi" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3.2" fill="#7A86B8"/><text x="8" y="11" text-anchor="middle" font-family="Arial" font-weight="700" font-size="6.5" fill="#fff">php</text></svg> UserController.php</div><div class="ind"><svg class="fi" viewBox="0 0 16 16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 5.5v6.8A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z" fill="#8FA1B3"/></svg> Models</div><div><svg class="fi" viewBox="0 0 16 16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 5.5v6.8A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z" fill="#E48E00"/></svg> database</div><div><svg class="fi" viewBox="0 0 16 16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 5.5v6.8A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z" fill="#E4572E"/></svg> routes</div><div class="ind"><svg class="fi" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3.2" fill="#7A86B8"/><text x="8" y="11" text-anchor="middle" font-family="Arial" font-weight="700" font-size="6.5" fill="#fff">php</text></svg> web.php</div><div><svg class="fi" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3.2" fill="#E6B422"/><text x="8" y="11" text-anchor="middle" font-family="Arial" font-weight="700" font-size="6.5" fill="#1b1b1b">env</text></svg> .env</div><div><svg class="fi" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3.2" fill="#885630"/><text x="8" y="11" text-anchor="middle" font-family="Arial" font-weight="700" font-size="6.5" fill="#fff">cmp</text></svg> composer.json</div></div>
       <div class="ed">
         <div class="tabs"><span class="on">UserController.php</span><span>web.php</span><span>User.php</span></div>
 <pre><span class="k">namespace</span> App\Http\Controllers;
@@ -107,16 +119,16 @@
 {
     <span class="k">public function</span> <span class="f">index</span>()
     {
-        <span class="c">// JetBrains Mono, ligatures: =&gt; !== &lt;=</span>
+        <span class="c">// JetBrains Mono, ligatures: =&gt; !== &lt;=</span>  <span class="blame">You, 2 days ago • Add pagination</span>
         <span class="k">return</span> <span class="f">view</span>(<span class="s">'users.index'</span>, [
             <span class="s">'users'</span> =&gt; User::<span class="f">latest</span>()-&gt;<span class="f">paginate</span>(<span class="v">20</span>),
         ]);
     }
 }</pre>
-        <div class="term">$ php artisan serve<br>INFO Server running on [http://127.0.0.1:8000]</div>
+        <div class="panes"><div class="term">$ php artisan serve<br>INFO Server running on [http://127.0.0.1:8000]</div><div class="term">$ git status<br>On branch <b>main</b> — working tree clean</div></div>
       </div>
     </div>
-    <div class="st"><span>⑂ main</span><span>⊗ 0 ⚠ 2</span><span style="margin-left:auto">Ln 7, Col 15</span><span>Spaces: 4</span><span>UTF-8</span><span>PHP</span></div>
+    <div class="st"><span class="br">⎇ main</span><span>⊗ 0 ⚠ 2</span><span class="bl">You, 2 days ago • Add pagination</span><span style="margin-left:auto">Ln 7, Col 15</span><span>Spaces: 4</span><span>UTF-8</span><span>PHP</span></div>
   </div>
 </div></header>
 
@@ -124,12 +136,12 @@
   <h2>Everything you need, nothing you don't</h2>
   <p class="sec-sub">VS Code's speed, PhpStorm's framework awareness, a Git client and a terminal — in one simpler interface.</p>
   <div class="grid">
-    <div class="card"><div class="ico">✎</div><h3>Monaco editor</h3><p>Syntax highlighting, IntelliSense, multi-cursor, folding, minimap, split editor and tabs. JetBrains Mono with ligatures by default.</p></div>
-    <div class="card"><div class="ico">⌨</div><h3>Integrated terminal</h3><p>Real PTY terminals with Git Bash, PowerShell, CMD, zsh and bash — running on your own machine.</p></div>
-    <div class="card"><div class="ico">⑂</div><h3>Git built in</h3><p>Stage, commit, push, pull, branches, history graph and a side-by-side diff viewer. Clone over HTTPS or SSH.</p></div>
-    <div class="card"><div class="ico">▶</div><h3>One-click run</h3><p>Detects Laravel, Django, Node, Vue, React and PHP projects and starts the right dev server. Custom run configurations too.</p></div>
-    <div class="card"><div class="ico">🧩</div><h3>Extensions</h3><p>Install snippet packs and themes from the built-in catalog, a URL, or your own folder — declarative JSON, no code execution.</p></div>
-    <div class="card"><div class="ico">🔒</div><h3>Private by design</h3><p>Files, terminal and Git stay local. Your source code is never sent to a server unless you turn sync on. Tokens live in the OS keychain.</p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></div><h3>Monaco editor</h3><p>Syntax highlighting, IntelliSense, multi-cursor, folding, minimap, split editor and tabs. JetBrains Mono with ligatures by default.</p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg></div><h3>Integrated terminal</h3><p>Real PTY terminals with split panes, drag-and-drop paths and VS Code / Antigravity-style shortcuts. Git Bash, PowerShell, CMD, zsh and bash.</p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5.5" r="2.3"/><circle cx="6" cy="18.5" r="2.3"/><circle cx="18" cy="9" r="2.3"/><path d="M6 7.8v8.4"/><path d="M18 11.3c0 3.8-4 4.4-10 5.6"/></svg></div><h3>Git &amp; GitLens</h3><p>Stage, commit, push, pull, branches and side-by-side diffs — plus inline line blame, file &amp; line history, stashes, tags and contributors.</p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5v13l10-6.5z"/><circle cx="17.5" cy="17.5" r="3"/></svg></div><h3>One-click run</h3><p>Detects Laravel, Django, Node, Vue, React and PHP projects and starts the right dev server. Custom run configurations too.</p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="14.5" y="2.8" width="6.5" height="6.5" rx="1.5" transform="rotate(14 17.7 6)"/></svg></div><h3>Extensions</h3><p>Install snippet packs and themes from the built-in catalog, a URL, or your own folder — declarative JSON, no code execution.</p></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div><h3>Private by design</h3><p>Files, terminal and Git stay local. Your source code is never sent to a server unless you turn sync on. Tokens live in the OS keychain.</p></div>
   </div>
 </div></section>
 

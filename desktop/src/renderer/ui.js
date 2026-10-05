@@ -3,14 +3,14 @@
   const { S, $, $$, h, base } = CF;
 
   // ---- sidebar views --------------------------------------------------------------------
-  const TITLES = { explorer: 'Explorer', search: 'Search', git: 'Source Control', run: 'Run and Debug', extensions: 'Extensions' };
+  const TITLES = { explorer: 'Explorer', search: 'Search', git: 'Source Control', gitlens: 'GitLens', run: 'Run and Debug', extensions: 'Extensions' };
   CF.showView = CF.guard(async (view) => {
     if (view === 'settings') return CF.settingsDialog();
     const title = $('#side-title'), body = $('#side-body');
     $('#app').classList.remove('no-sidebar'); S.settings.sidebar = true;
     title.dataset.view = view; title.textContent = TITLES[view]; body.innerHTML = '';
     $$('#activitybar [data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-    ({ explorer: CF.renderExplorer, search: CF.renderSearch, git: CF.renderGit, run: CF.renderRun, extensions: renderExtensions })[view](body);
+    ({ explorer: CF.renderExplorer, search: CF.renderSearch, git: CF.renderGit, gitlens: CF.renderGitLens, run: CF.renderRun, extensions: renderExtensions })[view](body);
   });
   CF.toggleSidebar = () => { S.settings.sidebar = !S.settings.sidebar; $('#app').classList.toggle('no-sidebar', !S.settings.sidebar); S.groups.forEach((g) => g.editor.layout()); };
 
@@ -147,7 +147,7 @@
 
   // ---- command palette ------------------------------------------------------------------------------------
   const COMMANDS = () => [
-    ['Open Folder', CF.openFolder, 'Ctrl+O'], ['Go to File…', () => CF.quickOpen(), 'Ctrl+P'], ['New File', () => CF.newFile()], ['New Folder', () => CF.newFolder()], ['Open Terminal', () => CF.newTerminal()], ['Open Git Bash', () => CF.newTerminal('gitbash')],
+    ['Open Folder', CF.openFolder, 'Ctrl+O'], ['Go to File…', () => CF.quickOpen(), 'Ctrl+P'], ['New File', () => CF.newFile()], ['New Folder', () => CF.newFolder()], ['Open Terminal', () => CF.newTerminal(), 'Ctrl+Shift+`'], ['Split Terminal', () => CF.splitTerminal(), 'Ctrl+Shift+5'], ['Clear Terminal', () => CF.clearTerminal(), 'Ctrl+Shift+K'], ['Kill Terminal', () => CF.killTerminal(), 'Ctrl+Shift+W'], ['Rename Terminal…', () => CF.renameTerminal()], ['Keyboard Shortcuts', () => CF.shortcutsDialog(), 'Ctrl+K Ctrl+S'], ['GitLens: Toggle Line Blame', () => CF.toggleLineBlame(), 'Alt+B'], ['GitLens: Toggle File Blame', () => CF.toggleFileBlame(), 'Alt+Shift+B'], ['GitLens: File History', () => CF.fileHistory(), 'Alt+H'], ['GitLens: Line History', () => CF.lineHistory(), 'Alt+Shift+H'], ['GitLens: Open Sidebar', () => CF.showView('gitlens'), 'Alt+G'], ['Open Git Bash', () => CF.newTerminal('gitbash')],
     ['Git Clone', () => CF.cloneDialog()], ['Git Commit', () => { CF.showView('git'); setTimeout(() => $('#commit-msg') && $('#commit-msg').focus(), 300); }], ['Git Push', () => CF.gitCmd('Push', ['push'])], ['Git Pull', () => CF.gitCmd('Pull', ['pull'])],
     ['Run Project', () => CF.runProject(), 'F5'], ['Stop', CF.stopRun], ['Restart', CF.restartRun], ['Format Document', () => CF.activeGroup().editor.getAction('editor.action.formatDocument').run()],
     ['Change Font Size: Increase', () => CF.fontStep(1)], ['Change Font Size: Decrease', () => CF.fontStep(-1)], ['Change Font Size: Reset', () => CF.fontStep(0)],
@@ -179,7 +179,7 @@
     run: () => CF.runProject(), stop: CF.stopRun, restart: CF.restartRun, 'new-terminal': () => CF.newTerminal(), 'new-gitbash': () => CF.newTerminal('gitbash'),
     'git-clone': () => CF.cloneDialog(), 'git-init': () => CF.gitInit(), 'git-commit': () => CF.showView('git'), 'git-push': () => CF.gitCmd('Push', ['push']), 'git-pull': () => CF.gitCmd('Pull', ['pull']), 'git-fetch': () => CF.gitCmd('Fetch', ['fetch', '--all']),
     'quick-open': () => CF.quickOpen(), 'close-tab': () => CF.closeActiveTab(), 'next-tab': () => CF.cycleTab(1), 'prev-tab': () => CF.cycleTab(-1), split: () => CF.split(false),
-    'view-explorer': () => CF.showView('explorer'), 'view-git': () => CF.showView('git'), 'view-extensions': () => CF.showView('extensions'),
+    'view-explorer': () => CF.showView('explorer'), 'view-git': () => CF.showView('git'), 'view-gitlens': () => CF.showView('gitlens'), 'split-terminal': () => CF.splitTerminal(), 'clear-terminal': () => CF.clearTerminal(), 'view-extensions': () => CF.showView('extensions'),
     'check-updates': () => CF.checkUpdates(true), settings: CF.settingsDialog,
   };
   CF.bindMenu = () => cf.onMenu((id) => MENU[id] && CF.guard(MENU[id])());

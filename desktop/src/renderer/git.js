@@ -15,8 +15,9 @@
     const head = lines.shift() || '';
     G.branch = head.replace(/^## /, '').split('...')[0].replace(/^No commits yet on /, '');
     G.sync = (head.match(/\[(.+)\]/) || [])[1] || '';
+    CF.G = G;
     G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3).replace(/^"|"$/g, '').replace(/.* -> /, '') }));
-    $('#sb-branch').textContent = `⑂ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}`;
+    $('#sb-branch').textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}`;
     if ($('#side-title').dataset.view === 'git') CF.showView('git');
   };
   const run = (label, args) => CF.guard(async () => { await must(args); CF.toast(label + ' done'); await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); });
@@ -39,8 +40,8 @@
     const code = staged ? f.x : (f.y === ' ' ? f.x : f.y);
     const label = f.x === '?' ? 'U' : code;
     const btn = (t, ti, fn) => h('button', { class: 'icon-btn', title: ti, onclick: (e) => { e.stopPropagation(); fn(); } }, t);
-    return h('div', { class: 'gi', onclick: () => CF.showDiff(f, staged) }, h('span', { class: 'st ' + label }, label), h('span', { class: 'nm', title: f.path }, f.path),
-      h('span', { class: 'acts' }, btn('↗', 'Open File', () => CF.openFile(abs(f.path))), staged ? btn('−', 'Unstage', () => unstage(f.path)) : [btn('↺', 'Discard', () => discard(f)), btn('＋', 'Stage', () => stage(f.path))]));
+    return h('div', { class: 'gi', onclick: () => CF.showDiff(f, staged) }, h('span', { class: 'ic', html: CF.fileIconHtml(base(f.path), false) }), h('span', { class: 'nm', title: f.path }, base(f.path), h('small', { class: 'muted', style: 'margin-left:6px' }, f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '')), h('span', { class: 'st ' + label }, label),
+      h('span', { class: 'acts' }, btn(CF.icon('open', 13), 'Open File', () => CF.openFile(abs(f.path))), staged ? btn(CF.icon('minus', 13), 'Unstage', () => unstage(f.path)) : [btn(CF.icon('undo', 13), 'Discard', () => discard(f)), btn(CF.icon('plus', 13), 'Stage', () => stage(f.path))]));
   }
 
   CF.renderGit = async (body) => {
@@ -49,13 +50,13 @@
       h('button', { class: 'btn', onclick: run('Init', ['init']) }, 'Initialize Repository'), ' ', h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone…')));
     const staged = G.files.filter((f) => f.x !== ' ' && f.x !== '?'), changes = G.files.filter((f) => f.y !== ' ' && f.x !== '?'), untracked = G.files.filter((f) => f.x === '?');
     const msg = h('input', { id: 'commit-msg', placeholder: 'Commit message (e.g. Fix user authentication)', value: G.msg, oninput: (e) => (G.msg = e.target.value) });
-    body.append(h('div', { class: 'pad' }, msg, h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: commit }, '✓ Commit'),
-      h('button', { class: 'btn sec sm', title: 'Pull', onclick: run('Pull', ['pull']) }, '↓'), h('button', { class: 'btn sec sm', title: 'Push', onclick: pushIt }, '↑'), h('button', { class: 'btn sec sm', title: 'Fetch', onclick: run('Fetch', ['fetch', '--all']) }, '⟳'),
+    body.append(h('div', { class: 'pad' }, msg, h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: commit }, CF.icon('check', 13), ' Commit'),
+      h('button', { class: 'btn sec sm', title: 'Pull', onclick: run('Pull', ['pull']) }, CF.icon('down', 13)), h('button', { class: 'btn sec sm', title: 'Push', onclick: pushIt }, CF.icon('up', 13)), h('button', { class: 'btn sec sm', title: 'Fetch', onclick: run('Fetch', ['fetch', '--all']) }, CF.icon('refresh', 13)),
       h('button', { class: 'btn sec sm', title: 'Stash', onclick: run('Stash', ['stash', 'push', '-u']) }, 'Stash'), h('button', { class: 'btn sec sm', title: 'Pop stash', onclick: run('Stash pop', ['stash', 'pop']) }, 'Pop'))));
     const section = (title, list, stagedSec, extra) => { if (!list.length && !stagedSec) return; body.append(h('div', { class: 'sec-head' }, title, ' ', h('span', { class: 'badge' }, list.length), h('span', { class: 'grow' }), extra || null)); list.forEach((f) => body.append(fileRow(f, stagedSec))); };
-    section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, '−'));
-    section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, '＋'));
-    section('Untracked Files', untracked, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-A']) }, '＋'));
+    section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 14)));
+    section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, CF.icon('plus', 14)));
+    section('Untracked Files', untracked, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-A']) }, CF.icon('plus', 14)));
     if (!G.files.length) body.append(h('div', { class: 'pad muted' }, 'Working tree clean.'));
 
     const [br, log, rem] = await Promise.all([git(['branch', '-a', '--format=%(HEAD)|%(refname:short)']), git(['log', '--all', '--date=short', '--pretty=format:%h|%an|%ad|%s|%D', '-n', '100']), git(['remote', '-v'])]);

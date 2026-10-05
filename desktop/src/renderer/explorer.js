@@ -4,8 +4,7 @@
   const ROW = 22;
   const T = { expanded: new Set(), kids: new Map(), flat: [], sel: null, clip: null };
   CF.T = T;
-  const ICONS = { php: '🐘', py: '🐍', js: '🟨', ts: '🔷', vue: '🟩', html: '🌐', css: '🎨', sql: '🛢', json: '{}', md: '📝', env: '🔑' };
-  const icon = (n) => (n.dir ? (T.expanded.has(n.path) ? '📂' : '📁') : ICONS[n.name.split('.').pop().toLowerCase()] || '📄');
+  const icon = (n) => CF.fileIconHtml(n.name, n.dir, n.dir && T.expanded.has(n.path));
 
   async function load(dir) { T.kids.set(dir, await cf.fs.list(dir)); }
   function flatten() {
@@ -36,7 +35,7 @@
         ondragstart: (e) => e.dataTransfer.setData('text/cf-path', node.path),
         ondragover: (e) => { if (node.dir) e.preventDefault(); },
         ondrop: CF.guard(async (e) => { e.preventDefault(); const src = e.dataTransfer.getData('text/cf-path'); if (!src || !node.dir) return; await cf.fs.move(src, node.path); T.expanded.add(node.path); CF.refreshTree(); }),
-      }, h('span', { class: 'arr' }, node.dir ? (T.expanded.has(node.path) ? '▼' : '▶') : ''), h('span', { class: 'ic' }, icon(node)), h('span', { class: 'nm' }, node.name));
+      }, h('span', { class: 'arr', html: node.dir ? CF.iconHtml(T.expanded.has(node.path) ? 'chevronDown' : 'chevronRight', 12) : '' }), h('span', { class: 'ic', html: icon(node) }), h('span', { class: 'nm' }, node.name));
       spacer.append(row);
     });
   }
@@ -88,7 +87,7 @@
   CF.renderExplorer = (body) => {
     if (!S.root) { body.append(h('div', { class: 'pad muted' }, 'No folder opened.'), h('div', { class: 'pad' }, h('button', { class: 'btn', onclick: CF.openFolder }, 'Open Folder'))); return; }
     const head = h('div', { class: 'sec-head' }, h('span', {}, base(S.root)), h('span', { class: 'grow' }),
-      ...[['＋📄', 'New File', () => CF.newFile()], ['＋📁', 'New Folder', () => CF.newFolder()], ['⟳', 'Refresh', () => CF.refreshTree()]].map(([t, ti, f]) => h('button', { class: 'icon-btn', title: ti, onclick: f }, t)));
+      ...[['newFile', 'New File', () => CF.newFile()], ['newFolder', 'New Folder', () => CF.newFolder()], ['refresh', 'Refresh', () => CF.refreshTree()], ['collapse', 'Collapse All', () => { T.expanded.clear(); CF.refreshTree(); }]].map(([t, ti, f]) => h('button', { class: 'icon-btn', title: ti, onclick: f }, CF.icon(t, 15))));
     const tree = h('div', { id: 'tree', tabindex: '0', onscroll: paint, oncontextmenu: (e) => { if (e.target.id === 'tree' || e.target.id === 'tree-spacer') { e.preventDefault(); CF.menu(e, [['New File', () => CF.newFile(S.root)], ['New Folder', () => CF.newFolder(S.root)], ['Paste', () => paste(S.root)], ['Open in Terminal', () => CF.newTerminal(undefined, S.root)]]); } },
       onkeydown: (e) => { const n = T.flat.find((x) => x.path === T.sel); if (!n) return; if (e.key === 'F2') rename(n); if (e.key === 'Delete') del(n); if ((e.ctrlKey || e.metaKey) && e.key === 'c') T.clip = { path: n.path, cut: false }; if ((e.ctrlKey || e.metaKey) && e.key === 'v') paste(n.dir ? n.path : dirOf(n.path)); } },
       h('div', { id: 'tree-spacer' }));
@@ -120,7 +119,7 @@
     const o = { case: false, word: false, regex: false };
     const q = h('input', { placeholder: 'Search', onkeydown: (e) => e.key === 'Enter' && run() });
     const r = h('input', { placeholder: 'Replace' });
-    const tog = (k, label, ti) => { const b = h('button', { class: 'btn sec sm', title: ti, onclick: () => { o[k] = !o[k]; b.style.outline = o[k] ? '1px solid var(--cyan)' : ''; } }, label); return b; };
+    const tog = (k, label, ti) => { const b = h('button', { class: 'btn sec sm', title: ti, onclick: () => { o[k] = !o[k]; b.classList.toggle('on', o[k]); } }, label); return b; };
     const res = h('div', { style: 'flex:1;overflow:auto' });
     let last = [];
     const run = CF.guard(async () => {
@@ -130,7 +129,7 @@
       res.innerHTML = ''; const by = {}; last.forEach((x) => (by[x.rel] = by[x.rel] || []).push(x));
       res.append(h('div', { class: 'pad muted' }, `${last.length}${last.length >= 2000 ? '+' : ''} results in ${Object.keys(by).length} files`));
       for (const [f, hits] of Object.entries(by)) {
-        res.append(h('div', { class: 'file-h' }, f, ' ', h('span', { class: 'badge' }, hits.length)));
+        res.append(h('div', { class: 'file-h' }, h('span', { class: 'ic', html: CF.fileIconHtml(base(f), false) }), h('span', { class: 'nm' }, base(f)), h('small', { class: 'muted' }, dirOf(f)), h('span', { class: 'grow' }), h('span', { class: 'badge' }, hits.length)));
         hits.forEach((x) => res.append(h('div', { class: 'hit', onclick: () => CF.openFile(x.path, { line: x.line, col: x.col }) }, h('span', { class: 'muted' }, x.line + ': '), x.text.trim())));
       }
     });
@@ -140,7 +139,7 @@
       for (const f of files) await cf.fs.replaceInFile(f, q.value, r.value, o);
       await CF.reloadOpenFiles(); CF.toast(`Replaced in ${files.length} files`); run();
     });
-    body.append(h('div', { class: 'pad' }, q, r, h('div', { class: 'row' }, tog('case', 'Aa', 'Case sensitive'), tog('word', 'ab', 'Whole word'), tog('regex', '.*', 'Regex'),
+    body.append(h('div', { class: 'pad' }, q, r, h('div', { class: 'row' }, tog('case', CF.icon('caseSens', 14), 'Case sensitive'), tog('word', CF.icon('word', 14), 'Whole word'), tog('regex', CF.icon('regex', 14), 'Regex'),
       h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: run }, 'Search'), h('button', { class: 'btn sec sm', onclick: replaceAll }, 'Replace All'))), res);
     setTimeout(() => q.focus(), 0);
   };
