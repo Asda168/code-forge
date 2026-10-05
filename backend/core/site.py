@@ -17,6 +17,10 @@ DOWNLOADS = [
     {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": False},
     {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeCambo.rpm", "url": f"{_REL}/CodeCambo.rpm", "available": False},
 ]
+PROJECTS = [
+    {"name": "Portfolio (Django)", "description": "Single-page personal portfolio built with Django: typewriter intro, skills, experience, projects and a validated contact form.",
+     "tags": ["Django", "Python", "Tailwind", "Vercel"], "url": "https://portfolio-django-eta.vercel.app/", "source": "https://github.com/Asda168/portfolio-django"},
+]
 REQUIREMENTS = {"windows": "Windows 10 or 11 (x64 / ARM64)", "macos": "macOS 12+ (Apple Silicon & Intel)", "linux": "Ubuntu 20.04+, Fedora 36+ or similar (glibc 2.31+)"}
 
 
@@ -29,6 +33,6 @@ def catalog():
 def context():
     return {
         "extensions": catalog(),
-        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS,
+        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS,
         "source_zip": f"{REPO}/archive/refs/heads/main.zip",
     }
