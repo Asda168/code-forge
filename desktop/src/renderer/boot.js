@@ -30,26 +30,45 @@
   CF.showView('explorer');
 
   // ---- session: reopen the last project, files and layout --------------------------------------
+  // One session per project (keyed by root) plus the last project, so reopening any project
+  // brings back its own files, split and panel state.
   const KEY = 'cf.session';
-  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+  const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || 'null'); return v && v.projects ? v : { last: null, projects: {} }; } catch { return { last: null, projects: {} }; } };
+  let restoring = false;
   const save = () => {
+    if (restoring) return;
     try {
-      if (!S.root) return localStorage.setItem(KEY, JSON.stringify({ root: null }));
-      const g = CF.activeGroup();
-      localStorage.setItem(KEY, JSON.stringify({ root: S.root, files: [...new Set(S.groups.flatMap((x) => x.tabs))].filter((p) => p.startsWith(S.root)), active: g && g.active, split: S.groups.length > 1 ? (S.vertical ? 'down' : 'right') : null, panel: !$('#panel').classList.contains('hidden'), sidebar: S.settings.sidebar !== false }));
+      const all = load();
+      if (!S.root) all.last = null;
+      else {
+        const g = CF.activeGroup();
+        all.last = S.root;
+        all.projects[S.root] = { files: [...new Set(S.groups.flatMap((x) => x.tabs))].filter((p) => p.startsWith(S.root)), active: g && g.active, split: S.groups.length > 1 ? (S.vertical ? 'down' : 'right') : null, panel: !$('#panel').classList.contains('hidden'), at: Date.now() };
+        const keys = Object.keys(all.projects);                         // keep the 30 most recent
+        if (keys.length > 30) keys.sort((a, b) => all.projects[b].at - all.projects[a].at).slice(30).forEach((k) => delete all.projects[k]);
+      }
+      localStorage.setItem(KEY, JSON.stringify(all));
     } catch { /* storage unavailable */ }
   };
+  const restore = async (root) => {
+    const sess = load().projects[root];
+    if (!sess) return;
+    if (sess.split) CF.split(sess.split === 'down');
+    for (const f of sess.files || []) await CF.openFile(f).catch(() => {});
+    if (sess.active && (sess.files || []).includes(sess.active)) await CF.openFile(sess.active).catch(() => {});
+    $('#panel').classList.toggle('hidden', sess.panel === false);
+  };
+  const baseSetRoot = CF.setRoot;                                       // every project switch saves the old one and restores the new one
+  CF.setRoot = async (root) => {
+    save(); restoring = true;
+    try { await baseSetRoot(root); await restore(root); } finally { restoring = false; save(); }
+  };
   CF.saveSession = save; setInterval(save, 1500); window.addEventListener('beforeunload', save);
-  const sess = load(); let restored = false;
-  if (sess && sess.root) {
-    try {
-      const root = await cf.ws.openRecent(sess.root);
-      await CF.setRoot(root); restored = true;
-      if (sess.split) CF.split(sess.split === 'down');
-      for (const f of sess.files || []) await CF.openFile(f).catch(() => {});
-      if (sess.active && (sess.files || []).includes(sess.active)) await CF.openFile(sess.active).catch(() => {});
-      if (sess.panel === false) $('#panel').classList.add('hidden');
-    } catch { /* folder moved or deleted: fall back to the welcome screen */ }
+  let restored = false;
+  const last = load().last;
+  if (last) {
+    try { await CF.setRoot(await cf.ws.openRecent(last)); restored = true; }
+    catch { /* folder moved or deleted: fall back to the welcome screen */ }
   }
   if (!restored) CF.renderWelcome();
   CF.updateProblems();

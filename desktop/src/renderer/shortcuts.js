@@ -2,7 +2,7 @@
 (() => {
   const { S, $, h } = CF;
   const LIST = [
-    ['General', [['Command Palette', 'Ctrl+Shift+P'], ['Quick Open', 'Ctrl+P'], ['Settings', 'Ctrl+,'], ['Keyboard Shortcuts', 'Ctrl+K Ctrl+S'], ['Color Theme', 'Ctrl+K Ctrl+T']]],
+    ['General', [['Command Palette', 'Ctrl+Shift+P'], ['Quick Open', 'Ctrl+P'], ['Find Project', 'Ctrl+R'],['Settings', 'Ctrl+,'], ['Keyboard Shortcuts', 'Ctrl+K Ctrl+S'], ['Color Theme', 'Ctrl+K Ctrl+T']]],
     ['Views', [['Explorer', 'Ctrl+Shift+E'], ['Search', 'Ctrl+Shift+F'], ['Source Control', 'Ctrl+Shift+G'], ['Run and Debug', 'Ctrl+Shift+D'], ['Extensions', 'Ctrl+Shift+X'], ['GitLens', 'Alt+G'], ['Toggle Sidebar', 'Ctrl+B']]],
     ['Panel & Terminal', [['Toggle Panel', 'Ctrl+J'], ['Toggle Terminal', 'Ctrl+`'], ['New Terminal', 'Ctrl+Shift+`'], ['Split Terminal', 'Ctrl+Shift+5'], ['Kill Terminal', 'Ctrl+Shift+W (in terminal)'], ['Clear Terminal', 'Ctrl+Shift+K'],
       ['Next / Previous Terminal', 'Ctrl+PageDown / PageUp'], ['Focus Next / Previous Pane', 'Alt+Right / Alt+Left'], ['Copy / Paste', 'Ctrl+Shift+C / V'], ['Problems', 'Ctrl+Shift+M'], ['Debug Console', 'Ctrl+Shift+Y']]],

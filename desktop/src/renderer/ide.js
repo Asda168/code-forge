@@ -33,6 +33,34 @@
   });
   CF.invalidateIndex = () => { indexRoot = null; };
 
+  // ---- Find / switch project (Ctrl+R) ------------------------------------------------------------
+  CF.findProject = CF.guard(async () => {
+    const recents = (await cf.ws.recents()).filter((r) => r.path !== S.root);
+    const o = $('#overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
+    let sel = 0, shown = recents;
+    const list = h('div', { class: 'list' });
+    const draw = () => {
+      list.innerHTML = '';
+      shown.forEach((r, i) => list.append(h('div', { class: 'it' + (i === sel ? ' sel' : ''), onclick: () => go(r) }, h('span', {}, r.name), h('span', { class: 'muted mono', style: 'font-size:11px' }, r.path))));
+      if (!shown.length) list.append(h('div', { class: 'it muted' }, recents.length ? 'No matching project' : 'No other recent projects'));
+    };
+    const filter = () => {
+      const q = input.value.trim().toLowerCase();
+      shown = q ? recents.map((r) => [r, score(r.name + ' ' + r.path, q)]).filter((x) => x[1] >= 0).sort((a, b) => a[1] - b[1]).map((x) => x[0]) : recents;
+      sel = 0; draw();
+    };
+    const go = (r) => { CF.closeOverlay(); CF.guard(async () => CF.setRoot(await cf.ws.openRecent(r.path)))(); };
+    const input = h('input', { placeholder: 'Find project…  (Enter to open, Ctrl+O for a new folder)', oninput: filter, onkeydown: (e) => {
+      if (e.key === 'ArrowDown') { sel = Math.min(shown.length - 1, sel + 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { sel = Math.max(0, sel - 1); draw(); e.preventDefault(); }
+      else if (e.key === 'Enter' && shown[sel]) go(shown[sel]); else if (e.key === 'Escape') CF.closeOverlay();
+    } });
+    o.append(h('div', { class: 'palette' }, input, list)); o.onmousedown = (e) => { if (e.target === o) CF.closeOverlay(); };
+    draw(); input.focus();
+  });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR') { e.preventDefault(); e.stopPropagation(); CF.findProject(); }
+  }, true);
+
   // ---- tab shortcuts --------------------------------------------------------------------------
   CF.closeActiveTab = () => { const g = CF.activeGroup(); if (g.active) CF.closeTab(g, g.active); };
   CF.cycleTab = (d) => { const g = CF.activeGroup(); if (g.tabs.length < 2) return; const i = g.tabs.indexOf(g.active); CF.openFile(g.tabs[(i + d + g.tabs.length) % g.tabs.length], { group: g }); };
