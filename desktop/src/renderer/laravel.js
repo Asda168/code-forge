@@ -138,6 +138,100 @@
     CF.openFile(abs(dest.rel), { line: dest.line || 1, col: 1 });
   }
 
+  // ---- migration completions ----------------------------------------------------------------------------------
+  // [name, snippet body, doc]. Suggested inside database/migrations files (or any file using Blueprint).
+  const COLUMNS = [
+    ['id', 'id()', 'Auto-incrementing BIGINT primary key'], ['string', "string('${1:name}')", 'VARCHAR column'], ['text', "text('${1:name}')", 'TEXT column'],
+    ['longText', "longText('${1:name}')", 'LONGTEXT column'], ['mediumText', "mediumText('${1:name}')", 'MEDIUMTEXT column'], ['tinyText', "tinyText('${1:name}')", 'TINYTEXT column'],
+    ['char', "char('${1:name}', ${2:100})", 'CHAR column'], ['integer', "integer('${1:name}')", 'INTEGER column'], ['bigInteger', "bigInteger('${1:name}')", 'BIGINT column'],
+    ['unsignedBigInteger', "unsignedBigInteger('${1:name}')", 'UNSIGNED BIGINT column'], ['unsignedInteger', "unsignedInteger('${1:name}')", 'UNSIGNED INTEGER column'],
+    ['mediumInteger', "mediumInteger('${1:name}')", 'MEDIUMINT column'], ['smallInteger', "smallInteger('${1:name}')", 'SMALLINT column'], ['tinyInteger', "tinyInteger('${1:name}')", 'TINYINT column'],
+    ['unsignedSmallInteger', "unsignedSmallInteger('${1:name}')", 'UNSIGNED SMALLINT column'], ['unsignedTinyInteger', "unsignedTinyInteger('${1:name}')", 'UNSIGNED TINYINT column'],
+    ['increments', "increments('${1:id}')", 'Auto-incrementing UNSIGNED INTEGER primary key'], ['bigIncrements', "bigIncrements('${1:id}')", 'Auto-incrementing UNSIGNED BIGINT primary key'],
+    ['boolean', "boolean('${1:name}')", 'BOOLEAN column'], ['decimal', "decimal('${1:name}', ${2:8}, ${3:2})", 'DECIMAL column (precision, scale)'],
+    ['float', "float('${1:name}')", 'FLOAT column'], ['double', "double('${1:name}')", 'DOUBLE column'], ['date', "date('${1:name}')", 'DATE column'],
+    ['dateTime', "dateTime('${1:name}')", 'DATETIME column'], ['dateTimeTz', "dateTimeTz('${1:name}')", 'DATETIME with timezone'], ['time', "time('${1:name}')", 'TIME column'],
+    ['timestamp', "timestamp('${1:name}')", 'TIMESTAMP column'], ['timestampTz', "timestampTz('${1:name}')", 'TIMESTAMP with timezone'], ['year', "year('${1:name}')", 'YEAR column'],
+    ['timestamps', 'timestamps()', 'created_at and updated_at'], ['timestampsTz', 'timestampsTz()', 'created_at and updated_at with timezone'], ['nullableTimestamps', 'nullableTimestamps()', 'Nullable created_at and updated_at'],
+    ['softDeletes', 'softDeletes()', 'Nullable deleted_at'], ['softDeletesTz', 'softDeletesTz()', 'Nullable deleted_at with timezone'], ['rememberToken', 'rememberToken()', 'Nullable remember_token VARCHAR(100)'],
+    ['json', "json('${1:name}')", 'JSON column'], ['jsonb', "jsonb('${1:name}')", 'JSONB column'], ['uuid', "uuid('${1:name}')", 'UUID column'], ['ulid', "ulid('${1:name}')", 'ULID column'],
+    ['enum', "enum('${1:name}', ['${2:one}', '${3:two}'])", 'ENUM column'], ['set', "set('${1:name}', ['${2:one}', '${3:two}'])", 'SET column'], ['binary', "binary('${1:name}')", 'BLOB column'],
+    ['ipAddress', "ipAddress('${1:ip_address}')", 'IP address column'], ['macAddress', "macAddress('${1:mac_address}')", 'MAC address column'],
+    ['foreignId', "foreignId('${1:user_id}')", 'UNSIGNED BIGINT for a foreign key'], ['foreignIdFor', 'foreignIdFor(${1:User}::class)', 'Foreign key column from a model class'],
+    ['foreignUuid', "foreignUuid('${1:user_id}')", 'UUID foreign key column'], ['foreignUlid', "foreignUlid('${1:user_id}')", 'ULID foreign key column'],
+    ['morphs', "morphs('${1:taggable}')", '{name}_id and {name}_type with index'], ['nullableMorphs', "nullableMorphs('${1:taggable}')", 'Nullable morph columns'],
+    ['uuidMorphs', "uuidMorphs('${1:taggable}')", 'UUID morph columns'], ['ulidMorphs', "ulidMorphs('${1:taggable}')", 'ULID morph columns'],
+    ['geometry', "geometry('${1:name}')", 'GEOMETRY column'], ['point', "point('${1:name}')", 'POINT column'],
+  ];
+  const TABLE_OPS = [
+    ['primary', "primary(['${1:id}'])", 'Add a primary key'], ['unique', "unique('${1:column}')", 'Add a unique index'], ['index', "index('${1:column}')", 'Add an index'],
+    ['fullText', "fullText('${1:column}')", 'Add a full-text index'], ['spatialIndex', "spatialIndex('${1:column}')", 'Add a spatial index'],
+    ['foreign', "foreign('${1:user_id}')->references('${2:id}')->on('${3:users}')", 'Add a foreign key constraint'],
+    ['dropColumn', "dropColumn('${1:column}')", 'Drop a column'], ['renameColumn', "renameColumn('${1:from}', '${2:to}')", 'Rename a column'],
+    ['dropIndex', "dropIndex('${1:index}')", 'Drop an index'], ['dropUnique', "dropUnique('${1:index}')", 'Drop a unique index'], ['dropPrimary', 'dropPrimary()', 'Drop the primary key'],
+    ['dropForeign', "dropForeign(['${1:user_id}'])", 'Drop a foreign key'], ['dropConstrainedForeignId', "dropConstrainedForeignId('${1:user_id}')", 'Drop a foreign key and its column'],
+    ['dropTimestamps', 'dropTimestamps()', 'Drop created_at and updated_at'], ['dropSoftDeletes', 'dropSoftDeletes()', 'Drop deleted_at'], ['dropRememberToken', 'dropRememberToken()', 'Drop remember_token'],
+    ['dropMorphs', "dropMorphs('${1:taggable}')", 'Drop morph columns'], ['renameIndex', "renameIndex('${1:from}', '${2:to}')", 'Rename an index'],
+    ['engine', "engine('${1:InnoDB}')", 'Table storage engine'], ['charset', "charset('${1:utf8mb4}')", 'Table character set'], ['collation', "collation('${1:utf8mb4_unicode_ci}')", 'Table collation'],
+    ['comment', "comment('${1:text}')", 'Table comment'], ['temporary', 'temporary()', 'Temporary table'],
+  ];
+  const MODIFIERS = [
+    ['nullable', 'nullable()', 'Allow NULL values'], ['default', 'default(${1:value})', 'Default value'], ['unique', 'unique()', 'Add a unique index'], ['index', 'index()', 'Add an index'],
+    ['primary', 'primary()', 'Add a primary key'], ['unsigned', 'unsigned()', 'Set an integer column as UNSIGNED'], ['after', "after('${1:column}')", 'Place the column after another (MySQL)'],
+    ['first', 'first()', 'Place the column first (MySQL)'], ['comment', "comment('${1:text}')", 'Column comment'], ['useCurrent', 'useCurrent()', 'Default TIMESTAMP to CURRENT_TIMESTAMP'],
+    ['useCurrentOnUpdate', 'useCurrentOnUpdate()', 'Set TIMESTAMP to CURRENT_TIMESTAMP on update'], ['autoIncrement', 'autoIncrement()', 'Auto-increment an integer column'],
+    ['change', 'change()', 'Modify an existing column'], ['constrained', 'constrained()', 'Foreign key from the column name (user_id -> users.id)'],
+    ['references', "references('${1:id}')->on('${2:table}')", 'Foreign key target column and table'], ['on', "on('${1:table}')", 'Foreign key target table'],
+    ['cascadeOnDelete', 'cascadeOnDelete()', 'ON DELETE CASCADE'], ['cascadeOnUpdate', 'cascadeOnUpdate()', 'ON UPDATE CASCADE'], ['nullOnDelete', 'nullOnDelete()', 'ON DELETE SET NULL'],
+    ['restrictOnDelete', 'restrictOnDelete()', 'ON DELETE RESTRICT'], ['restrictOnUpdate', 'restrictOnUpdate()', 'ON UPDATE RESTRICT'], ['noActionOnDelete', 'noActionOnDelete()', 'ON DELETE NO ACTION'],
+    ['onDelete', "onDelete('${1:cascade}')", 'ON DELETE action'], ['onUpdate', "onUpdate('${1:cascade}')", 'ON UPDATE action'],
+    ['storedAs', "storedAs('${1:expression}')", 'Stored generated column'], ['virtualAs', "virtualAs('${1:expression}')", 'Virtual generated column'],
+    ['charset', "charset('${1:utf8mb4}')", 'Column character set'], ['collation', "collation('${1:utf8mb4_unicode_ci}')", 'Column collation'], ['invisible', 'invisible()', 'Hide the column from SELECT *'],
+    ['fulltext', 'fulltext()', 'Add a full-text index'],
+  ];
+  const SCHEMA = [
+    ['create', "create('${1:table}', function (Blueprint \\$table) {\n\t\\$table->id();\n\t$0\n\t\\$table->timestamps();\n})", 'Create a new table'],
+    ['table', "table('${1:table}', function (Blueprint \\$table) {\n\t$0\n})", 'Modify an existing table'], ['drop', "drop('${1:table}')", 'Drop a table'],
+    ['dropIfExists', "dropIfExists('${1:table}')", 'Drop a table if it exists'], ['rename', "rename('${1:from}', '${2:to}')", 'Rename a table'],
+    ['hasTable', "hasTable('${1:table}')", 'Does the table exist?'], ['hasColumn', "hasColumn('${1:table}', '${2:column}')", 'Does the column exist?'],
+    ['hasColumns', "hasColumns('${1:table}', ['${2:column}'])", 'Do all the columns exist?'], ['getColumnListing', "getColumnListing('${1:table}')", 'List column names'],
+    ['dropColumns', "dropColumns('${1:table}', ['${2:column}'])", 'Drop columns from a table'], ['disableForeignKeyConstraints', 'disableForeignKeyConstraints()', 'Turn off foreign key checks'],
+    ['enableForeignKeyConstraints', 'enableForeignKeyConstraints()', 'Turn on foreign key checks'], ['withoutForeignKeyConstraints', 'withoutForeignKeyConstraints(function () {\n\t$0\n})', 'Run a callback without foreign key checks'],
+    ['connection', "connection('${1:name}')", 'Use another database connection'],
+  ];
+  const MIGRATION_FILE = "<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nreturn new class extends Migration\n{\n\tpublic function up(): void\n\t{\n\t\tSchema::create('${1:table}', function (Blueprint \\$table) {\n\t\t\t\\$table->id();\n\t\t\t$0\n\t\t\t\\$table->timestamps();\n\t\t});\n\t}\n\n\tpublic function down(): void\n\t{\n\t\tSchema::dropIfExists('${1:table}');\n\t}\n};\n";
+  const COL_ARG = /->(after|dropColumn|dropIndex|dropUnique|index|unique|primary|fullText|renameColumn|foreign|dropForeign|dropConstrainedForeignId)\(\s*(?:\[\s*(?:['"][\w]+['"]\s*,\s*)*)?['"][\w]*$/;
+  const isMigration = (model) => /[\\/]database[\\/]migrations[\\/]/i.test(model.uri.path) || /Illuminate\\Database\\Schema\\Blueprint|Blueprint\s+\$/.test(model.getValue());
+  const SNIP = () => monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
+  function migrationItems(model, pos) {
+    const K = monaco.languages.CompletionItemKind, w = model.getWordUntilPosition(pos);
+    const range = { startLineNumber: pos.lineNumber, endLineNumber: pos.lineNumber, startColumn: w.startColumn, endColumn: w.endColumn };
+    const upto = model.getLineContent(pos.lineNumber).slice(0, pos.column - 1), before = upto.slice(0, upto.length - w.word.length);
+    const item = ([name, body, doc], kind, rank, detail) => ({ label: name, kind, insertText: body, insertTextRules: SNIP(), documentation: doc, detail, sortText: rank + name, range });
+    if (COL_ARG.test(upto)) {                                   // inside a column-name string: offer the columns declared in this file
+      const names = new Set(); for (const m of model.getValue().matchAll(/\$\w+->\w+\(\s*['"](\w+)['"]/g)) names.add(m[1]);
+      return [...names].map((n) => ({ label: n, kind: K.Field, insertText: n, detail: 'column in this migration', sortText: '0' + n, range }));
+    }
+    if (/Schema::$/.test(before)) return SCHEMA.map((s) => item(s, K.Method, '0', 'Schema'));
+    if (/(?:\)|^\s*)\s*->\s*$/.test(before)) return MODIFIERS.map((s) => item(s, K.Method, '0', 'Column modifier'));
+    if (/\$(?!this\b)\w+->\s*$/.test(before)) return [...COLUMNS.map((s) => item(s, K.Method, '0', 'Column type')), ...TABLE_OPS.map((s) => item(s, K.Method, '1', 'Table operation'))];
+    if (!before.trim()) {                                       // start of a statement
+      const out = [['create', 'Schema::create'], ['table', 'Schema::table']].map(([n, label], i) => ({ label, kind: K.Snippet, insertText: 'Schema::' + SCHEMA[i][1] + ';', insertTextRules: SNIP(), documentation: SCHEMA[i][2], detail: 'Schema', sortText: '1' + label, range }));
+      out.push({ label: 'Schema::dropIfExists', kind: K.Snippet, insertText: "Schema::dropIfExists('${1:table}');", insertTextRules: SNIP(), documentation: SCHEMA[3][2], detail: 'Schema', sortText: '1Schema::dropIfExists', range });
+      if (model.getValue().trim().length < 6) out.push({ label: 'migration', kind: K.Snippet, insertText: MIGRATION_FILE, insertTextRules: SNIP(), documentation: 'Full migration class with up() and down()', detail: 'Laravel', sortText: '0migration', range: { startLineNumber: 1, endLineNumber: pos.lineNumber, startColumn: 1, endColumn: w.endColumn } });
+      return out;
+    }
+    return [];
+  }
+  let migHooked = false;
+  function hookMigrations() {
+    if (migHooked) return; migHooked = true;
+    monaco.languages.registerCompletionItemProvider('php', { triggerCharacters: ['>', ':', "'", '"'], provideCompletionItems: (model, pos) => {
+      if (!enabled || !isMigration(model)) return { suggestions: [] };
+      return { suggestions: migrationItems(model, pos) };
+    } });
+  }
+
   // ---- editor wiring ----------------------------------------------------------------------------------------
   const isTarget = (model) => !!model && (model.getLanguageId() === 'php' || (model.getLanguageId() === 'html' && /\.blade$|\.blade\.php$/i.test(model.uri.path)));
   const editors = new Map(); let enabled = false, hooked = false;
@@ -168,7 +262,7 @@
   CF.laravelNav = {
     set(on) {
       enabled = !!on;
-      if (enabled && !hooked) { hooked = true; monaco.editor.onDidCreateEditor(attach); }
+      if (enabled && !hooked) { hooked = true; monaco.editor.onDidCreateEditor(attach); hookMigrations(); }
       if (enabled) { monaco.editor.getEditors().forEach(attach); refresh(); }
       editors.forEach((v, ed) => { v.key.set(enabled); if (!enabled) v.deco.clear(); });
     },
