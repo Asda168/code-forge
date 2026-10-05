@@ -9,7 +9,8 @@
   CF.gitRefresh = async () => {
     if (!S.root) return;
     G.repo = await cf.git.detect(S.root).catch(() => false);
-    if (!G.repo) { $('#sb-branch').textContent = '⑂ no repo'; if ($('#side-title').dataset.view === 'git') CF.showView('git'); return; }
+    const setBadge = (n) => { const b = $('#activitybar [data-view="git"]'); if (!b) return; let el = b.querySelector('.act-badge'); if (!n) return el && el.remove(); if (!el) { el = h('span', { class: 'act-badge' }); b.append(el); } el.textContent = n > 99 ? '99+' : n; b.title = `Source Control (${n} changed file${n === 1 ? '' : 's'})`; };
+    if (!G.repo) { setBadge(0); $('#sb-branch').textContent = '⑂ no repo'; if ($('#side-title').dataset.view === 'git') CF.showView('git'); return; }
     const st = await git(['status', '--porcelain=v1', '-b', '-uall']);
     const lines = st.stdout.split('\n').filter(Boolean);
     const head = lines.shift() || '';
@@ -17,6 +18,7 @@
     G.sync = (head.match(/\[(.+)\]/) || [])[1] || '';
     CF.G = G;
     G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3).replace(/^"|"$/g, '').replace(/.* -> /, '') }));
+    setBadge(new Set(G.files.map((f) => f.path)).size);
     $('#sb-branch').textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}`;
     if ($('#side-title').dataset.view === 'git') CF.showView('git');
   };
@@ -67,7 +69,7 @@
     section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 14)));
     section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, CF.icon('plus', 14)));
     section('Untracked Files', untracked, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-A']) }, CF.icon('plus', 14)));
-    if (!G.files.length) body.append(h('div', { class: 'pad muted' }, 'Working tree clean.'));
+    if (!G.files.length) fold(body, 'Clean', 'Changes', 0, null, [h('div', { class: 'pad muted' }, 'Working tree clean.')]);
 
     const [br, log, rem] = await Promise.all([git(['branch', '-a', '--format=%(HEAD)|%(refname:short)']), git(['log', '--all', '--date=short', '--pretty=format:%h|%an|%ad|%s|%D', '-n', '100']), git(['remote', '-v'])]);
     G.branches = br.stdout.split('\n').filter(Boolean).map((l) => ({ cur: l[0] === '*', name: l.slice(2) }));
