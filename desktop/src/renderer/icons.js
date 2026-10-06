@@ -67,7 +67,15 @@
     key: 'M5.5 7.5a3 3 0 1 0 .01 0M8.2 7.5H14M12 7.5V10M10 7.5V9.5',
     flask: 'M6 2h4M7 2v4.5L3 12.5a1 1 0 0 0 .9 1.5h8.2a1 1 0 0 0 .9-1.5L9 6.5V2M4.8 10h6.4',
   };
-  const glyph = (color, g) => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="${G[g]}"/></svg>`;
+  // Icon themes: symbols (flat coloured glyphs), badges (glyph on a tinted tile), minimal (monochrome).
+  CF.ICON_THEMES = { symbols: 'Symbols (default)', badges: 'Colour Badges', minimal: 'Minimal (monochrome)' };
+  const theme = () => (CF.S && CF.S.settings && CF.S.settings.iconTheme) || 'symbols';
+  const glyph = (color, g) => {
+    const t = theme(); if (t === 'minimal') color = '#9AA0A6';
+    const tile = t === 'badges' ? `<rect x="0.5" y="0.5" width="15" height="15" rx="3" fill="${color}" fill-opacity=".18" stroke="none"/>` : '';
+    const inner = t === 'badges' ? 'transform="translate(2.4 2.4) scale(.7)"' : '';
+    return `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="${t === 'badges' ? 1.5 : 1.3}" stroke-linecap="round" stroke-linejoin="round">${tile}<path ${inner} d="${G[g]}"/></svg>`;
+  };
 
   const KIND = {
     html: ['#E37933', 'code'], htm: ['#E37933', 'code'], xml: ['#E37933', 'code'], vue: ['#6FBF8B', 'code'], svg: ['#E6B450', 'angle'],
@@ -88,7 +96,6 @@
     'readme.md': ['#7FB4DA', 'md'], 'vite.config.js': ['#A579D0', 'gear'], 'vite.config.ts': ['#A579D0', 'gear'], 'tsconfig.json': ['#5A9BD5', 'gear'], 'webpack.config.js': ['#8DD6F9', 'gear'],
     'license': ['#C0A060', 'doc'], 'makefile': ['#9AA0A6', 'gear'],
   };
-  const GENERIC = glyph('#9AA0A6', 'doc');
 
   // ---- Symbols-style folders: outlined, tinted by purpose --------------------------------------
   const FOLDERS = {
@@ -104,13 +111,21 @@
 
   CF.fileIconHtml = (name, isDir, open) => {
     const n = name.toLowerCase();
-    if (isDir) return folderSvg(FOLDERS[n] || '#8FA9BF', open);
+    if (isDir) return folderSvg(theme() === 'minimal' ? '#9AA0A6' : (FOLDERS[n] || '#8FA9BF'), open);
     if (NAMED[n]) return glyph(...NAMED[n]);
     if (n.endsWith('.blade.php')) return glyph('#F0604D', 'code');
     if (/\.(test|spec)\.[jt]sx?$/.test(n)) return glyph('#8BC46A', 'flask');
     if (n.startsWith('.env')) return glyph(...KIND.env);
     const ext = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : '';
-    return KIND[ext] ? glyph(...KIND[ext]) : GENERIC;
+    return KIND[ext] ? glyph(...KIND[ext]) : glyph('#9AA0A6', 'doc');
+  };
+
+  CF.iconThemePicker = () => {
+    const { h } = CF; const o = document.getElementById('overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
+    const cur = theme();
+    const list = h('div', { class: 'list' }, Object.entries(CF.ICON_THEMES).map(([id, name]) => h('div', { class: 'it' + (id === cur ? ' sel' : ''), onclick: async () => { CF.closeOverlay(); await CF.setSetting({ iconTheme: id }); } },
+      h('span', { html: ['a.js', 'b.py', 'c.css', 'd.json'].map((f) => CF.fileIconHtml(f, false)).join(' ') }), h('span', {}, name), h('span', { class: 'muted' }, id === cur ? 'current' : ''))));
+    o.append(h('div', { class: 'palette' }, list)); o.onmousedown = (e) => { if (e.target === o) CF.closeOverlay(); };
   };
 
   document.querySelectorAll('i[data-ic]').forEach((el) => { el.innerHTML = CF.iconHtml(el.dataset.ic, el.closest('#activitybar') ? 24 : 15); });

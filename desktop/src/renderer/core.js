@@ -95,7 +95,7 @@ CF.applySettings = () => {
   $('#app').classList.toggle('no-sidebar', !s.sidebar); $('#app').classList.toggle('no-activity', !s.activityBar); $('#statusbar').hidden = !s.statusBar;
   $('#sb-font').textContent = s.fontFamily; $('#sb-indent').textContent = (s.insertSpaces ? 'Spaces: ' : 'Tab Size: ') + s.tabSize;
 };
-CF.setSetting = async (patch) => { CF.S.settings = await cf.settings.set(patch); CF.applySettings(); };
+CF.setSetting = async (patch) => { const old = CF.S.settings.iconTheme; CF.S.settings = await cf.settings.set(patch); CF.applySettings(); if (CF.S.settings.iconTheme !== old) { CF.renderTabs(); CF.refreshTree && CF.refreshTree(); } };
 CF.fontStep = (d) => {
   const sizes = [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30, 32];
   const cur = CF.S.settings.fontSize; let i = sizes.findIndex((x) => x >= cur); if (i < 0) i = sizes.length - 1;
@@ -187,7 +187,7 @@ CF.renderTabs = () => S.groups.forEach((g) => {
       onclick: () => CF.openFile(p, { group: g }),
       onauxclick: (e) => { if (e.button === 1) CF.closeTab(g, p); },
       oncontextmenu: (e) => { e.preventDefault(); CF.menu(e, [
-        ['Close', () => CF.closeTab(g, p)], ['Close Others', () => g.tabs.filter((x) => x !== p).forEach((x) => CF.closeTab(g, x))], ['Close All', () => [...g.tabs].forEach((x) => CF.closeTab(g, x))],
+        ['Close', () => CF.closeTab(g, p)], ['Close Others', () => g.tabs.filter((x) => x !== p).forEach((x) => CF.closeTab(g, x))], ['Close Saved', () => CF.closeSaved(g)], ['Close All', () => [...g.tabs].forEach((x) => CF.closeTab(g, x))],
         '-', [g.pinned.has(p) ? 'Unpin' : 'Pin', () => { g.pinned.has(p) ? g.pinned.delete(p) : g.pinned.add(p); CF.renderTabs(); }],
         '-', ['Split Right', () => { CF.split(false); CF.openFile(p, { group: S.groups[1] }); }], ['Split Down', () => { CF.split(true); CF.openFile(p, { group: S.groups[1] }); }],
         ['Move to Other Group', () => { const o = S.groups.find((x) => x !== g); if (o) { CF.closeTab(g, p, true); CF.openFile(p, { group: o }); } }],
@@ -232,6 +232,7 @@ CF.updateStatus = () => {
 CF.reloadOpenFiles = CF.guard(async () => {
   for (const m of S.models.values()) if (!m.dirty) { try { const r = await cf.fs.read(m.path); if (r.text !== m.saved) { m.saved = r.text; m.model.setValue(r.text); } } catch { /* deleted */ } }
 });
+CF.closeSaved = (g) => [...g.tabs].forEach((p) => { const m = S.models.get(p); if (!m || !m.dirty) CF.closeTab(g, p, true); });
 CF.closeAllEditors = () => { S.groups.forEach((g) => [...g.tabs].forEach((p) => CF.closeTab(g, p, true))); };
 
 // ---- context menu ---------------------------------------------------------------------

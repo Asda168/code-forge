@@ -126,6 +126,7 @@
       ...row('Git Bash Path (Windows)', txt('gitBashPath', detect)), ...row('PowerShell Path', txt('powershellPath')), ...row('CMD Path', txt('cmdPath')),
       h('b', {}, 'Git'), h('span'), ...row('Git Path', txt('gitPath')), ...row('Default Branch', txt('gitDefaultBranch')),
       h('b', {}, 'Appearance'), h('span'), ...row('Theme', h('div', { style: 'display:flex;gap:6px' }, sel('theme', Object.entries(CF.THEMES).map(([k, v]) => [k, v.name])), h('button', { class: 'btn sec sm', onclick: () => { CF.closeOverlay(); CF.themePicker(); } }, 'Preview…'), h('button', { class: 'btn sec sm', onclick: () => { CF.closeOverlay(); CF.importVscodeTheme(); } }, 'Import VS Code theme…'))),
+      ...row('File Icon Theme', sel('iconTheme', Object.entries(CF.ICON_THEMES))),
       ...row('Sidebar', chk('sidebar')), ...row('Status Bar', chk('statusBar')), ...row('Activity Bar', chk('activityBar')),
       h('b', {}, 'Updates'), h('span'), ...row('Automatic Updates', chk('autoUpdate')));
     const loggedIn = await cf.api.loggedIn();
@@ -174,6 +175,7 @@
     ['New Project…', () => CF.newProjectWizard()], ['Split Editor Right', () => CF.split(false)], ['Split Editor Down', () => CF.split(true)], ['Save All', CF.saveAll],
     ['Find in Files', () => CF.showView('search'), 'Ctrl+Shift+F'], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
     ['Save Workspace', saveWorkspace], ['Open Workspace', openWorkspace], ['Close Workspace', closeWorkspace], ['Check for Updates', () => CF.checkUpdates(true)],
+    ['Preferences: File Icon Theme', () => CF.iconThemePicker()], ['View: Close Saved Editors', () => CF.closeSaved(CF.activeGroup())], ['View: Close All Editors', () => CF.closeAllEditors()],
     ['Preferences: Color Theme', () => CF.themePicker(), 'Ctrl+K Ctrl+T'], ['Preferences: Import VS Code Theme…', () => CF.importVscodeTheme()], ['Install Extension from URL…', () => CF.installExtensionUrl()], ['Reload Extensions (download from settings.json)', () => CF.loadExtensions(true)], ['Open settings.json', () => CF.openSettingsJson()],
     ['Initialize Repository', () => CF.gitInit()], ['Show Problems', () => CF.showPanel('problems')], 
     ['AI: Explain Code (requires consent — not enabled)', () => CF.toast('AI features are not enabled. Nothing is ever sent without your explicit consent.')],
