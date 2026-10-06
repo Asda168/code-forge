@@ -92,7 +92,7 @@ CF.applySettings = () => {
   CF.S.groups.forEach((g) => g.editor.updateOptions(CF.editorOptions()));
   CF.S.terms && CF.S.terms.forEach((x) => { x.xterm.options.fontFamily = `"${s.fontFamily}", monospace`; x.xterm.options.fontSize = Math.max(11, s.fontSize - 1); x.fit(); });
   CF.applyTheme(s.theme);
-  $('#app').classList.toggle('no-sidebar', !s.sidebar); $('#app').classList.toggle('no-activity', !s.activityBar); $('#statusbar').hidden = !s.statusBar;
+  $('#app').classList.toggle('no-tabacts', s.tabActions === false); $('#app').classList.toggle('no-sidebar', !s.sidebar); $('#app').classList.toggle('no-activity', !s.activityBar); $('#statusbar').hidden = !s.statusBar;
   $('#sb-font').textContent = s.fontFamily; $('#sb-indent').textContent = (s.insertSpaces ? 'Spaces: ' : 'Tab Size: ') + s.tabSize;
 };
 CF.setSetting = async (patch) => { const old = CF.S.settings.iconTheme; CF.S.settings = await cf.settings.set(patch); CF.applySettings(); if (CF.S.settings.iconTheme !== old) { CF.renderTabs(); CF.refreshTree && CF.refreshTree(); } };

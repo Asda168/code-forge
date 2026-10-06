@@ -64,6 +64,7 @@ function buildMenu() {
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, cmd('Find in Files', 'search', 'CmdOrCtrl+Shift+F')] },
     { label: 'Selection', submenu: [cmd('Select All', 'select-all')] },
     { label: 'View', submenu: [cmd('Command Palette…', 'palette', 'CmdOrCtrl+Shift+P'), cmd('Toggle Sidebar', 'toggle-sidebar', 'CmdOrCtrl+B'), cmd('Toggle Terminal', 'toggle-terminal', 'CmdOrCtrl+`'), cmd('Explorer', 'view-explorer', 'CmdOrCtrl+Shift+E'), cmd('Source Control', 'view-git', 'Ctrl+Shift+G'), cmd('GitLens', 'view-gitlens'), cmd('Extensions', 'view-extensions', 'CmdOrCtrl+Shift+X'),
+      { label: 'Tab Bar: Close Saved / Close All Buttons', type: 'checkbox', checked: ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }).tabActions !== false, click: () => send('menu', 'toggle-tab-actions') },
       { type: 'separator' }, cmd('Increase Font Size', 'font-inc', 'CmdOrCtrl+='), cmd('Decrease Font Size', 'font-dec', 'CmdOrCtrl+-'), cmd('Reset Font Size', 'font-reset', 'CmdOrCtrl+0'), { type: 'separator' }, { role: 'toggleDevTools' }, { role: 'togglefullscreen' }] },
     { label: 'Go', submenu: [cmd('Go to Line…', 'goto-line', 'CmdOrCtrl+G'), cmd('Go to Definition', 'goto-def', 'F12')] },
     { label: 'Run', submenu: [cmd('Run Project', 'run', 'F5'), cmd('Stop', 'stop', 'Shift+F5'), cmd('Restart', 'restart', 'CmdOrCtrl+Shift+F5')] },
@@ -418,7 +419,7 @@ const DEFAULT_SETTINGS = {
   fontFamily: 'JetBrains Mono', fontSize: 14, fontWeight: '400', lineHeight: 1.5, letterSpacing: 0, ligatures: true, smoothFonts: true,
   minimap: true, wordWrap: false, tabSize: 4, insertSpaces: true, autoSave: 'afterDelay', autoSaveDelay: 1000,
   theme: 'monokai-dimmed', iconTheme: 'symbols', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
-  defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true,
+  defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true, tabActions: true,
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
   extensions: [], customExtensions: [], disabledExtensions: [], dismissedSuggestions: [], suggestExtensions: true,
 };
@@ -427,7 +428,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
   const clean = {};
   for (const k of Object.keys(DEFAULT_SETTINGS)) if (k in patch) clean[k] = patch[k];
   const cur = { ...DEFAULT_SETTINGS, ...readJson('settings.json', {}), ...clean };
-  writeJson('settings.json', cur); return cur;
+  writeJson('settings.json', cur); buildMenu(); return cur;
 });
 
 // ---------------------------------------------------------------- extensions

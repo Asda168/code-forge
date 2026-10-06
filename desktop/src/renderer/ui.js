@@ -127,7 +127,7 @@
       h('b', {}, 'Git'), h('span'), ...row('Git Path', txt('gitPath')), ...row('Default Branch', txt('gitDefaultBranch')),
       h('b', {}, 'Appearance'), h('span'), ...row('Theme', h('div', { style: 'display:flex;gap:6px' }, sel('theme', Object.entries(CF.THEMES).map(([k, v]) => [k, v.name])), h('button', { class: 'btn sec sm', onclick: () => { CF.closeOverlay(); CF.themePicker(); } }, 'Preview…'), h('button', { class: 'btn sec sm', onclick: () => { CF.closeOverlay(); CF.importVscodeTheme(); } }, 'Import VS Code theme…'))),
       ...row('File Icon Theme', sel('iconTheme', Object.entries(CF.ICON_THEMES))),
-      ...row('Sidebar', chk('sidebar')), ...row('Status Bar', chk('statusBar')), ...row('Activity Bar', chk('activityBar')),
+      ...row('Tab Bar Close Saved / Close All', chk('tabActions')), ...row('Sidebar', chk('sidebar')), ...row('Status Bar', chk('statusBar')), ...row('Activity Bar', chk('activityBar')),
       h('b', {}, 'Updates'), h('span'), ...row('Automatic Updates', chk('autoUpdate')));
     const loggedIn = await cf.api.loggedIn();
     const acct = h('div', { class: 'pad', style: 'padding:10px 0' }, h('b', {}, 'Account (optional)'), ' ', loggedIn ? [h('span', { class: 'muted' }, 'signed in '), h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { await cf.api.logout(); CF.closeOverlay(); CF.toast('Signed out'); }) }, 'Sign out'), ' ',
@@ -175,7 +175,7 @@
     ['New Project…', () => CF.newProjectWizard()], ['Split Editor Right', () => CF.split(false)], ['Split Editor Down', () => CF.split(true)], ['Save All', CF.saveAll],
     ['Find in Files', () => CF.showView('search'), 'Ctrl+Shift+F'], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
     ['Save Workspace', saveWorkspace], ['Open Workspace', openWorkspace], ['Close Workspace', closeWorkspace], ['Check for Updates', () => CF.checkUpdates(true)],
-    ['Preferences: File Icon Theme', () => CF.iconThemePicker()], ['View: Close Saved Editors', () => CF.closeSaved(CF.activeGroup())], ['View: Close All Editors', () => CF.closeAllEditors()],
+    ['Preferences: File Icon Theme', () => CF.iconThemePicker()], ['View: Close Saved Editors', () => CF.closeSaved(CF.activeGroup())], ['View: Close All Editors', () => CF.closeAllEditors()], ['View: Toggle Tab Bar Close Buttons', () => CF.setSetting({ tabActions: CF.S.settings.tabActions === false })],
     ['Preferences: Color Theme', () => CF.themePicker(), 'Ctrl+K Ctrl+T'], ['Preferences: Import VS Code Theme…', () => CF.importVscodeTheme()], ['Install Extension from URL…', () => CF.installExtensionUrl()], ['Reload Extensions (download from settings.json)', () => CF.loadExtensions(true)], ['Open settings.json', () => CF.openSettingsJson()],
     ['Initialize Repository', () => CF.gitInit()], ['Show Problems', () => CF.showPanel('problems')], 
     ['AI: Explain Code (requires consent — not enabled)', () => CF.toast('AI features are not enabled. Nothing is ever sent without your explicit consent.')],
@@ -201,7 +201,7 @@
     'git-clone': () => CF.cloneDialog(), 'git-init': () => CF.gitInit(), 'git-commit': () => CF.showView('git'), 'git-push': () => CF.gitCmd('Push', ['push']), 'git-pull': () => CF.gitCmd('Pull', ['pull']), 'git-fetch': () => CF.gitCmd('Fetch', ['fetch', '--all']),
     'quick-open': () => CF.quickOpen(), 'close-tab': () => CF.closeActiveTab(), 'next-tab': () => CF.cycleTab(1), 'prev-tab': () => CF.cycleTab(-1), split: () => CF.split(false),
     'view-explorer': () => CF.showView('explorer'), 'view-git': () => CF.showView('git'), 'view-gitlens': () => CF.showView('gitlens'), 'split-terminal': () => CF.splitTerminal(), 'clear-terminal': () => CF.clearTerminal(), 'view-extensions': () => CF.showView('extensions'),
-    'check-updates': () => CF.checkUpdates(true), settings: CF.settingsDialog,
+    'toggle-tab-actions': () => CF.setSetting({ tabActions: CF.S.settings.tabActions === false }), 'check-updates': () => CF.checkUpdates(true), settings: CF.settingsDialog,
   };
   CF.bindMenu = () => cf.onMenu((id) => MENU[id] && CF.guard(MENU[id])());
 })();
