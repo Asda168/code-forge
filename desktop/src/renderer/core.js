@@ -95,7 +95,7 @@ CF.applySettings = () => {
   const s = CF.S.settings;
   document.body.style.webkitFontSmoothing = s.smoothFonts ? 'antialiased' : 'auto';
   CF.S.groups.forEach((g) => g.editor.updateOptions(CF.editorOptions()));
-  CF.S.terms && CF.S.terms.forEach((x) => { x.xterm.options.fontFamily = `"${s.fontFamily}", monospace`; x.xterm.options.fontSize = Math.max(11, s.fontSize - 1); x.fit(); });
+  CF.S.terms && CF.S.terms.forEach((x) => { x.xterm.options.fontFamily = CF.termFont(); x.xterm.options.fontSize = Math.max(11, s.fontSize - 1); x.fit(); });
   CF.applyTheme(s.theme);
   $('#app').classList.toggle('no-tabacts', s.tabActions === false); $('#app').classList.toggle('no-sidebar', !s.sidebar); $('#app').classList.toggle('no-activity', !s.activityBar); $('#statusbar').hidden = !s.statusBar;
   $('#sb-font').textContent = s.fontFamily; $('#sb-indent').textContent = (s.insertSpaces ? 'Spaces: ' : 'Tab Size: ') + s.tabSize;

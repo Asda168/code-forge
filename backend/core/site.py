@@ -5,8 +5,15 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.1.0"
-RELEASED = "2026-10-03"
+VERSION = "1.2.0"
+RELEASED = "2026-10-06"
+CHANGES = [
+    "GitLens is now an installable extension: inline blame, file blame, file/line history and sidebar",
+    "Terminal: clickable http(s) links open in your browser",
+    "Terminal: Ctrl+C copies a selection (still interrupts otherwise), Ctrl+V / Shift+Insert paste",
+    "Git Bash: fixed overlapping text with safer monospace fonts and re-fit after font load",
+    "Ctrl+F opens find in the current file even when focus is outside the editor",
+]
 _REL = f"{REPO}/releases/latest/download"
 
 DOWNLOADS = [
@@ -33,6 +40,6 @@ def catalog():
 def context():
     return {
         "extensions": catalog(),
-        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS,
+        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS,
         "source_zip": f"{REPO}/archive/refs/heads/main.zip",
     }

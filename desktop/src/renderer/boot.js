@@ -5,6 +5,7 @@
   CF.applyTheme(S.settings.theme);                   // CSS vars first, Monaco theme after load
   await CF.initMonaco();
   CF.initEditors(); CF.applySettings(); CF.initGitLens();
+  if (!S.settings.gitlensSeeded) { try { await cf.ext.installBundled('gitlens'); } catch { /* ignore */ } await CF.setSetting({ gitlensSeeded: true }); }   // existing GitLens users keep it; it can now be uninstalled
   CF.loadExtensions(true);                           // downloads URLs listed in settings.json "extensions", loads custom ones
   await CF.initTerminal();
   CF.bindMenu();

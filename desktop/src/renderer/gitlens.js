@@ -44,7 +44,7 @@
     const model = ed.getModel(); if (!model) return;
     const path = model.uri.fsPath; const sb = $('#sb-blame');
     const clear = () => { const d = L.decos.get(ed); if (d) d.clear(); if (ed === CF.activeGroup().editor) { sb.textContent = ''; sb.hidden = true; sb.onclick = null; } };
-    if (!L.line || !CF.G || !CF.G.repo) return clear();
+    if (!L.on || !L.line || !CF.G || !CF.G.repo) return clear();
     const m = S.models.get(path); if (!m) return clear();
     const lines = m.dirty ? null : await blameFor(path);
     const pos = ed.getPosition(); if (!pos) return clear();
@@ -58,7 +58,7 @@
 
   async function updateFile(ed) {
     const coll = L.fileDecos.get(ed); if (coll) coll.clear();
-    const model = ed.getModel(); if (!L.file || !model) return;
+    const model = ed.getModel(); if (!L.on || !L.file || !model) return;
     const m = S.models.get(model.uri.fsPath); if (!m || m.dirty) return;
     const lines = await blameFor(model.uri.fsPath); if (!lines) return;
     const you = await me();
@@ -81,8 +81,12 @@
   CF.initGitLens = () => { monaco.editor.onDidCreateEditor(hook); S.groups.forEach((g) => hook(g.editor));
     const origSave = CF.save; CF.save = async (...a) => { const r = await origSave(...a); invalidate(); setTimeout(updateAll, 400); return r; }; };
 
-  CF.toggleLineBlame = () => { L.line = !L.line; localStorage.setItem('cf.blame.line', L.line ? '1' : '0'); CF.toast('Line blame ' + (L.line ? 'on' : 'off')); updateAll(); };
-  CF.toggleFileBlame = () => { L.file = !L.file; CF.toast('File blame ' + (L.file ? 'on' : 'off')); updateAll(); };
+  // GitLens is an extension: features switch on only while it is installed and enabled
+  L.on = false;
+  CF.gitlensOn = (on) => { on = !!on; if (L.on === on) return; L.on = on; const b = $('#activitybar [data-view=gitlens]'); if (b) b.hidden = !on; if (!on && $('#side-title').dataset.view === 'gitlens') CF.showView('explorer'); updateAll(); };
+  const needExt = () => { if (L.on) return false; CF.toast('Install the GitLens extension (Extensions view) to use this', true); return true; };
+  CF.toggleLineBlame = () => { if (needExt()) return; L.line = !L.line; localStorage.setItem('cf.blame.line', L.line ? '1' : '0'); CF.toast('Line blame ' + (L.line ? 'on' : 'off')); updateAll(); };
+  CF.toggleFileBlame = () => { if (needExt()) return; L.file = !L.file; CF.toast('File blame ' + (L.file ? 'on' : 'off')); updateAll(); };
 
   // ---- history -------------------------------------------------------------------------------
   const FMT = '--pretty=format:%h%x1f%an%x1f%at%x1f%s%x1f%D%x1e';
@@ -101,8 +105,9 @@
       list.length ? null : h('div', { class: 'muted' }, 'No history.')], [{ label: 'Close' }], { wide: true });
   }
   const curFile = () => { const g = CF.activeGroup(); return g && g.active && g.active.startsWith(S.root || '\0') ? g.active : null; };
-  CF.fileHistory = CF.guard(async (p) => { p = p || curFile(); if (!p) return CF.toast('Open a file in the repository first', true); await historyModal('File History — ' + base(p), ['log', '--follow', '-n', '200', FMT, '--', rel(p)], rel(p).replace(/\\/g, '/')); });
+  CF.fileHistory = CF.guard(async (p) => { if (needExt()) return; p = p || curFile(); if (!p) return CF.toast('Open a file in the repository first', true); await historyModal('File History — ' + base(p), ['log', '--follow', '-n', '200', FMT, '--', rel(p)], rel(p).replace(/\\/g, '/')); });
   CF.lineHistory = CF.guard(async () => {
+    if (needExt()) return;
     const p = curFile(); if (!p) return CF.toast('Open a file in the repository first', true);
     const sel = CF.activeGroup().editor.getSelection(); const a = sel.startLineNumber, b = sel.endLineNumber;
     await historyModal(`Line History — ${base(p)}:${a}${b !== a ? '-' + b : ''}`, ['log', '-s', '-n', '100', FMT, `-L${a},${b}:${rel(p).replace(/\\/g, '/')}`], null);
@@ -116,6 +121,7 @@
     set(); content(box); return box;
   };
   CF.renderGitLens = async (body) => {
+    if (!L.on) return body.append(h('div', { class: 'pad muted' }, 'GitLens is not installed. Install it from the Extensions view.'));
     if (!S.root) return body.append(h('div', { class: 'pad muted' }, 'Open a folder first.'));
     if (!CF.G || !CF.G.repo) return body.append(h('div', { class: 'pad muted' }, 'This folder is not a Git repository.'));
     const you = await me();

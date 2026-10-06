@@ -58,6 +58,14 @@
     draw(); input.focus();
   });
   // Ctrl+R stays reverse-search inside the terminal
+  // Ctrl+F: always open the editor's find widget (works even when focus is on a tab, the explorer or a preview)
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyF') return;
+    const t = e.target; if (t.closest && (t.closest('.xterm') || t.closest('.monaco-editor') || t.closest('.overlay'))) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    const g = CF.activeGroup && CF.activeGroup(); if (!g || !g.active) return;
+    e.preventDefault(); e.stopPropagation(); g.editor.focus(); g.editor.getAction('actions.find').run();
+  }, true);
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR' && !(e.target.closest && e.target.closest('.xterm'))) { e.preventDefault(); e.stopPropagation(); CF.findProject(); }
   }, true);

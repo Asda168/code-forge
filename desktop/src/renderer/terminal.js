@@ -37,12 +37,24 @@
     });
   }
 
+  // Monospace stack with safe fallbacks: a missing/proportional font made Git Bash text overlap.
+  CF.termFont = () => `"${S.settings.fontFamily}", "Cascadia Mono", Consolas, "Courier New", monospace`;
+  const URL_RE = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:!?)\]}]/g;
+  function linkProvider(xterm) {
+    return { provideLinks(y, cb) {
+      const line = xterm.buffer.active.getLine(y - 1); if (!line) return cb(undefined);
+      const text = line.translateToString(true), out = []; let m;
+      URL_RE.lastIndex = 0;
+      while ((m = URL_RE.exec(text))) out.push({ range: { start: { x: m.index + 1, y }, end: { x: m.index + m[0].length, y } }, text: m[0], decorations: { underline: true, pointerCursor: true }, activate: (ev, u) => cf.app.openExternal(u) });
+      cb(out.length ? out : undefined);
+    } };
+  }
   const APP_KEYS = new Set(['KeyB', 'KeyP', 'KeyJ', 'Backquote', 'Equal', 'Minus', 'Digit0', 'Comma', 'Backslash', 'Tab', 'NumpadAdd', 'NumpadSubtract']);
   const APP_CHARS = new Set(['b', 'p', 'j', '`', '=', '+', '-', '0', ',', '\\', 'tab']);   // fallback when e.code is empty / non-QWERTY layouts
   CF.newTerminal = CF.guard(async (shellId, cwd, opts = {}) => {
     CF.showPanel('terminal');
     const host = h('div', { class: 'term' }); $('#panel-terminal').append(host);
-    const xterm = new Terminal({ fontFamily: `"${S.settings.fontFamily}", monospace`, fontSize: Math.max(11, S.settings.fontSize - 1), cursorBlink: true, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000 });
+    const xterm = new Terminal({ fontFamily: CF.termFont(), fontSize: Math.max(11, S.settings.fontSize - 1), lineHeight: 1, letterSpacing: 0, cursorBlink: true, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000, windowsPty: S.platform.platform === 'win32' ? { backend: 'conpty' } : undefined });
     const fitAddon = new FitAddon.FitAddon(); xterm.loadAddon(fitAddon); xterm.open(host);
     const fit = () => { try { fitAddon.fit(); cf.term.resize(t.id, xterm.cols, xterm.rows); } catch { /* hidden */ } };
     const split = opts.split && activeTerm;
@@ -50,10 +62,17 @@
     const info = await cf.term.create({ shellId: sh || S.settings.defaultShell || undefined, cwd: cwd || (split && activeTerm.cwd) || S.root, cols: xterm.cols, rows: xterm.rows });
     const t = { id: info.id, name: `${info.name} ${S.terms.filter((x) => x.name.startsWith(info.name)).length + 1}`, host, xterm, fit, cwd, shellId: sh, posix: /bash|zsh|wsl/i.test(info.name) || /(^|\s)sh$/i.test(info.name) };
     xterm.onData((d) => cf.term.write(t.id, d));
+    xterm.registerLinkProvider(linkProvider(xterm));       // click http(s) links -> default browser
+    document.fonts && document.fonts.ready.then(() => setTimeout(fit, 50));   // re-measure once the font is really loaded
     xterm.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
+      const paste = () => navigator.clipboard.readText().then((x) => x && xterm.paste(x));
       if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') { navigator.clipboard.writeText(xterm.getSelection()); return false; }
-      if (e.ctrlKey && e.shiftKey && e.code === 'KeyV') { navigator.clipboard.readText().then((x) => cf.term.write(t.id, x)); return false; }
+      if ((e.ctrlKey && e.shiftKey && e.code === 'KeyV') || (e.shiftKey && !e.ctrlKey && e.code === 'Insert')) { e.preventDefault(); paste(); return false; }
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'Insert') { navigator.clipboard.writeText(xterm.getSelection()); return false; }
+      // Ctrl+C copies when text is selected (otherwise it is SIGINT); Ctrl+V pastes
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyC' && xterm.hasSelection()) { navigator.clipboard.writeText(xterm.getSelection()); xterm.clearSelection(); return false; }
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyV') { e.preventDefault(); paste(); return false; }
       if (e.ctrlKey && e.shiftKey && e.code === 'Digit5') { CF.splitTerminal(); return false; }
       if (e.ctrlKey && e.shiftKey && e.code === 'Backquote') { CF.newTerminal(); return false; }
       if (e.ctrlKey && e.shiftKey && e.code === 'KeyW') { closeTerm(t); return false; }

@@ -33,6 +33,7 @@
         const w = model.getWordUntilPosition(pos); const range = { startLineNumber: pos.lineNumber, endLineNumber: pos.lineNumber, startColumn: w.startColumn, endColumn: w.endColumn };
         return { suggestions: snips.map((s) => ({ label: s.prefix, kind: monaco.languages.CompletionItemKind.Snippet, insertText: s.body, insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: s.description, detail: e.name, range })) }; } }));
     }
+    CF.gitlensOn && CF.gitlensOn(list.some((x) => x.enabled && !x.error && (x.navigation || []).includes('gitlens')));
     CF.laravelNav && CF.laravelNav.set(list.some((x) => x.enabled && !x.error && (x.navigation || []).includes('laravel')));
     CF.extAssoc = assoc; if (!CF.THEMES[S.settings.theme]) S.settings.theme = 'codeforge-dark'; CF.applyTheme(S.settings.theme);
   });
@@ -70,7 +71,7 @@
     const setDisabled = async (id, off) => { const cur = new Set(S.settings.disabledExtensions || []); off ? cur.add(id) : cur.delete(id); await CF.setSetting({ disabledExtensions: [...cur] }); await refresh(); };
     const matches = (e, q) => !q || [e.name, e.id, e.description, ...(e.themes || []).map((t) => (typeof t === 'string' ? t : t.name))].join(' ').toLowerCase().includes(q);
 
-    const tags = (e) => [(e.themes || []).length ? 'Theme' : null, Object.keys(e.snippets || {}).length ? 'Snippets' : null, Object.keys(e.fileAssociations || {}).length ? 'File types' : null, (e.navigation || []).length ? 'Go to definition' : null].filter(Boolean);
+    const tags = (e) => [(e.themes || []).length ? 'Theme' : null, Object.keys(e.snippets || {}).length ? 'Snippets' : null, Object.keys(e.fileAssociations || {}).length ? 'File types' : null, (e.navigation || []).includes('laravel') ? 'Go to definition' : null, (e.navigation || []).includes('gitlens') ? 'Git blame' : null].filter(Boolean);
     const row = (e, installed) => h('div', { class: 'ext' }, extIcon(e),
       h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'v' + e.version + (installed ? (String(e.source).startsWith('custom') ? ' · custom' : e.source === 'imported' ? ' · imported' : ' · installed') : '')),
         e.error ? h('div', { style: 'color:var(--err)' }, e.error) : h('div', { class: 'muted' }, e.description || ''),

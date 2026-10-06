@@ -1,0 +1,11 @@
+{
+  "id": "gitlens",
+  "name": "GitLens",
+  "version": "1.0.0",
+  "description": "Inline line blame, file blame gutter, file/line history and the GitLens sidebar",
+  "navigation": [
+    "gitlens"
+  ],
+  "icon": "🔍",
+  "color": "#a855f7"
+}

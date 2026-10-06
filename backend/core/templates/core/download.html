@@ -185,6 +185,7 @@
 <section id="download"><div class="wrap">
   <h2>Download CodeCambo</h2>
   <div class="meta"><span>Version <b id="ver">{{ version }}</b></span><span>Released <b>{{ released }}</b></span><span id="detected"></span></div>
+  {% if changes %}<div class="card" style="padding:14px 18px;margin:14px 0"><b>What's new in v{{ version }}</b><ul style="margin:8px 0 0 18px">{% for c in changes %}<li>{{ c }}</li>{% endfor %}</ul></div>{% endif %}
   <div class="tabs" role="tablist" aria-label="Operating system">
     <button role="tab" data-tab="windows" aria-selected="false">🪟 Windows</button>
     <button role="tab" data-tab="macos" aria-selected="false"> macOS</button>
