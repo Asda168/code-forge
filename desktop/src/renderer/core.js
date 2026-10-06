@@ -63,17 +63,22 @@ const THEMES = {
   solar: { name: 'Solar (Solarized-inspired)', base: 'vs', ui: { '--bg': '#fdf6e3', '--side': '#eee8d5', '--panel': '#f5eed9', '--fg': '#44575f', '--mut': '#839496', '--border': '#ddd6c1', '--hover': '#e6dfc8', '--sel': '#d6cfb8', '--accent': '#268bd2' }, ed: { 'editor.background': '#fdf6e3' } },
 };
 CF.THEMES = THEMES;
+// Syntax categories users can recolour in Settings -> Monaco token names (semantic + TextMate-style).
+CF.TOKEN_KEYS = [['comment', 'Comment', ['comment', 'comment.doc']], ['class', 'Class / Type', ['class', 'type', 'type.identifier', 'entity.name.class', 'entity.name.type', 'interface', 'enum']],
+  ['function', 'Function / Method', ['function', 'method', 'entity.name.function', 'support.function']], ['keyword', 'Keyword', ['keyword', 'keyword.control', 'storage']], ['string', 'String', ['string', 'string.escape']],
+  ['number', 'Number', ['number', 'number.float', 'constant.numeric']], ['variable', 'Variable', ['variable', 'variable.predefined', 'identifier', 'parameter']]];
 CF.applyTheme = (id) => {
   const t = THEMES[id] || THEMES['codeforge-dark'];
   const root = document.documentElement.style;
   ['--bg', '--side', '--panel', '--fg', '--mut', '--accent', '--accent2', '--cyan', '--border', '--hover', '--sel', '--status', '--status-fg'].forEach((k) => root.removeProperty(k));
   Object.entries(t.ui).forEach(([k, v]) => root.setProperty(k, v));
-  if (window.monaco) { const mid = 'cf-' + id.replace(/[^a-z0-9-]/gi, '-'); monaco.editor.defineTheme(mid, { base: t.base, inherit: true, rules: t.rules || [], colors: t.ed }); monaco.editor.setTheme(mid); }
+  if (window.monaco) { const mid = 'cf-' + id.replace(/[^a-z0-9-]/gi, '-'); monaco.editor.defineTheme(mid, { base: t.base, inherit: true, rules: [...(t.rules || []), ...CF.userTokenRules()], colors: t.ed }); monaco.editor.setTheme(mid); }
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   CF.S.terms && CF.S.terms.forEach((x) => x.xterm.options.theme = CF.termTheme());
   return bg;
 };
-CF.termTheme = () => { const cs = getComputedStyle(document.documentElement); const g = (v) => cs.getPropertyValue(v).trim(); return { background: g('--panel'), foreground: g('--fg'), cursor: g('--cyan'), selectionBackground: g('--sel') }; };
+CF.userTokenRules = () => { const tc = (CF.S.settings && CF.S.settings.tokenColors) || {}; const r = []; for (const [k, , toks] of CF.TOKEN_KEYS) if (/^#[0-9a-f]{6}$/i.test(tc[k] || '')) toks.forEach((token) => r.push({ token, foreground: tc[k].slice(1) })); return r; };
+CF.termTheme =() => { const cs = getComputedStyle(document.documentElement); const g = (v) => cs.getPropertyValue(v).trim(); return { background: g('--panel'), foreground: g('--fg'), cursor: g('--cyan'), selectionBackground: g('--sel') }; };
 
 // ---- settings ------------------------------------------------------------------
 CF.editorOptions = () => {

@@ -15,7 +15,7 @@
     const o = $('#overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
     let sel = 0, shown = [];
     const list = h('div', { class: 'list' });
-    const draw = () => { list.innerHTML = ''; shown.forEach((f, i) => list.append(h('div', { class: 'it' + (i === sel ? ' sel' : ''), onclick: () => go(f) }, h('span', {}, base(f)), h('span', { class: 'muted mono', style: 'font-size:11px' }, f)))); };
+    const draw = () => { list.innerHTML = ''; shown.forEach((f, i) => list.append(h('div', { class: 'it' + (i === sel ? ' sel' : ''), onclick: () => go(f) }, h('span', { class: 'qo-name' }, h('span', { class: 'ic', html: CF.fileIconHtml(base(f), false) }), base(f)), h('span', { class: 'muted mono', style: 'font-size:11px' }, f)))); };
     const filter = () => {
       const q = input.value.trim().toLowerCase().replace(/\\/g, '/');
       if (!q) { const open = [...S.models.keys()].map(CF.rel); shown = (open.length ? open : index).slice(0, 50); }

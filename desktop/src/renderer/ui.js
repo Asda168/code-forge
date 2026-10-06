@@ -112,6 +112,7 @@
     const txt = (k, extra) => h('div', { style: 'display:flex;gap:6px' }, h('input', { id: id(k), value: s[k] || '', style: 'flex:1', onchange: (e) => upd(k, e.target.value) }), extra);
     const chk = (k) => h('input', { id: id(k), type: 'checkbox', checked: !!s[k], style: 'width:auto', onchange: (e) => upd(k, e.target.checked) });
     const upd = async (k, v) => { await CF.setSetting({ [k]: v }); prev.style.fontFamily = `"${S.settings.fontFamily}"`; prev.style.fontSize = S.settings.fontSize + 'px'; prev.style.lineHeight = S.settings.lineHeight; prev.style.fontWeight = S.settings.fontWeight; prev.style.letterSpacing = S.settings.letterSpacing + 'px'; prev.style.fontVariantLigatures = S.settings.ligatures ? 'normal' : 'none'; };
+    const setTok = (k, v) => { const tc = { ...(S.settings.tokenColors || {}) }; if (v) tc[k] = v; else delete tc[k]; return CF.setSetting({ tokenColors: tc }); };
     const prev = h('div', { class: 'preview mono' }, 'const message = "Hello World";\n\nconsole.log(message);   // => != === <= >= ->');
     const detect = h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { const p = await cf.term.detectGitBash(); if (p) { $('#' + id('gitBashPath')).value = p; await CF.setSetting({ gitBashPath: p }); CF.toast('Found Git Bash:\n' + p); } else CF.toast('Git Bash not found. Install Git for Windows or set the path.', true); }) }, 'Detect Git Bash');
     const grid = h('div', { class: 'settings-grid' },
@@ -122,6 +123,10 @@
       ...row('Ligatures', chk('ligatures')), ...row('Smooth Font Rendering', chk('smoothFonts')),
       h('b', {}, 'Editor'), h('span'), ...row('Minimap', chk('minimap')), ...row('Word Wrap', chk('wordWrap')), ...row('Tab Size', num('tabSize', 1, 1, 8)), ...row('Insert Spaces', chk('insertSpaces')),
       ...row('Auto Save', sel('autoSave', [['off', 'Off'], ['afterDelay', 'After Delay'], ['onFocusChange', 'When Focus Changes'], ['onWindowChange', 'When Window Changes']])), ...row('Auto Save Delay (ms)', num('autoSaveDelay', 100, 100, 60000)),
+      h('b', {}, 'Editor › Syntax Colors'), h('span'), h('div', { class: 'tok-grid', style: 'grid-column:1/-1' }, ...CF.TOKEN_KEYS.flatMap(([k, label]) => {
+        const cur = (S.settings.tokenColors || {})[k]; const pick = h('input', { type: 'color', value: cur || '#cccccc', onchange: (e) => setTok(k, e.target.value) });
+        return [h('label', {}, label), pick, h('button', { class: 'btn sec sm', title: 'Use theme colour', onclick: () => { setTok(k, null); pick.value = '#cccccc'; } }, 'Reset')];
+      })),
       h('b', {}, 'Terminal'), h('span'), ...row('Default Shell', sel('defaultShell', [['', 'Auto'], ...S.shells.map((x) => [x.id, x.name])])),
       ...row('Git Bash Path (Windows)', txt('gitBashPath', detect)), ...row('PowerShell Path', txt('powershellPath')), ...row('CMD Path', txt('cmdPath')),
       h('b', {}, 'Git'), h('span'), ...row('Git Path', txt('gitPath')), ...row('Default Branch', txt('gitDefaultBranch')),

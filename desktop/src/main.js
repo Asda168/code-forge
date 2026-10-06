@@ -420,6 +420,7 @@ const DEFAULT_SETTINGS = {
   minimap: true, wordWrap: false, tabSize: 4, insertSpaces: true, autoSave: 'afterDelay', autoSaveDelay: 1000,
   theme: 'monokai-dimmed', iconTheme: 'symbols', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
   defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true, tabActions: true,
+  tokenColors: {}, // syntax colour overrides: { comment: '#rrggbb', class: ..., ... }
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
   extensions: [], customExtensions: [], disabledExtensions: [], dismissedSuggestions: [], suggestExtensions: true,
 };
