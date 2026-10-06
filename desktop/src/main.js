@@ -417,7 +417,7 @@ ipcMain.handle('project:openRoot', (_e, p) => {            // after scaffold com
 const DEFAULT_SETTINGS = {
   fontFamily: 'JetBrains Mono', fontSize: 14, fontWeight: '400', lineHeight: 1.5, letterSpacing: 0, ligatures: true, smoothFonts: true,
   minimap: true, wordWrap: false, tabSize: 4, insertSpaces: true, autoSave: 'afterDelay', autoSaveDelay: 1000,
-  theme: 'vsc-dark-modern', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
+  theme: 'monokai-dimmed', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
   defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true,
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
   extensions: [], customExtensions: [], disabledExtensions: [], dismissedSuggestions: [], suggestExtensions: true,

@@ -1,4 +1,4 @@
-// SVG icon set: stroke UI icons (activity bar, toolbars) and JetBrains-style file / folder icons for the Explorer.
+// SVG icon set: stroke UI icons (activity bar, toolbars) and Symbols-style file / folder icons for the Explorer.
 (() => {
   const { h } = CF;
 
@@ -46,47 +46,71 @@
   CF.icon = (name, size = 16, extra = '') => h('span', { class: 'svg ' + extra, html: `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${UI[name] || ''}</svg>` });
   CF.iconHtml = (name, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${UI[name] || ''}</svg>`;
 
-  // ---- JetBrains-style file icons: rounded badge with a language mark --------------------------
-  const BADGES = {
-    php: ['#7A86B8', 'php'], py: ['#3C78AA', 'Py'], js: ['#E8B400', 'JS', '#1b1b1b'], mjs: ['#E8B400', 'JS', '#1b1b1b'], cjs: ['#E8B400', 'JS', '#1b1b1b'], jsx: ['#08A7C9', 'JSX'],
-    ts: ['#3178C6', 'TS'], tsx: ['#3178C6', 'TSX'], vue: ['#3FB27F', 'V'], html: ['#E4572E', 'H'], htm: ['#E4572E', 'H'], css: ['#2D8FDD', 'CSS'], scss: ['#CD6799', 'Sc'], sass: ['#CD6799', 'Sa'], less: ['#2B5797', 'Le'],
-    json: ['#8F8F8F', '{ }', '#fff'], md: ['#5B8DB8', 'MD'], sql: ['#E48E00', 'SQL'], yml: ['#CB171E', 'Y'], yaml: ['#CB171E', 'Y'], xml: ['#D2691E', '</>'], sh: ['#4EAA25', '$_'], bash: ['#4EAA25', '$_'], bat: ['#4EAA25', '$_'], ps1: ['#2F6DB5', 'PS'],
-    env: ['#E6B422', 'env', '#1b1b1b'], txt: ['#8E9AAF', 'txt'], log: ['#8E9AAF', 'log'], lock: ['#8E9AAF', 'lck'], svg: ['#F5A623', 'SVG', '#1b1b1b'], java: ['#E76F00', 'J'], go: ['#00ADD8', 'Go'], rs: ['#CE4A1D', 'Rs'],
-    rb: ['#CC342D', 'Rb'], c: ['#5C6BC0', 'C'], h: ['#5C6BC0', 'H'], cpp: ['#00599C', 'C+'], cs: ['#68217A', 'C#'], kt: ['#7F52FF', 'Kt'], swift: ['#F05138', 'Sw'], dart: ['#0175C2', 'Da'], ini: ['#8E9AAF', 'ini'], toml: ['#8E9AAF', 'tml'],
-    png: ['#46A2A8', 'img'], jpg: ['#46A2A8', 'img'], jpeg: ['#46A2A8', 'img'], gif: ['#46A2A8', 'img'], webp: ['#46A2A8', 'img'], ico: ['#46A2A8', 'ico'], zip: ['#B8892D', 'zip'], pdf: ['#D93025', 'pdf'],
+  // ---- "Symbols"-style file icons: flat, glyph-only marks (no badge box), one soft colour per file kind ------
+  const G = {
+    code: 'M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9.2 3 6.8 13',
+    braces: 'M6 2.5c-1.5 0-2 .6-2 2v1.9c0 1-.6 1.6-1.5 1.6.9 0 1.5.6 1.5 1.6v1.9c0 1.4.5 2 2 2M10 2.5c1.5 0 2 .6 2 2v1.9c0 1 .6 1.6 1.5 1.6-.9 0-1.5.6-1.5 1.6v1.9c0 1.4-.5 2-2 2',
+    hash: 'M6.2 2.5 5.2 13.5M11.2 2.5l-1 11M2.8 6h10.7M2.5 10h10.7',
+    term: 'M2.5 3.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM4.5 6.5 6.5 8.2l-2 1.7M8 10h3',
+    lines: 'M3 4h10M3 8h10M3 12h6',
+    image: 'M2.5 3h11a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM2 11.5l3.5-3.5 3 3 2-2 3.5 3.5M10.8 6.3a.4.4 0 1 0 .01 0',
+    gear: 'M8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4',
+    db: 'M3 4c0-1 2.2-1.8 5-1.8s5 .8 5 1.8-2.2 1.8-5 1.8S3 5 3 4zM3 4v8c0 1 2.2 1.8 5 1.8s5-.8 5-1.8V4M3 8c0 1 2.2 1.8 5 1.8S13 9 13 8',
+    lock: 'M4 7.5h8a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1zM5.5 7.5V5.5a2.5 2.5 0 0 1 5 0v2',
+    box: 'M8 1.8 13.5 4.6v6.8L8 14.2 2.5 11.4V4.6zM2.5 4.6 8 7.4l5.5-2.8M8 7.4v6.8',
+    git: 'M5 3v7.5M5 10.5a2 2 0 1 0 .01 0M5 3a1.5 1.5 0 1 0 .01 0M11 5.5a1.5 1.5 0 1 0 .01 0M11 7c0 2.5-3 3-6 3.5',
+    md: 'M2 12V4l3 4 3-4v8M11 4v7.5M9.2 9.7 11 11.5l1.8-1.8',
+    angle: 'M2.5 12.5 8 3l5.5 9.5zM8 7v2.5',
+    doc: 'M4 1.8h5l3.5 3.5V13a1.2 1.2 0 0 1-1.2 1.2H4A1.2 1.2 0 0 1 2.8 13V3A1.2 1.2 0 0 1 4 1.8zM9 1.9v3.6h3.5',
+    zip: 'M4 1.8h8a1 1 0 0 1 1 1v10.4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2.8a1 1 0 0 1 1-1zM8 2v2M8 5v1M8 7v1M7 9.5h2v3H7z',
+    pdf: 'M4 1.8h5l3.5 3.5V13a1.2 1.2 0 0 1-1.2 1.2H4A1.2 1.2 0 0 1 2.8 13V3A1.2 1.2 0 0 1 4 1.8zM5.5 12c1.5-1 2.3-3 2.5-5.5.3 2.5 1.5 4 3 4.5-2 0-4 .2-5.5 1z',
+    key: 'M5.5 7.5a3 3 0 1 0 .01 0M8.2 7.5H14M12 7.5V10M10 7.5V9.5',
+    flask: 'M6 2h4M7 2v4.5L3 12.5a1 1 0 0 0 .9 1.5h8.2a1 1 0 0 0 .9-1.5L9 6.5V2M4.8 10h6.4',
+  };
+  const glyph = (color, g) => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="${G[g]}"/></svg>`;
+
+  const KIND = {
+    html: ['#E37933', 'code'], htm: ['#E37933', 'code'], xml: ['#E37933', 'code'], vue: ['#6FBF8B', 'code'], svg: ['#E6B450', 'angle'],
+    js: ['#E6C84F', 'braces'], mjs: ['#E6C84F', 'braces'], cjs: ['#E6C84F', 'braces'], jsx: ['#5CC8E0', 'braces'], ts: ['#5A9BD5', 'braces'], tsx: ['#5CC8E0', 'braces'],
+    json: ['#CBCB41', 'braces'], php: ['#8E9AD6', 'code'], py: ['#5A9BD5', 'code'], java: ['#E8744F', 'code'], go: ['#5CC8E0', 'code'], rs: ['#E8744F', 'code'], rb: ['#E8605A', 'code'],
+    c: ['#6C8BD6', 'code'], h: ['#9B8BD6', 'code'], cpp: ['#6C8BD6', 'code'], cs: ['#A579D0', 'code'], kt: ['#A579D0', 'code'], swift: ['#E8744F', 'code'], dart: ['#5CC8E0', 'code'],
+    css: ['#5A9BD5', 'hash'], scss: ['#D670A6', 'hash'], sass: ['#D670A6', 'hash'], less: ['#5A7DB5', 'hash'],
+    sh: ['#8BC46A', 'term'], bash: ['#8BC46A', 'term'], bat: ['#8BC46A', 'term'], ps1: ['#5A9BD5', 'term'], cmd: ['#8BC46A', 'term'],
+    md: ['#7FB4DA', 'md'], txt: ['#9AA0A6', 'lines'], log: ['#9AA0A6', 'lines'], csv: ['#8BC46A', 'lines'],
+    sql: ['#E8A23D', 'db'], sqlite: ['#E8A23D', 'db'], db: ['#E8A23D', 'db'],
+    yml: ['#E8605A', 'gear'], yaml: ['#E8605A', 'gear'], toml: ['#9AA0A6', 'gear'], ini: ['#9AA0A6', 'gear'], conf: ['#9AA0A6', 'gear'], env: ['#E6C84F', 'key'],
+    lock: ['#9AA0A6', 'lock'], png: ['#4DB6AC', 'image'], jpg: ['#4DB6AC', 'image'], jpeg: ['#4DB6AC', 'image'], gif: ['#4DB6AC', 'image'], webp: ['#4DB6AC', 'image'], ico: ['#4DB6AC', 'image'], bmp: ['#4DB6AC', 'image'],
+    zip: ['#C9A26B', 'zip'], gz: ['#C9A26B', 'zip'], tar: ['#C9A26B', 'zip'], '7z': ['#C9A26B', 'zip'], pdf: ['#E8605A', 'pdf'],
   };
   const NAMED = {
-    'package.json': ['#CB3837', 'npm'], 'package-lock.json': ['#CB3837', 'npm'], 'composer.json': ['#885630', 'cmp'], 'composer.lock': ['#885630', 'cmp'], 'artisan': ['#FF2D20', 'L'],
-    'manage.py': ['#0C4B33', 'Dj'], 'requirements.txt': ['#3C78AA', 'Py'], 'dockerfile': ['#2496ED', 'Dk'], '.gitignore': ['#F05033', 'git'], '.gitattributes': ['#F05033', 'git'], 'readme.md': ['#5B8DB8', 'i'],
-    'vite.config.js': ['#8B5CF6', 'Vi'], 'vite.config.ts': ['#8B5CF6', 'Vi'], 'tsconfig.json': ['#3178C6', 'TS'], 'webpack.config.js': ['#8DD6F9', 'Wp', '#1b1b1b'], '.env': ['#E6B422', 'env', '#1b1b1b'],
-    'license': ['#C0A060', 'Li'], 'makefile': ['#6D8086', 'Mk'],
+    'package.json': ['#E8605A', 'box'], 'package-lock.json': ['#E8605A', 'lock'], 'composer.json': ['#C98A5A', 'box'], 'composer.lock': ['#C98A5A', 'lock'], 'artisan': ['#F0604D', 'term'],
+    'manage.py': ['#4DB68A', 'code'], 'requirements.txt': ['#5A9BD5', 'box'], 'dockerfile': ['#5AA9E6', 'box'], 'docker-compose.yml': ['#5AA9E6', 'box'], '.gitignore': ['#F0794D', 'git'], '.gitattributes': ['#F0794D', 'git'],
+    'readme.md': ['#7FB4DA', 'md'], 'vite.config.js': ['#A579D0', 'gear'], 'vite.config.ts': ['#A579D0', 'gear'], 'tsconfig.json': ['#5A9BD5', 'gear'], 'webpack.config.js': ['#8DD6F9', 'gear'],
+    'license': ['#C0A060', 'doc'], 'makefile': ['#9AA0A6', 'gear'],
   };
-  const badge = (bg, txt, fg = '#fff') => {
-    const fs = txt.length > 2 ? 6.2 : txt.length === 2 ? 7.4 : 9;
-    return `<svg viewBox="0 0 16 16" width="16" height="16"><rect x="1" y="1" width="14" height="14" rx="3.2" fill="${bg}"/><text x="8" y="11.1" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="${fs}" fill="${fg}">${txt.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text></svg>`;
-  };
-  const GENERIC = '<svg viewBox="0 0 16 16" width="16" height="16"><path d="M4 1.5h5.2L13 5.3V13a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 13V3A1.5 1.5 0 0 1 4 1.5z" fill="#9AA7B0" fill-opacity=".25" stroke="#9AA7B0" stroke-width="1"/><path d="M9 1.8V5.5h3.7" fill="none" stroke="#9AA7B0" stroke-width="1"/></svg>';
+  const GENERIC = glyph('#9AA0A6', 'doc');
 
-  // ---- JetBrains-style folders (flat, blue-grey; special folders tinted) -------------------------
+  // ---- Symbols-style folders: outlined, tinted by purpose --------------------------------------
   const FOLDERS = {
-    src: '#4E9BD6', app: '#4E9BD6', lib: '#4E9BD6', source: '#4E9BD6', components: '#4E9BD6', pages: '#4E9BD6', views: '#4E9BD6',
-    tests: '#62B543', test: '#62B543', __tests__: '#62B543', spec: '#62B543',
+    src: '#5A9BD5', app: '#5A9BD5', lib: '#5A9BD5', source: '#5A9BD5', components: '#5A9BD5', pages: '#5A9BD5', views: '#5A9BD5',
+    tests: '#8BC46A', test: '#8BC46A', __tests__: '#8BC46A', spec: '#8BC46A',
     node_modules: '#C9A26B', vendor: '#C9A26B', dist: '#C9A26B', build: '#C9A26B', '.venv': '#C9A26B', venv: '#C9A26B', __pycache__: '#C9A26B', storage: '#C9A26B', '.next': '#C9A26B', target: '#C9A26B',
-    public: '#9B7BD6', static: '#9B7BD6', assets: '#9B7BD6', resources: '#9B7BD6', media: '#9B7BD6',
-    config: '#7E8E9A', '.github': '#8E9AAF', '.vscode': '#4E9BD6', '.idea': '#8E9AAF', docs: '#5BA8A0', migrations: '#E48E00', database: '#E48E00', routes: '#E4572E', scripts: '#4EAA25', bin: '#4EAA25',
+    public: '#A579D0', static: '#A579D0', assets: '#A579D0', resources: '#A579D0', media: '#A579D0',
+    config: '#9AA0A6', '.github': '#9AA0A6', '.vscode': '#5A9BD5', '.idea': '#9AA0A6', docs: '#4DB6AC', migrations: '#E8A23D', database: '#E8A23D', routes: '#E37933', scripts: '#8BC46A', bin: '#8BC46A', '.git': '#F0794D',
   };
   const folderSvg = (color, open) => open
-    ? `<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H12A1.5 1.5 0 0 1 13.5 5.5V6H4.2a1.5 1.5 0 0 0-1.45 1.1L1.5 11.8z" fill="${color}" fill-opacity=".75"/><path d="M3.1 7.2A1 1 0 0 1 4.05 6.5H14.4a.8.8 0 0 1 .77 1.02l-1.35 4.9a1.2 1.2 0 0 1-1.15.88H2.6z" fill="${color}"/></svg>`
-    : `<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 4A1.5 1.5 0 0 1 3 2.5h3l1.5 1.5H13A1.5 1.5 0 0 1 14.5 5.5v6.8A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12z" fill="${color}"/><path d="M1.5 6h13" stroke="#fff" stroke-opacity=".18"/></svg>`;
+    ? `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="1.3" stroke-linejoin="round"><path d="M2 12.5V3.8a1 1 0 0 1 1-1h3l1.5 1.5H12a1 1 0 0 1 1 1V6"/><path d="M2 12.5 3.6 7.2a1 1 0 0 1 .95-.7H14a.6.6 0 0 1 .58.78L13.1 12.1a1 1 0 0 1-.95.7H2z" fill="${color}" fill-opacity=".25"/></svg>`
+    : `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="1.3" stroke-linejoin="round"><path d="M2 4a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" fill="${color}" fill-opacity=".2"/></svg>`;
 
   CF.fileIconHtml = (name, isDir, open) => {
     const n = name.toLowerCase();
-    if (isDir) return folderSvg(FOLDERS[n] || '#8FA1B3', open);
-    if (NAMED[n]) return badge(...NAMED[n]);
-    if (n.endsWith('.blade.php')) return badge('#FF2D20', 'Bl');
-    if (n.startsWith('.env')) return badge(...BADGES.env);
+    if (isDir) return folderSvg(FOLDERS[n] || '#8FA9BF', open);
+    if (NAMED[n]) return glyph(...NAMED[n]);
+    if (n.endsWith('.blade.php')) return glyph('#F0604D', 'code');
+    if (/\.(test|spec)\.[jt]sx?$/.test(n)) return glyph('#8BC46A', 'flask');
+    if (n.startsWith('.env')) return glyph(...KIND.env);
     const ext = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : '';
-    return BADGES[ext] ? badge(...BADGES[ext]) : GENERIC;
+    return KIND[ext] ? glyph(...KIND[ext]) : GENERIC;
   };
 
   document.querySelectorAll('i[data-ic]').forEach((el) => { el.innerHTML = CF.iconHtml(el.dataset.ic, el.closest('#activitybar') ? 24 : 15); });
