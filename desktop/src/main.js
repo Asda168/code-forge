@@ -261,7 +261,11 @@ ipcMain.handle('fs:watch', (_e, root) => {
     watcher = fs.watch(root, { recursive: true }, (_ev, name) => {
       if (!name) return;
       const parts = String(name).split(/[\\/]/);
-      if (parts.some((p) => p === '.git' || IGNORE_SEARCH.has(p))) return;
+      if (parts[0] === '.git') {      // commits/pushes/fetches done in a terminal move HEAD or refs: refresh source control
+        if (parts[1] === 'HEAD' || parts[1] === 'ORIG_HEAD' || parts[1] === 'MERGE_HEAD' || parts[1] === 'refs') { clearTimeout(watchTimer); watchTimer = setTimeout(() => send('fs:changed'), 400); }
+        return;
+      }
+      if (parts.some((p) => IGNORE_SEARCH.has(p))) return;
       clearTimeout(watchTimer); watchTimer = setTimeout(() => send('fs:changed'), 400);
     });
     watcher.on('error', () => {});
@@ -349,7 +353,7 @@ ipcMain.handle('git:run', (_e, cwd, args, opts = {}) => new Promise((resolve) =>
   } catch (err) { return resolve({ code: -1, stdout: '', stderr: err.message }); }
   const s = readJson('settings.json', {});
   execFile(s.gitPath || gitPath, args, { cwd, maxBuffer: 64 * 1024 * 1024, windowsHide: true, timeout: opts.timeout || 120000,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' } },
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true', GIT_OPTIONAL_LOCKS: '0' } },
   (err, stdout, stderr) => resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, stdout, stderr }));
 }));
 ipcMain.handle('git:clone', async (_e, url, parentDir) => {

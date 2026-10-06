@@ -117,6 +117,7 @@
 
   // ---- open folder / welcome -----------------------------------------------------------
   CF.setRoot = CF.guard(async (root) => {
+    if (S.root !== root && CF.closeAllTerminals) CF.closeAllTerminals();   // terminals belong to the project they were opened in
     CF.closeAllEditors(); S.root = root; T.expanded.clear(); T.kids.clear(); T.sel = null; $('#welcome').hidden = true;
     document.title = `${base(root)} — CodeCambo`;
     CF.watchRoot && CF.watchRoot(); CF.showView('explorer'); CF.gitRefresh && CF.gitRefresh(); CF.detectProject && CF.detectProject();

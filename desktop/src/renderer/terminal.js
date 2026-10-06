@@ -1,7 +1,8 @@
 // Integrated terminals (xterm.js over the main-process PTY), project runner, Laravel/Django tools, project wizard.
 (() => {
   const { S, $, h, base, join } = CF;
-  S.terms = []; S.shells = []; let activeTerm = null; let runTerm = null; S.project = { kinds: [], runs: [] };
+  S.terms = []; S.shells = []; let activeTerm = null; let runTerm = null; const runTerms = new Map();   // one terminal per run configuration so several tasks run at once
+   S.project = { kinds: [], runs: [] };
 
   CF.initTerminal = CF.guard(async () => {
     S.shells = await cf.term.shells();
@@ -93,8 +94,11 @@
         ondragover: (e) => { if (e.dataTransfer.types.includes('text/cf-tab')) { e.preventDefault(); tab.classList.add('drop'); } },
         ondragleave: () => tab.classList.remove('drop'),
         ondrop: (e) => { e.preventDefault(); tab.classList.remove('drop'); const from = +e.dataTransfer.getData('text/cf-tab'); const to = S.tgroups.indexOf(g); if (isNaN(from) || from === to) return; const [m] = S.tgroups.splice(from, 1); S.tgroups.splice(to, 0, m); renderTermTabs(); } },
-        CF.icon('terminal', 13), h('span', {}, g.terms.map((x) => x.name).join(' | ')),
-        h('span', { class: 'x', title: 'Kill terminal', onclick: (e) => { e.stopPropagation(); [...g.terms].forEach(closeTerm); } }, CF.icon('close', 12)));
+        CF.icon('terminal', 13),
+        // each split pane has its own name + close button so one terminal can be closed without killing the others
+        ...g.terms.map((x, i) => h('span', { class: 'tt-pane' + (x === activeTerm ? ' cur' : ''), onclick: (e) => { if (g.terms.length > 1) { e.stopPropagation(); selectTerm(x); } } }, (i ? '| ' : '') + x.name,
+          g.terms.length > 1 ? h('span', { class: 'x', title: `Close ${x.name}`, onclick: (e) => { e.stopPropagation(); closeTerm(x); } }, CF.icon('close', 11)) : null)),
+        g.terms.length > 1 ? null : h('span', { class: 'x', title: 'Kill terminal', onclick: (e) => { e.stopPropagation(); closeTerm(g.terms[0]); } }, CF.icon('close', 12)));
       tabs.append(tab);
     });
   }
@@ -127,11 +131,12 @@
     cf.term.kill(t.id); t.xterm.dispose(); t.host.remove();
     S.terms.splice(S.terms.indexOf(t), 1); const g = t.grp; g.terms.splice(g.terms.indexOf(t), 1);
     if (!g.terms.length) S.tgroups.splice(S.tgroups.indexOf(g), 1);
-    if (runTerm === t) runTerm = null;
+    if (runTerm === t) runTerm = null; for (const [k, v] of runTerms) if (v === t) runTerms.delete(k);
     if (g.terms.length) selectTerm(g.terms[0]);
     else if (S.terms.length) selectTerm(S.tgroups[S.tgroups.length - 1].terms[0]);
     else { activeTerm = null; $('#term-tabs').innerHTML = ''; }
   }
+  CF.closeAllTerminals = () => { [...S.terms].forEach(closeTerm); runTerm = null; runTerms.clear(); };
   CF.showPanel = (name) => {
     $('#panel').classList.remove('hidden');
     $$('#panel-tabs [data-panel]').forEach((b) => b.classList.toggle('active', b.dataset.panel === name));
@@ -146,8 +151,10 @@
   // and obviously destructive ones need an extra confirmation.
   CF.runInTerminal = CF.guard(async (command, { reuse = 'run', cwd } = {}) => {
     if (!(await cf.project.confirmDangerous(command))) return;
-    let t = reuse === 'run' ? runTerm : null;
-    if (!t || t.exited || !S.terms.includes(t)) { t = await CF.newTerminal(undefined, cwd); if (reuse === 'run') { runTerm = t; t.name = 'Run'; selectTerm(t); } }
+    const key = reuse === 'run' ? 'Run' : reuse === 'new' ? null : reuse;
+    let t = key ? runTerms.get(key) : null;
+    if (!t || t.exited || !S.terms.includes(t)) { t = await CF.newTerminal(undefined, cwd); if (key) { runTerms.set(key, t); t.name = key; } }
+    if (key) runTerm = t; selectTerm(t);
     setTimeout(() => cf.term.write(t.id, command + '\r'), 250);
   });
 
@@ -166,11 +173,12 @@
     }
     const prefix = env.length ? (S.platform.platform === 'win32' ? env.map((e) => `set ${e}&& `).join('') : env.join(' ') + ' ') : '';
     CF.debugLog(`${debug ? '[debug] ' : ''}$ ${prefix}${cmd}`);
-    CF.runInTerminal(prefix + cmd, { cwd: c.cwd ? sub(c.cwd) : S.root });
+    CF.runInTerminal(prefix + cmd, { cwd: c.cwd ? sub(c.cwd) : S.root, reuse: c.name || 'Run' });
     if (c.url) setTimeout(() => CF.toast(`Open ${c.url}`), 1500);
   }
   CF.debugLog = (line) => { const d = $('#panel-debug'); d.append(h('div', {}, line)); d.scrollTop = d.scrollHeight; };
   CF.stopRun = () => { if (runTerm && !runTerm.exited) cf.term.write(runTerm.id, '\x03'); };
+  CF.stopAllRuns = () => runTerms.forEach((t) => { if (!t.exited) cf.term.write(t.id, String.fromCharCode(3)); });
   let lastCfg = null;
   CF.runProject = (c, debug) => { c = c || lastCfg || S.project.runs[0] || customRuns()[0]; if (!c) return CF.toast('No run configuration detected. Add one in the Run panel.', true); lastCfg = c; runConfig(c, debug); };
   CF.restartRun = () => { CF.stopRun(); setTimeout(() => CF.runProject(lastCfg), 800); };
@@ -185,7 +193,7 @@
     body.append(h('div', { class: 'pad' },
       h('div', { class: 'muted', style: 'margin-bottom:8px' }, kinds.length ? 'Detected: ' + kinds.join(', ') : 'No project type detected'),
       h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: () => CF.runProject() }, CF.icon('play', 13), ' Run'), h('button', { class: 'btn sec sm', onclick: () => CF.runProject(null, true) }, CF.icon('bug', 13), ' Debug'),
-        h('button', { class: 'btn sec sm', onclick: CF.stopRun }, CF.icon('stop', 13), ' Stop'), h('button', { class: 'btn sec sm', onclick: CF.restartRun }, CF.icon('restart', 13), ' Restart'))));
+        h('button', { class: 'btn sec sm', onclick: CF.stopRun }, CF.icon('stop', 13), ' Stop'), h('button', { class: 'btn sec sm', title: 'Stop every running task', onclick: CF.stopAllRuns }, 'Stop all'), h('button', { class: 'btn sec sm', onclick: CF.restartRun }, CF.icon('restart', 13), ' Restart'))));
     body.append(h('div', { class: 'sec-head' }, 'Run configurations', h('span', { class: 'grow' }), h('button', { class: 'icon-btn', title: 'Add configuration', onclick: addConfig }, CF.icon('plus', 14))));
     runs.forEach((c) => body.append(h('div', { class: 'gi run-cfg', onclick: () => CF.runProject(c) }, CF.icon('play', 12, 'ok'), h('span', { class: 'nm' }, c.name), h('span', { class: 'muted mono' }, c.command))));
     if (kinds.includes('laravel')) {

@@ -16,6 +16,7 @@
     const head = lines.shift() || '';
     G.branch = head.replace(/^## /, '').split('...')[0].replace(/^No commits yet on /, '');
     G.sync = (head.match(/\[(.+)\]/) || [])[1] || '';
+    G.ahead = +((G.sync.match(/ahead (\d+)/) || [])[1] || 0); G.behind = +((G.sync.match(/behind (\d+)/) || [])[1] || 0); G.gone = /gone/.test(G.sync); G.hasUp = head.includes('...');
     CF.G = G;
     G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3).replace(/^"|"$/g, '').replace(/.* -> /, '') }));
     const total = new Set(G.files.map((f) => f.path)).size;
@@ -93,9 +94,26 @@
   const pushIt = CF.guard(async () => {
     const r = await git(['push']);
     if (r.code !== 0 && /no upstream/.test(r.stderr)) { if (await CF.confirm(`No upstream for ${G.branch}. Publish branch to origin?`, 'Publish')) await must(['push', '-u', 'origin', G.branch]); }
-    else if (r.code !== 0) throw new Error(r.stderr.trim());
-    CF.toast('Pushed'); CF.gitRefresh();
+    else if (r.code !== 0) {
+      if (/rejected|fetch first|non-fast-forward|behind/i.test(r.stderr)) { await CF.gitRefresh(); if (await CF.confirm('Remote has newer commits (not up to date). Pull then push?', 'Pull & push')) return syncIt(); return; }
+      throw new Error(r.stderr.trim());
+    }
+    CF.toast('Pushed'); await CF.gitRefresh();
   });
+  // Sync = fetch, pull (rebase-free merge), push - like VS Code's "Sync Changes".
+  const syncIt = CF.guard(async () => {
+    await must(['fetch', '--all']); await CF.gitRefresh();
+    if (G.behind) await must(['pull']);
+    await CF.gitRefresh();
+    if (G.ahead || !G.hasUp) await pushIt();
+    else CF.toast(G.behind ? 'Pulled, up to date' : 'Already up to date');
+    await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree();
+  });
+  CF.gitSync = () => syncIt();
+  // Keep ahead/behind current without restarting: refresh on window focus, auto-fetch every 3 minutes.
+  const autoFetch = async () => { if (!S.root || !G.repo || !G.hasUp || document.hidden) return; await git(['fetch', '--quiet'], { timeout: 30000 }); CF.gitRefresh(); };
+  setInterval(autoFetch, 180000);
+  window.addEventListener('focus', () => { if (S.root) { CF.gitRefresh(); setTimeout(autoFetch, 500); } });
   const newBranch = CF.guard(async () => { const v = await CF.ask('Create Branch', [{ id: 'n', label: 'Branch name', placeholder: 'feature/login' }]); if (v && /^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Create branch', ['checkout', '-b', v.n])(); else if (v) CF.toast('Invalid branch name', true); });
   const addRemote = CF.guard(async () => { const v = await CF.ask('Add Remote', [{ id: 'n', label: 'Name', value: 'origin' }, { id: 'u', label: 'URL (https or ssh)' }]); if (v && v.u) run('Add remote', ['remote', 'add', v.n, v.u])(); });
 
