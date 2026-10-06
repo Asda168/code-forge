@@ -241,3 +241,6 @@ input,select,textarea{border-radius:var(--r)}
 .diff-bar .btn.on{background:var(--accent);color:#fff}
 .diff-stats{margin-left:auto;font-size:12px;color:var(--mut)}
 .diff-labels{font-size:12px;color:var(--mut);margin-bottom:6px}
+.tab .ic{display:inline-flex;line-height:0;flex:none;margin-right:6px}
+#sb-lang{display:inline-flex;align-items:center;gap:5px}#sb-lang svg{width:13px;height:13px}
+.tabs-acts{margin-left:auto;display:flex;align-items:center;gap:2px;padding:0 6px;flex:none;position:sticky;right:0;background:var(--side)}.tabs-acts .icon-btn{font-size:11px;padding:2px 6px;width:auto}

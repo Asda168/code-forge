@@ -66,6 +66,10 @@
     pdf: 'M4 1.8h5l3.5 3.5V13a1.2 1.2 0 0 1-1.2 1.2H4A1.2 1.2 0 0 1 2.8 13V3A1.2 1.2 0 0 1 4 1.8zM5.5 12c1.5-1 2.3-3 2.5-5.5.3 2.5 1.5 4 3 4.5-2 0-4 .2-5.5 1z',
     key: 'M5.5 7.5a3 3 0 1 0 .01 0M8.2 7.5H14M12 7.5V10M10 7.5V9.5',
     flask: 'M6 2h4M7 2v4.5L3 12.5a1 1 0 0 0 .9 1.5h8.2a1 1 0 0 0 .9-1.5L9 6.5V2M4.8 10h6.4',
+    // elephant (PHP): side view facing left, trunk, ear, eye, two legs
+    elephant: 'M3 6.5a3 3 0 0 1 3-3h4.5a3 3 0 0 1 3 3v6h-2.2V10H7v2.5H4.8V9.6M3 6.5v5.4c0 .8-1.2 1-1.4.2M7.6 5.6c1 0 1.6.8 1.6 1.7S8.4 9 7.6 8.6M5.2 5.6h.01',
+    // snake (Python): S-curve body, head with eye at upper right
+    snake: 'M12 4.6a2 2 0 0 0-2-2H6.4a2.8 2.8 0 0 0 0 5.6h3.2a2.8 2.8 0 0 1 0 5.6H3.5M12 4.6v1.2M10.4 4.2h.01',
   };
   // Icon themes: symbols (flat coloured glyphs), badges (glyph on a tinted tile), minimal (monochrome).
   CF.ICON_THEMES = { symbols: 'Symbols (default)', badges: 'Colour Badges', minimal: 'Minimal (monochrome)' };
@@ -80,7 +84,7 @@
   const KIND = {
     html: ['#E37933', 'code'], htm: ['#E37933', 'code'], xml: ['#E37933', 'code'], vue: ['#6FBF8B', 'code'], svg: ['#E6B450', 'angle'],
     js: ['#E6C84F', 'braces'], mjs: ['#E6C84F', 'braces'], cjs: ['#E6C84F', 'braces'], jsx: ['#5CC8E0', 'braces'], ts: ['#5A9BD5', 'braces'], tsx: ['#5CC8E0', 'braces'],
-    json: ['#CBCB41', 'braces'], php: ['#8E9AD6', 'code'], py: ['#5A9BD5', 'code'], java: ['#E8744F', 'code'], go: ['#5CC8E0', 'code'], rs: ['#E8744F', 'code'], rb: ['#E8605A', 'code'],
+    json: ['#CBCB41', 'braces'], php: ['#8E9AD6', 'elephant'], py: ['#5A9BD5', 'snake'], java: ['#E8744F', 'code'], go: ['#5CC8E0', 'code'], rs: ['#E8744F', 'code'], rb: ['#E8605A', 'code'],
     c: ['#6C8BD6', 'code'], h: ['#9B8BD6', 'code'], cpp: ['#6C8BD6', 'code'], cs: ['#A579D0', 'code'], kt: ['#A579D0', 'code'], swift: ['#E8744F', 'code'], dart: ['#5CC8E0', 'code'],
     css: ['#5A9BD5', 'hash'], scss: ['#D670A6', 'hash'], sass: ['#D670A6', 'hash'], less: ['#5A7DB5', 'hash'],
     sh: ['#8BC46A', 'term'], bash: ['#8BC46A', 'term'], bat: ['#8BC46A', 'term'], ps1: ['#5A9BD5', 'term'], cmd: ['#8BC46A', 'term'],
@@ -92,7 +96,7 @@
   };
   const NAMED = {
     'package.json': ['#E8605A', 'box'], 'package-lock.json': ['#E8605A', 'lock'], 'composer.json': ['#C98A5A', 'box'], 'composer.lock': ['#C98A5A', 'lock'], 'artisan': ['#F0604D', 'term'],
-    'manage.py': ['#4DB68A', 'code'], 'requirements.txt': ['#5A9BD5', 'box'], 'dockerfile': ['#5AA9E6', 'box'], 'docker-compose.yml': ['#5AA9E6', 'box'], '.gitignore': ['#F0794D', 'git'], '.gitattributes': ['#F0794D', 'git'],
+    'manage.py': ['#4DB68A', 'snake'], 'requirements.txt': ['#5A9BD5', 'box'], 'dockerfile': ['#5AA9E6', 'box'], 'docker-compose.yml': ['#5AA9E6', 'box'], '.gitignore': ['#F0794D', 'git'], '.gitattributes': ['#F0794D', 'git'],
     'readme.md': ['#7FB4DA', 'md'], 'vite.config.js': ['#A579D0', 'gear'], 'vite.config.ts': ['#A579D0', 'gear'], 'tsconfig.json': ['#5A9BD5', 'gear'], 'webpack.config.js': ['#8DD6F9', 'gear'],
     'license': ['#C0A060', 'doc'], 'makefile': ['#9AA0A6', 'gear'],
   };
@@ -114,6 +118,8 @@
     if (isDir) return folderSvg(theme() === 'minimal' ? '#9AA0A6' : (FOLDERS[n] || '#8FA9BF'), open);
     if (NAMED[n]) return glyph(...NAMED[n]);
     if (n.endsWith('.blade.php')) return glyph('#F0604D', 'code');
+    if (/\.(pyw|pyi)$/.test(n)) return glyph(...KIND.py);
+    if (/\.(phtml|php\d)$/.test(n)) return glyph(...KIND.php);
     if (/\.(test|spec)\.[jt]sx?$/.test(n)) return glyph('#8BC46A', 'flask');
     if (n.startsWith('.env')) return glyph(...KIND.env);
     const ext = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : '';

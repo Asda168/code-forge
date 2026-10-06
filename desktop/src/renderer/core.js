@@ -197,9 +197,11 @@ CF.renderTabs = () => S.groups.forEach((g) => {
       ondragover: (e) => { e.preventDefault(); t.classList.add('drop'); }, ondragleave: () => t.classList.remove('drop'),
       ondrop: (e) => { e.preventDefault(); t.classList.remove('drop'); try { const d = JSON.parse(e.dataTransfer.getData('text/cf-tab')); const src = S.groups[d.gi];
         if (src === g) { g.tabs.splice(g.tabs.indexOf(d.p), 1); g.tabs.splice(g.tabs.indexOf(p), 0, d.p); CF.renderTabs(); } else { CF.closeTab(src, d.p, true); CF.openFile(d.p, { group: g }); } } catch { /* ignore */ } },
-    }, h('span', { class: 'name' }, base(p)), h('span', { class: 'x', onclick: (e) => { e.stopPropagation(); CF.closeTab(g, p); } }, h('span', {}, '✕')));
+    }, h('span', { class: 'ic', html: CF.fileIconHtml(base(p), false) }), h('span', { class: 'name' }, base(p)), h('span', { class: 'x', onclick: (e) => { e.stopPropagation(); CF.closeTab(g, p); } }, h('span', {}, '✕')));
     g.tabsEl.append(t);
   });
+  if (ordered.length) g.tabsEl.append(h('span', { class: 'tabs-acts' },
+    h('button', { class: 'icon-btn', title: 'Close Saved', onclick: () => CF.closeSaved(g) }, 'Saved'), h('button', { class: 'icon-btn', title: 'Close All', onclick: () => [...g.tabs].forEach((x) => CF.closeTab(g, x)) }, 'All')));
 });
 CF.closeTab = CF.guard(async (g, p, force) => {
   const m = S.models.get(p);
@@ -226,7 +228,7 @@ CF.save = CF.guard(async (path) => {
 CF.saveAll = () => [...S.models.keys()].forEach((p) => CF.save(p));
 CF.updateStatus = () => {
   const g = CF.activeGroup(); const m = g && g.active && S.models.get(g.active);
-  $('#sb-lang').textContent = m ? CF.langLabel(m.path) : '—'; $('#sb-eol').textContent = m ? m.eol : 'LF';
+  $('#sb-lang').innerHTML = m ? CF.fileIconHtml(base(m.path), false) : ''; $('#sb-lang').append(m ? CF.langLabel(m.path) : '—'); $('#sb-eol').textContent = m ? m.eol : 'LF';
   if (!m) $('#sb-pos').textContent = '';
 };
 CF.reloadOpenFiles = CF.guard(async () => {
