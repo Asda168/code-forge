@@ -117,11 +117,12 @@
 
   // ---- open folder / welcome -----------------------------------------------------------
   CF.setRoot = CF.guard(async (root) => {
-    if (S.root !== root && CF.closeAllTerminals) CF.closeAllTerminals();   // terminals belong to the project they were opened in
+    const norm = (p) => p.split('\\').join('/').toLowerCase(); const switched = !!S.root && norm(S.root) !== norm(root);
+    if (switched && CF.closeAllTerminals) CF.closeAllTerminals();   // terminals belong to the project they were opened in
     CF.closeAllEditors(); S.root = root; T.expanded.clear(); T.kids.clear(); T.sel = null; $('#welcome').hidden = true;
     document.title = `${base(root)} — CodeCambo`;
     CF.watchRoot && CF.watchRoot(); CF.showView('explorer'); CF.gitRefresh && CF.gitRefresh(); CF.detectProject && CF.detectProject();
-    CF.newTerminal && !S.terms.length && CF.newTerminal();
+    CF.newTerminal && !S.terms.length && CF.newTerminal(undefined, root);   // new project -> fresh terminal opened in the new folder
   });
   CF.openFolder = CF.guard(async () => { const r = await cf.ws.openDialog(); if (r) CF.setRoot(r); });
 
