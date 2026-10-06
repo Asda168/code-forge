@@ -13,7 +13,8 @@
   $$('#panel-tabs [data-panel]').forEach((b) => (b.onclick = () => CF.showPanel(b.dataset.panel)));
   $('#panel-close').onclick = CF.togglePanel; $('#panel-max').onclick = CF.toggleMaxPanel;
   $('#cmd-center').onclick = CF.palette;
-  $('#sb-branch').onclick = () => CF.showView('git');
+  $('#sb-branch').onclick = () => (CF.G && (CF.G.ahead || CF.G.behind) ? CF.gitSync() : CF.showView('git'));   // ahead/behind: click to sync
+  $('#sb-md').onclick = () => CF.toggleMdPreview();
   $('#sb-problems').onclick = () => CF.showPanel('problems');
   $('#sb-font').onclick = CF.settingsDialog;
   monaco.editor.onDidChangeMarkers(() => CF.updateProblems());

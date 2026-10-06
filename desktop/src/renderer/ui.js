@@ -120,7 +120,7 @@
       ...row('Font Family', sel('fontFamily', ['JetBrains Mono', 'Consolas', 'Menlo', 'Fira Code', 'Cascadia Code', 'monospace'])),
       ...row('Font Size', sel('fontSize', CF.FONT_SIZES.map((x) => [x, x + 'px']))), ...row('Line Height', num('lineHeight', 0.1, 1, 3)),
       ...row('Font Weight', sel('fontWeight', [['300', 'Light'], ['400', 'Regular'], ['500', 'Medium'], ['700', 'Bold']])), ...row('Letter Spacing', num('letterSpacing', 0.1, -2, 5)),
-      ...row('Ligatures', chk('ligatures')), ...row('Smooth Font Rendering', chk('smoothFonts')),
+      ...row('Bracket Pair Colors', chk('bracketColors')), ...row('Sticky Scroll', chk('stickyScroll')), ...row('Trim Trailing Whitespace on Save', chk('trimWhitespace')), ...row('Insert Final Newline on Save', chk('finalNewline')), ...row('Ligatures', chk('ligatures')), ...row('Smooth Font Rendering', chk('smoothFonts')),
       h('b', {}, 'Editor'), h('span'), ...row('Minimap', chk('minimap')), ...row('Word Wrap', chk('wordWrap')), ...row('Tab Size', num('tabSize', 1, 1, 8)), ...row('Insert Spaces', chk('insertSpaces')),
       ...row('Auto Save', sel('autoSave', [['off', 'Off'], ['afterDelay', 'After Delay'], ['onFocusChange', 'When Focus Changes'], ['onWindowChange', 'When Window Changes']])), ...row('Auto Save Delay (ms)', num('autoSaveDelay', 100, 100, 60000)),
       h('b', {}, 'Editor › Syntax Colors'), h('span'), h('div', { class: 'tok-grid', style: 'grid-column:1/-1' }, ...CF.TOKEN_KEYS.flatMap(([k, label]) => {

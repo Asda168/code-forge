@@ -88,7 +88,7 @@ CF.editorOptions = () => {
     letterSpacing: +s.letterSpacing, fontLigatures: !!s.ligatures, fontSmoothing: s.smoothFonts ? 'antialiased' : 'auto',
     minimap: { enabled: !!s.minimap }, wordWrap: s.wordWrap ? 'on' : 'off', tabSize: +s.tabSize, insertSpaces: !!s.insertSpaces,
     bracketPairColorization: { enabled: true }, guides: { bracketPairs: true }, smoothScrolling: true, cursorSmoothCaretAnimation: 'on',
-    scrollBeyondLastLine: false, automaticLayout: true, renderWhitespace: 'selection', formatOnPaste: true, 'semanticHighlighting.enabled': true,
+    bracketPairColorization: { enabled: s.bracketColors !== false }, stickyScroll: { enabled: !!s.stickyScroll }, scrollBeyondLastLine: false, automaticLayout: true, renderWhitespace: 'selection', formatOnPaste: true, 'semanticHighlighting.enabled': true,
   };
 };
 CF.applySettings = () => {
@@ -223,6 +223,12 @@ CF.closeTab = CF.guard(async (g, p, force) => {
 });
 CF.save = CF.guard(async (path) => {
   const g = CF.activeGroup(); path = path || g.active; const m = path && S.models.get(path); if (!m || !m.dirty) return;
+  if (!/\.(md|markdown)$/i.test(path)) {       // optional save-time clean-up (kept off for Markdown, where trailing double-space is a line break)
+    const edits = [];
+    if (S.settings.trimWhitespace) for (let i = 1, n = m.model.getLineCount(); i <= n; i++) { const c = m.model.getLineMaxColumn(i), t = m.model.getLineContent(i).replace(/\s+$/, '').length + 1; if (t < c) edits.push({ range: new monaco.Range(i, t, i, c), text: '' }); }
+    if (S.settings.finalNewline) { const n = m.model.getLineCount(), c = m.model.getLineMaxColumn(n); if (c > 1) edits.push({ range: new monaco.Range(n, c, n, c), text: '\n' }); }
+    if (edits.length) m.model.pushEditOperations([], edits, () => null);
+  }
   const text = m.model.getValue(); await cf.fs.write(path, text); m.saved = text; m.dirty = false; CF.renderTabs();
   if (path === S.settingsFile) {                // hand-edited settings.json: re-read it and reload extensions
     try { JSON.parse(text); } catch (e) { return CF.toast('settings.json is not valid JSON: ' + e.message, true); }
@@ -233,7 +239,7 @@ CF.save = CF.guard(async (path) => {
 CF.saveAll = () => [...S.models.keys()].forEach((p) => CF.save(p));
 CF.updateStatus = () => {
   const g = CF.activeGroup(); const m = g && g.active && S.models.get(g.active);
-  $('#sb-lang').innerHTML = m ? CF.fileIconHtml(base(m.path), false) : ''; $('#sb-lang').append(m ? CF.langLabel(m.path) : '—'); $('#sb-eol').textContent = m ? m.eol : 'LF';
+  $('#sb-lang').innerHTML = m ? CF.fileIconHtml(base(m.path), false) : ''; $('#sb-lang').append(m ? CF.langLabel(m.path) : '—'); $('#sb-eol').textContent = m ? m.eol : 'LF'; { const md = $('#sb-md'); if (md) md.hidden = !(m && /\.(md|markdown|mdx)$/i.test(m.path)); }
   if (!m) $('#sb-pos').textContent = '';
 };
 CF.reloadOpenFiles = CF.guard(async () => {
