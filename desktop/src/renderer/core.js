@@ -201,7 +201,7 @@ CF.renderTabs = () => S.groups.forEach((g) => {
     g.tabsEl.append(t);
   });
   if (ordered.length) g.tabsEl.append(h('span', { class: 'tabs-acts' },
-    h('button', { class: 'icon-btn', title: 'Close Saved', onclick: () => CF.closeSaved(g) }, 'Saved'), h('button', { class: 'icon-btn', title: 'Close All', onclick: () => [...g.tabs].forEach((x) => CF.closeTab(g, x)) }, 'All')));
+    h('button', { class: 'icon-btn', title: 'Close Saved', onclick: () => CF.closeSaved(g) }, 'Close Saved'), h('button', { class: 'icon-btn', title: 'Close All', onclick: () => [...g.tabs].forEach((x) => CF.closeTab(g, x)) }, 'Close All')));
 });
 CF.closeTab = CF.guard(async (g, p, force) => {
   const m = S.models.get(p);
