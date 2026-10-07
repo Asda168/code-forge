@@ -98,6 +98,7 @@
         "rpm"
       ],
       "artifactName": "CodeCambo.${ext}",
+      "maintainer": "CodeCambo <Asda168@users.noreply.github.com>",
       "desktop": {
         "Name": "CodeCambo",
         "Comment": "Code. Build. Run. Ship.",

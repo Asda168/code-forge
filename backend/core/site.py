@@ -18,10 +18,10 @@ _REL = f"{REPO}/releases/latest/download"
 DOWNLOADS = [
     {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "CodeCambo-Setup-x64.exe", "url": f"{_REL}/CodeCambo-Setup-x64.exe", "available": True},
     {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "CodeCambo-Setup-arm64.exe", "url": f"{_REL}/CodeCambo-Setup-arm64.exe", "available": True},
-    {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "CodeCambo-macOS-universal.dmg", "url": f"{_REL}/CodeCambo-macOS-universal.dmg", "available": False},
-    {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "CodeCambo.AppImage", "url": f"{_REL}/CodeCambo.AppImage", "available": False},
-    {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": False},
-    {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeCambo.rpm", "url": f"{_REL}/CodeCambo.rpm", "available": False},
+    {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "CodeCambo-macOS-universal.dmg", "url": f"{_REL}/CodeCambo-macOS-universal.dmg", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "CodeCambo.AppImage", "url": f"{_REL}/CodeCambo.AppImage", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeCambo.rpm", "url": f"{_REL}/CodeCambo.rpm", "available": True},
 ]
 PROJECTS = [
     {"name": "Portfolio (Django)", "description": "Single-page personal portfolio built with Django: typewriter intro, skills, experience, projects and a validated contact form.",
