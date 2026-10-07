@@ -8,11 +8,12 @@ REPO = "https://github.com/Asda168/code-forge"
 VERSION = "1.3.4"
 RELEASED = "2026-10-07"
 CHANGES = [
-    "Installer can now upgrade over a running CodeCambo (closes it and its terminals automatically)",
-    "Sticky scroll pins only functions, methods and classes, and is on by default",
-    "Editor scrolling and indent guides tuned",
-    "Fixed Ctrl+F find shortcut and newest-first file history",
-    "Windows installers are now self-contained (separate x64 and arm64 builds)",
+    "Installer can upgrade over a running CodeCambo",
+    "Sticky scroll improvements",
+    "Editor scrolling improvements",
+    "Ctrl+F fixes",
+    "File history improvements",
+    "Windows x64 and ARM64 installers",
 ]
 _REL = f"{REPO}/releases/latest/download"
 
