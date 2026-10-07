@@ -364,7 +364,14 @@ footer{border-top:1px solid var(--line);padding:64px 0 32px;background:var(--bg2
 
 <!-- PROJECTS -->
 <section id="projects" class="tight" aria-labelledby="h-proj"><div class="wrap">
-  <div class="sec-h reveal"><p class="eyebrow">Projects</p><h2 id="h-proj">Built with <span class="grad">CodeCambo.</span></h2><p class="lead">Real projects made in the editor you're about to download.</p></div>
+  <div class="sec-h reveal"><p class="eyebrow">Projects</p><h2 id="h-proj">Built with <span class="grad">CodeCambo.</span></h2><p class="lead">{% if show_projects %}Real projects made in the editor you're about to download.{% else %}A showcase of projects made with CodeCambo.{% endif %}</p></div>
+  {% if not show_projects %}
+  <div class="card reveal" style="text-align:center;padding:56px 24px">
+    <p class="eyebrow" style="margin-bottom:10px">Coming soon</p>
+    <h3 style="font-size:1.5rem;margin-bottom:10px">Projects are on the way.</h3>
+    <p style="color:var(--mut);margin:0 auto;max-width:46ch">We're preparing a showcase of what developers build with CodeCambo. Check back soon.</p>
+  </div>
+  {% else %}
   <div class="pgrid">
     {% for p in projects %}
     <article class="card proj reveal">
@@ -377,6 +384,7 @@ footer{border-top:1px solid var(--line);padding:64px 0 32px;background:var(--bg2
     </article>
     {% endfor %}
   </div>
+  {% endif %}
 </div></section>
 
 <!-- DOWNLOAD -->

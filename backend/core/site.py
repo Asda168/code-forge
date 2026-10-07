@@ -25,6 +25,8 @@ DOWNLOADS = [
     {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": True},
     {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeCambo.rpm", "url": f"{_REL}/CodeCambo.rpm", "available": True},
 ]
+# Set True to show the project cards below; while False the Projects section shows "Coming soon".
+SHOW_PROJECTS = False
 PROJECTS = [
     {"name": "Portfolio (Django)", "description": "Single-page personal portfolio built with Django: typewriter intro, skills, experience, projects and a validated contact form.",
      "tags": ["Django", "Python", "Tailwind", "Vercel"], "url": "https://oukasda.vercel.app/", "source": "https://github.com/Asda168/portfolio-django"},
@@ -43,6 +45,6 @@ def catalog():
 def context():
     return {
         "extensions": catalog(),
-        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS,
+        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS, "show_projects": SHOW_PROJECTS,
         "source_zip": f"{REPO}/archive/refs/heads/main.zip",
     }
