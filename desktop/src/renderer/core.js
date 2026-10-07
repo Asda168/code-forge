@@ -509,6 +509,79 @@ CF.FONT_SIZES = [
   8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30, 32,
 ];
 
+// ---- function-only outline (drives Sticky Scroll) -----------------------------------
+// Monaco's standalone editor has no symbol provider for most languages, so Sticky Scroll
+// would pin every foldable block (objects, if/for, consts). This returns only function /
+// method / class blocks, nested by containment.
+const FN_KW = /^(if|for|foreach|while|switch|catch|else|elseif|elif|return|do|try|finally|with|except|await|new|typeof|throw|until|unless|match|using|lock|fixed|loop|when|case|default|synchronized)\b/;
+const FN_CLASS = /^(export\s+)?(default\s+)?(abstract\s+|final\s+|public\s+|static\s+)*(class|interface|trait|struct|enum|impl|module|namespace)\b/;
+const FN_DECL = /^((export|public|private|protected|static|final|abstract|override|async|default|pub|unsafe|extern)\s+)*(function\*?|def|fn|func|fun|sub)\b/;
+const FN_ARROW = /(=>|\bfunction\b\s*\*?\s*\w*\s*\([^)]*\))\s*\{\s*$/;
+const FN_METHOD = /^((public|private|protected|static|final|abstract|override|async|get|set|virtual|internal|readonly)\s+)*([\w$<>\[\],.?*&:]+\s+)*[\w$.]+\s*\([^;]*\)\s*(:\s*[\w$<>\[\],.?|& ]+\s*|throws\s+[\w, .]+\s*|const\s*)?\{\s*$/;
+CF.isFnHeader = (t) => !FN_KW.test(t) && (FN_CLASS.test(t) || FN_DECL.test(t) || FN_ARROW.test(t) || FN_METHOD.test(t));
+// Reduce another provider's symbol tree (the TS worker's) to functions/classes only.
+CF.keepFnOnly = (syms, model) => {
+  const K = monaco.languages.SymbolKind, keep = new Set([K.Function, K.Method, K.Constructor, K.Class, K.Interface, K.Enum, K.Struct, K.Namespace, K.Module]);
+  const vars = new Set([K.Variable, K.Constant, K.Property, K.Field]);
+  const walk = (a) => a.flatMap((s) => {
+    const kids = walk(s.children || []);
+    const head = model.getLineContent(s.range.startLineNumber).trim();
+    if (keep.has(s.kind) || (vars.has(s.kind) && CF.isFnHeader(head))) return [{ ...s, children: kids }];
+    return kids;
+  });
+  return walk(syms);
+};
+CF.fnSymbols = (model) => {
+  const n = model.getLineCount();
+  if (n > 20000) return [];
+  const lines = model.getLinesContent();
+  const KW = FN_KW, CLASS = FN_CLASS;
+  const isHeader = CF.isFnHeader;
+  const pyLike = /^(python|ruby)$/.test(model.getLanguageId());
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = lines[i].trim();
+    if (!t || t[0] === '/' || t[0] === '*' || t[0] === '#' && !pyLike) continue;
+    if (!isHeader(t)) continue;
+    let end = -1;
+    if (pyLike) {
+      if (!/:\s*(#.*)?$/.test(t)) continue;
+      const ind = lines[i].match(/^\s*/)[0].length;
+      end = i;
+      for (let j = i + 1; j < n; j++) { const l = lines[j]; if (!l.trim()) continue; if (l.match(/^\s*/)[0].length <= ind) break; end = j; }
+    } else {
+      let depth = 0, started = false, str = '', blk = false;
+      scan: for (let j = i; j < Math.min(n, i + 4000); j++) {
+        if (!started && j > i + 3) break;
+        const l = lines[j];
+        for (let k = 0; k < l.length; k++) {
+          const c = l[k], d = l[k + 1];
+          if (blk) { if (c === '*' && d === '/') { blk = false; k++; } continue; }
+          if (str) { if (c === '\\') k++; else if (c === str) str = ''; continue; }
+          if (c === '/' && d === '/') break;
+          if (c === '/' && d === '*') { blk = true; k++; continue; }
+          if (c === '"' || c === "'" || c === '`') { str = c; continue; }
+          if (c === '{') { depth++; started = true; } else if (c === '}' && started && --depth === 0) { end = j; break scan; }
+        }
+        if (str && str !== '`') str = '';
+      }
+    }
+    if (end <= i) continue;
+    const name = t.replace(/\s*\{\s*$/, '').replace(/^(export|default|async|public|private|protected|static)\s+/g, '').slice(0, 80);
+    out.push({ name, detail: '', kind: CLASS.test(t) ? monaco.languages.SymbolKind.Class : monaco.languages.SymbolKind.Function, tags: [],
+      range: { startLineNumber: i + 1, startColumn: 1, endLineNumber: end + 1, endColumn: model.getLineMaxColumn(end + 1) },
+      selectionRange: { startLineNumber: i + 1, startColumn: 1, endLineNumber: i + 1, endColumn: model.getLineMaxColumn(i + 1) }, children: [] });
+  }
+  // nest by containment (out is already ordered by start line)
+  const roots = [], stack = [];
+  for (const s of out) {
+    while (stack.length && stack[stack.length - 1].range.endLineNumber < s.range.startLineNumber) stack.pop();
+    (stack.length ? stack[stack.length - 1].children : roots).push(s);
+    stack.push(s);
+  }
+  return roots;
+};
+
 // ---- Monaco -----------------------------------------------------------------------
 CF.initMonaco = () =>
   new Promise((resolve) => {
@@ -525,6 +598,21 @@ CF.initMonaco = () =>
         ),
     };
     require(["vs/editor/editor.main"], () => {
+      // Wrap symbol providers registered later (the TS worker's) so they only yield functions/classes.
+      const regSym = monaco.languages.registerDocumentSymbolProvider.bind(monaco.languages);
+      monaco.languages.registerDocumentSymbolProvider = (sel, p) => {
+        if (p.displayName === "Functions") return regSym(sel, p);
+        const w = Object.create(p);
+        w.provideDocumentSymbols = async (m, t) => {
+          const r = await p.provideDocumentSymbols(m, t);
+          return r && CF.keepFnOnly(r, m);
+        };
+        return regSym(sel, w);
+      };
+      monaco.languages.registerDocumentSymbolProvider("*", {
+        displayName: "Functions",
+        provideDocumentSymbols: (model) => CF.fnSymbols(model),
+      });
       const ts = monaco.languages.typescript;
       ts.javascriptDefaults.setDiagnosticsOptions({
         noSemanticValidation: false,
