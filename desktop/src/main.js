@@ -455,7 +455,7 @@ function cleanManifest(m, source) {
     rules: (Array.isArray(t.rules) ? t.rules : []).slice(0, 400).filter((r) => r && /^[\w.-]{1,80}$/.test(String(r.token))).map((r) => ({ token: String(r.token), foreground: /^[0-9a-f]{6}$/i.test(String(r.foreground)) ? String(r.foreground) : undefined, fontStyle: /^(italic|bold|underline|\s)*$/.test(String(r.fontStyle || '')) ? String(r.fontStyle || '') : '' })) }));
   out.snippets = {};
   for (const [lang, list] of Object.entries(m.snippets || {})) if (/^[\w-]+$/.test(lang) && Array.isArray(list)) out.snippets[lang] = list.slice(0, 500).filter((s) => s && s.prefix && s.body).map((s) => ({ prefix: String(s.prefix), body: Array.isArray(s.body) ? s.body.join('\n') : String(s.body), description: String(s.description || '') }));
-  out.navigation = (Array.isArray(m.navigation) ? m.navigation : []).filter((n) => n === 'laravel' || n === 'gitlens');   // built-in navigation features an extension can switch on
+  out.navigation = (Array.isArray(m.navigation) ? m.navigation : []).filter((n) => n === 'laravel' || n === 'gitlens' || n === 'gitblame');   // built-in navigation features an extension can switch on
   out.fileAssociations = Object.fromEntries(Object.entries(m.fileAssociations || {}).filter(([k, v]) => /^\.[\w.-]+$/.test(k) && /^[\w-]+$/.test(String(v))));
   return out;
 }

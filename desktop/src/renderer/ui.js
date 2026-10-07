@@ -33,6 +33,7 @@
         const w = model.getWordUntilPosition(pos); const range = { startLineNumber: pos.lineNumber, endLineNumber: pos.lineNumber, startColumn: w.startColumn, endColumn: w.endColumn };
         return { suggestions: snips.map((s) => ({ label: s.prefix, kind: monaco.languages.CompletionItemKind.Snippet, insertText: s.body, insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, documentation: s.description, detail: e.name, range })) }; } }));
     }
+    CF.gitblameOn && CF.gitblameOn(list.some((x) => x.enabled && !x.error && (x.navigation || []).includes('gitblame')));
     CF.gitlensOn && CF.gitlensOn(list.some((x) => x.enabled && !x.error && (x.navigation || []).includes('gitlens')));
     CF.laravelNav && CF.laravelNav.set(list.some((x) => x.enabled && !x.error && (x.navigation || []).includes('laravel')));
     CF.extAssoc = assoc; if (!CF.THEMES[S.settings.theme]) S.settings.theme = 'codeforge-dark'; CF.applyTheme(S.settings.theme);
@@ -71,7 +72,7 @@
     const setDisabled = async (id, off) => { const cur = new Set(S.settings.disabledExtensions || []); off ? cur.add(id) : cur.delete(id); await CF.setSetting({ disabledExtensions: [...cur] }); await refresh(); };
     const matches = (e, q) => !q || [e.name, e.id, e.description, ...(e.themes || []).map((t) => (typeof t === 'string' ? t : t.name))].join(' ').toLowerCase().includes(q);
 
-    const tags = (e) => [(e.themes || []).length ? 'Theme' : null, Object.keys(e.snippets || {}).length ? 'Snippets' : null, Object.keys(e.fileAssociations || {}).length ? 'File types' : null, (e.navigation || []).includes('laravel') ? 'Go to definition' : null, (e.navigation || []).includes('gitlens') ? 'Git blame' : null].filter(Boolean);
+    const tags = (e) => [(e.themes || []).length ? 'Theme' : null, Object.keys(e.snippets || {}).length ? 'Snippets' : null, Object.keys(e.fileAssociations || {}).length ? 'File types' : null, (e.navigation || []).includes('laravel') ? 'Go to definition' : null, (e.navigation || []).includes('gitlens') ? 'Git blame' : null, (e.navigation || []).includes('gitblame') ? 'Status bar blame' : null].filter(Boolean);
     const row = (e, installed) => h('div', { class: 'ext' }, extIcon(e),
       h('div', { class: 'info' }, h('b', {}, e.name), ' ', h('small', {}, 'v' + e.version + (installed ? (String(e.source).startsWith('custom') ? ' · custom' : e.source === 'imported' ? ' · imported' : ' · installed') : '')),
         e.error ? h('div', { style: 'color:var(--err)' }, e.error) : h('div', { class: 'muted' }, e.description || ''),
@@ -181,7 +182,7 @@
     ['New Project…', () => CF.newProjectWizard()], ['Split Editor Right', () => CF.split(false)], ['Split Editor Down', () => CF.split(true)], ['Save All', CF.saveAll],
     ['Find in Files', () => CF.showView('search'), 'Ctrl+Shift+F'], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
     ['Save Workspace', saveWorkspace], ['Open Workspace', openWorkspace], ['Close Workspace', closeWorkspace], ['Check for Updates', () => CF.checkUpdates(true)],
-    ['Preferences: File Icon Theme', () => CF.iconThemePicker()], ['Markdown: Toggle Preview', () => CF.toggleMdPreview()], ['Git: Sync Changes', () => CF.gitSync && CF.gitSync()], ['View: Close Saved Editors', () => CF.closeSaved(CF.activeGroup())], ['View: Close All Editors', () => CF.closeAllEditors()], ['View: Toggle Tab Bar Close Buttons', () => CF.setSetting({ tabActions: CF.S.settings.tabActions === false })],
+    ['Preferences: File Icon Theme', () => CF.iconThemePicker()], ['Preview: Toggle File Preview (Markdown, HTML, SVG)', () => CF.toggleMdPreview()], ['Git: Sync Changes', () => CF.gitSync && CF.gitSync()], ['View: Close Saved Editors', () => CF.closeSaved(CF.activeGroup())], ['View: Close All Editors', () => CF.closeAllEditors()], ['View: Toggle Tab Bar Close Buttons', () => CF.setSetting({ tabActions: CF.S.settings.tabActions === false })],
     ['Preferences: Color Theme', () => CF.themePicker(), 'Ctrl+K Ctrl+T'], ['Preferences: Import VS Code Theme…', () => CF.importVscodeTheme()], ['Install Extension from URL…', () => CF.installExtensionUrl()], ['Reload Extensions (download from settings.json)', () => CF.loadExtensions(true)], ['Open settings.json', () => CF.openSettingsJson()],
     ['Initialize Repository', () => CF.gitInit()], ['Show Problems', () => CF.showPanel('problems')], 
     ['AI: Explain Code (requires consent — not enabled)', () => CF.toast('AI features are not enabled. Nothing is ever sent without your explicit consent.')],

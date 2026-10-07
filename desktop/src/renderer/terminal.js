@@ -54,7 +54,7 @@
   CF.newTerminal = CF.guard(async (shellId, cwd, opts = {}) => {
     CF.showPanel('terminal');
     const host = h('div', { class: 'term' }); $('#panel-terminal').append(host);
-    const xterm = new Terminal({ fontFamily: CF.termFont(), fontSize: Math.max(11, S.settings.fontSize - 1), lineHeight: 1, letterSpacing: 0, cursorBlink: true, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000, windowsPty: S.platform.platform === 'win32' ? { backend: 'conpty' } : undefined });
+    const xterm = new Terminal({ fontFamily: CF.termFont(), fontSize: Math.max(11, S.settings.fontSize - 1), lineHeight: 1, letterSpacing: 0, cursorBlink: true, minimumContrastRatio: 4.5, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000, windowsPty: S.platform.platform === 'win32' ? { backend: 'conpty' } : undefined });
     const fitAddon = new FitAddon.FitAddon(); xterm.loadAddon(fitAddon); xterm.open(host);
     const fit = () => { try { fitAddon.fit(); cf.term.resize(t.id, xterm.cols, xterm.rows); } catch { /* hidden */ } };
     const split = opts.split && activeTerm;

@@ -1,0 +1,11 @@
+{
+  "id": "gitblame",
+  "name": "Git Blame",
+  "version": "1.0.0",
+  "description": "Shows who last changed the current line (author, time, commit message) in the status bar",
+  "navigation": [
+    "gitblame"
+  ],
+  "icon": "👤",
+  "color": "#f59e0b"
+}
