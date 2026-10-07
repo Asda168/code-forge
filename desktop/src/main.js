@@ -430,7 +430,12 @@ const DEFAULT_SETTINGS = {
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
   extensions: [], customExtensions: [], disabledExtensions: [], dismissedSuggestions: [], suggestExtensions: true,
 };
-ipcMain.handle('settings:get', () => ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }));
+ipcMain.handle('settings:get', () => {
+  const saved = readJson('settings.json', {});
+  // One-time: sticky scroll became default-on; older settings files still carry the old `false`.
+  if (!saved.stickyScrollMigrated && Object.keys(saved).length) { saved.stickyScroll = true; saved.stickyScrollMigrated = true; writeJson('settings.json', { ...DEFAULT_SETTINGS, ...saved }); }
+  return { ...DEFAULT_SETTINGS, ...saved };
+});
 ipcMain.handle('settings:set', (_e, patch) => {
   const clean = {};
   for (const k of Object.keys(DEFAULT_SETTINGS)) if (k in patch) clean[k] = patch[k];
