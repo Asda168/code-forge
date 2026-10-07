@@ -5,20 +5,19 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.2.0"
-RELEASED = "2026-10-06"
+VERSION = "1.3.1"
+RELEASED = "2026-10-07"
 CHANGES = [
-    "GitLens is now an installable extension: inline blame, file blame, file/line history and sidebar",
-    "Terminal: clickable http(s) links open in your browser",
-    "Terminal: Ctrl+C copies a selection (still interrupts otherwise), Ctrl+V / Shift+Insert paste",
-    "Git Bash: fixed overlapping text with safer monospace fonts and re-fit after font load",
-    "Ctrl+F opens find in the current file even when focus is outside the editor",
+    "Sticky scroll pins only functions, methods and classes, and is on by default",
+    "Editor scrolling and indent guides tuned",
+    "Fixed Ctrl+F find shortcut and newest-first file history",
+    "Windows installers are now self-contained (separate x64 and arm64 builds)",
 ]
 _REL = f"{REPO}/releases/latest/download"
 
 DOWNLOADS = [
-    {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "CodeCambo-Setup-x64.exe", "url": f"{_REL}/CodeCambo-Setup-x64.exe", "available": False},
-    {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "CodeCambo-Setup-arm64.exe", "url": f"{_REL}/CodeCambo-Setup-arm64.exe", "available": False},
+    {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "CodeCambo-Setup-x64.exe", "url": f"{_REL}/CodeCambo-Setup-x64.exe", "available": True},
+    {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "CodeCambo-Setup-arm64.exe", "url": f"{_REL}/CodeCambo-Setup-arm64.exe", "available": True},
     {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "CodeCambo-macOS-universal.dmg", "url": f"{_REL}/CodeCambo-macOS-universal.dmg", "available": False},
     {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "CodeCambo.AppImage", "url": f"{_REL}/CodeCambo.AppImage", "available": False},
     {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": False},

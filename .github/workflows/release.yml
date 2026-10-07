@@ -36,7 +36,10 @@ jobs:
       # node-pty has no prebuilt Linux binaries, so rebuild native modules on Linux/macOS.
       - name: Build (Windows keeps node-pty prebuilds)
         if: runner.os == 'Windows'
-        run: npx electron-builder ${{ matrix.args }} --publish never
+        # One arch per run: a combined x64+arm64 build emits a tiny stub per-arch installer.
+        run: |
+          npx electron-builder --win --x64 --publish never
+          npx electron-builder --win --arm64 --publish never
       - name: Build
         if: runner.os != 'Windows'
         run: npx electron-builder ${{ matrix.args }} -c.npmRebuild=true --publish never

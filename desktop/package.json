@@ -9,7 +9,8 @@
   "scripts": {
     "start": "electron .",
     "icons": "node scripts/make-icons.js",
-    "dist:win": "electron-builder --win --x64 --arm64",
+    "dist:win": "electron-builder --win --x64 && electron-builder --win --arm64",
+    "dist:win:x64": "electron-builder --win --x64",
     "dist:mac": "electron-builder --mac --universal",
     "dist:linux": "electron-builder --linux AppImage deb rpm",
     "shortcut": "node scripts/make-shortcut.js",
@@ -55,15 +56,7 @@
     ],
     "win": {
       "icon": "build/icon.ico",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
+      "target": "nsis",
       "artifactName": "CodeCambo-Setup-${arch}.${ext}",
       "signAndEditExecutable": false
     },
