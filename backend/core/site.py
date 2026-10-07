@@ -5,9 +5,10 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 RELEASED = "2026-10-07"
 CHANGES = [
+    "Installer can now upgrade over a running CodeCambo (closes it and its terminals automatically)",
     "Sticky scroll pins only functions, methods and classes, and is on by default",
     "Editor scrolling and indent guides tuned",
     "Fixed Ctrl+F find shortcut and newest-first file history",

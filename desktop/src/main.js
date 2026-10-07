@@ -44,7 +44,9 @@ function createWindow() {
     `JSON.stringify({monaco:!!window.monaco,groups:document.querySelectorAll('.group').length,welcome:!document.getElementById('welcome').hidden,shells:CF.S.shells.map(s=>s.name),font:getComputedStyle(document.body).fontFamily})`
   ).then((r) => console.log('[selftest]', r)).catch((e) => console.log('[selftest-error]', e.message)), 8000);
   let forceClose = false;
-  win.on('close', (e) => { if (!forceClose) { e.preventDefault(); send('ask-close'); } });
+  // Closing asks the renderer (unsaved-files prompt) unless the app is already quitting (installer/OS shutdown/app.quit) or the renderer is gone.
+  win.on('close', (e) => { if (!forceClose && !quitting && !win.webContents.isCrashed()) { e.preventDefault(); send('ask-close'); } });
+  win.on('session-end', () => shutdown('session-end'));
   ipcMain.removeHandler('app:forceClose');
   ipcMain.handle('app:forceClose', () => { forceClose = true; win.close(); });
   win.webContents.setWindowOpenHandler(({ url }) => { openExternal(url); return { action: 'deny' }; });
@@ -562,6 +564,23 @@ ipcMain.handle('app:openExternal', (_e, url) => openExternal(url));
 ipcMain.handle('app:platform', () => ({ platform: process.platform, arch: process.arch, version: app.getVersion(), pty: !!pty }));
 
 // ---------------------------------------------------------------- lifecycle
+// Shutdown: kill every terminal CodeCambo started (PTY + its conpty/OpenConsole helpers live under the install dir and
+// would otherwise keep files locked, making the installer report "CodeCambo cannot be closed").
+let quitting = false;
+const dlog = (...a) => { if (process.env.CODEFORGE_DEBUG) console.log('[CodeCambo]', ...a); };
+function killTerminals() {
+  dlog('Closing terminal sessions:', terms.size);
+  for (const t of [...terms.values()]) { try { t.kill(); } catch { /* already gone */ } }
+  terms.clear();
+}
+function shutdown(why) {
+  if (quitting) return;
+  quitting = true; dlog('Shutdown requested:', why);
+  killTerminals();
+}
+app.on('before-quit', () => shutdown('before-quit'));
+app.on('will-quit', () => { shutdown('will-quit'); dlog('Shutdown complete'); });
+process.on('exit', () => { try { killTerminals(); } catch { /* ignore */ } });
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
 else {
@@ -574,7 +593,7 @@ else {
     createWindow();
     win.webContents.once('did-finish-load', () => openArgvPath(process.argv));
   });
-  app.on('window-all-closed', () => { terms.forEach((t) => t.kill()); app.quit(); });
+  app.on('window-all-closed', () => { shutdown('window-all-closed'); app.quit(); });
 }
 function openArgvPath(argv) {
   // "Open with CodeCambo": the user explicitly chose this path in the OS shell.
