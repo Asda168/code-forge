@@ -836,6 +836,17 @@ CF.renderTabs = () =>
         h(
           "span",
           { class: "tabs-acts" },
+          /\.(md|markdown|mdx|html?|svg)$/i.test(g.active || "")
+            ? h(
+                "button",
+                {
+                  class: "icon-btn" + (CF.mdOpen && CF.mdOpen() ? " on" : ""),
+                  title: "Preview (Ctrl+Shift+V)",
+                  onclick: () => CF.toggleMdPreview(),
+                },
+                CF.icon("eye", 15),
+              )
+            : null,
           h(
             "button",
             {

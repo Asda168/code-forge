@@ -58,12 +58,17 @@
     const max = ed.getScrollHeight() - ed.getLayoutInfo().height; const t = ed.getScrollTop(); if (t === lastTop || max <= 0) return; lastTop = t;
     const b = $('#md-body', pane); if (b && !b.classList.contains('web') && !b.matches(':hover')) b.scrollTop = (t / max) * (b.scrollHeight - b.clientHeight);
   };
-  CF.closeMdPreview = () => { if (!pane) return; clearInterval(timer); pane.remove(); pane = null; area().classList.remove('md-open'); S.groups.forEach((g) => g.editor.layout()); };
+  CF.closeMdPreview = () => { if (!pane) return; clearInterval(timer); pane.remove(); pane = null; area().classList.remove('md-open', 'md-full'); area().style.removeProperty('--md-w'); CF.renderTabs && CF.renderTabs(); S.groups.forEach((g) => g.editor.layout()); };
+  const toggleFull = () => { const f = area().classList.toggle('md-full'); pane.classList.toggle('full', f); const b = $('#md-full', pane); b.title = f ? 'Exit full screen' : 'Full screen'; b.replaceChildren(CF.icon(f ? 'restore' : 'maximize', 14)); if (!f) S.groups.forEach((g) => g.editor.layout()); };
+  CF.mdOpen = () => !!pane;
   CF.toggleMdPreview = () => {
     if (pane) return CF.closeMdPreview();
-    pane = h('div', { id: 'md-preview' }, h('div', { class: 'md-head' }, h('b', { id: 'md-title' }, 'Preview'), h('span', { class: 'grow' }), h('button', { class: 'icon-btn', title: 'Close preview', onclick: CF.closeMdPreview }, CF.icon('close', 14))), h('div', { id: 'md-body', class: 'md-body' }));
+    pane = h('div', { id: 'md-preview' }, h('div', { class: 'md-head' }, h('b', { id: 'md-title' }, 'Preview'), h('span', { class: 'grow' }), h('button', { class: 'icon-btn', id: 'md-full', title: 'Full screen', onclick: toggleFull }, CF.icon('maximize', 14)), h('button', { class: 'icon-btn', title: 'Close preview', onclick: CF.closeMdPreview }, CF.icon('close', 14))), h('div', { id: 'md-body', class: 'md-body' }));
+    const grip = h('div', { class: 'md-grip', title: 'Drag to resize' }); pane.prepend(grip);
+    grip.onmousedown = (e) => { e.preventDefault(); grip.classList.add('drag'); const a = area(), r = a.getBoundingClientRect(); pane.style.pointerEvents = 'none'; const mv = (ev) => { const w = Math.min(Math.max(r.right - ev.clientX, 240), r.width - 160); a.style.setProperty('--md-w', w + 'px'); S.groups.forEach((g) => g.editor.layout()); }; const up = () => { grip.classList.remove('drag'); pane.style.pointerEvents = ''; document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); }; document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up); };
+    pane.addEventListener('dblclick', (e) => { if (e.target.closest('.md-head')) toggleFull(); });
     pane.addEventListener('click', (e) => { const pre = e.target.closest && e.target.closest('pre'); if (pre && e.target === pre) { const r = pre.getBoundingClientRect(); if (e.clientX > r.right - 70 && e.clientY < r.top + 28) { navigator.clipboard.writeText(pre.textContent); pre.classList.add('copied'); setTimeout(() => pre.classList.remove('copied'), 1200); return; } } const a = e.target.closest && e.target.closest('a[data-href]'); if (!a) return; e.preventDefault(); const u = a.dataset.href; if (u[0] === '#') { const t = pane.querySelector('[id="' + decodeURIComponent(u.slice(1)).replace(/"/g, '') + '"]'); if (t) t.scrollIntoView(); return; } if (/^https?:/.test(u)) cf.app.openExternal && cf.app.openExternal(u); });
-    area().append(pane); area().classList.add('md-open'); last = ''; update(); timer = setInterval(() => { update(); sync(); }, 350);
+    area().append(pane); area().classList.add('md-open'); last = ''; update(); timer = setInterval(() => { update(); sync(); }, 350); CF.renderTabs && CF.renderTabs();
     setTimeout(() => S.groups.forEach((g) => g.editor.layout()), 30);
   };
   document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyV' && !(e.target.closest && e.target.closest('.xterm'))) { e.preventDefault(); CF.toggleMdPreview(); } }, true);

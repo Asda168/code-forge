@@ -1533,14 +1533,41 @@ textarea {
     opacity: 1;
 }
 #editor-area.md-open #groups {
-    right: 45%;
+    right: var(--md-w, 45%);
+}
+#editor-area.md-full #groups {
+    display: none;
+}
+#md-preview.full {
+    width: 100% !important;
+    border-left: 0;
+}
+#md-preview.full .md-grip {
+    display: none;
+}
+.md-grip {
+    position: absolute;
+    left: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 5;
+}
+.md-grip:hover,
+.md-grip.drag {
+    background: var(--cyan);
+    opacity: 0.6;
+}
+.tabs-acts .icon-btn.on {
+    color: var(--cyan);
 }
 #md-preview {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    width: 45%;
+    width: var(--md-w, 45%);
     display: flex;
     flex-direction: column;
     background: var(--bg);
