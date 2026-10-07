@@ -354,7 +354,7 @@
   async function historyModal(title, args, file, extra) {
     const r = await git(args);
     if (r.code !== 0) throw new Error((r.stderr || "git failed").trim());
-    const list = parseLog(r.stdout);
+    const list = parseLog(r.stdout).sort((a, b) => b.at - a.at);   // newest first
     const you = await me();
     CF.modal(
       title,

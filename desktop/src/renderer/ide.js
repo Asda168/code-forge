@@ -61,10 +61,12 @@
   // Ctrl+F: always open the editor's find widget (works even when focus is on a tab, the explorer or a preview)
   document.addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyF') return;
-    const t = e.target; if (t.closest && (t.closest('.xterm') || t.closest('.monaco-editor') || t.closest('.overlay'))) return;
+    const t = e.target; if (t.closest && (t.closest('.xterm') || t.closest('#overlay') || t.closest('.monaco-editor'))) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-    const g = CF.activeGroup && CF.activeGroup(); if (!g || !g.active) return;
-    e.preventDefault(); e.stopPropagation(); g.editor.focus(); g.editor.getAction('actions.find').run();
+    e.preventDefault(); e.stopPropagation();
+    const g = CF.activeGroup && CF.activeGroup();
+    if (!g || !g.active) return CF.quickOpen();   // no file open: Ctrl+F finds a file instead
+    g.editor.focus(); setTimeout(() => { const a = g.editor.getAction('actions.find'); a && a.run(); }, 0);
   }, true);
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR' && !(e.target.closest && e.target.closest('.xterm'))) { e.preventDefault(); e.stopPropagation(); CF.findProject(); }
