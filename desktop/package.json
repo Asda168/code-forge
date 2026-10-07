@@ -4,7 +4,11 @@
   "version": "1.3.1",
   "description": "CodeCambo - Code. Build. Run. Ship.",
   "main": "src/main.js",
-  "author": "CodeCambo",
+  "author": {
+    "name": "CodeCambo",
+    "email": "Asda168@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/Asda168/code-forge",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -94,6 +98,7 @@
         "rpm"
       ],
       "artifactName": "CodeCambo.${ext}",
+      "maintainer": "CodeCambo <Asda168@users.noreply.github.com>",
       "desktop": {
         "Name": "CodeCambo",
         "Comment": "Code. Build. Run. Ship.",
