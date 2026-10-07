@@ -55,7 +55,8 @@
   .os h3{display:flex;align-items:center;gap:10px;margin:0 0 4px;font-size:1.2rem}.os .req{color:var(--mut);font-size:.85rem;margin-bottom:14px}
   .file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}
   .file small{display:block;color:var(--mut);font:400 .78rem var(--mono)} .tag{font-size:.72rem;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--mut)}
-  .meta{display:flex;gap:26px;flex-wrap:wrap;color:var(--mut);font-size:.9rem;margin-bottom:26px}.meta b{color:var(--fg)}
+  .vpick{display:inline-flex;align-items:center;gap:8px}.vpick select{font:inherit;font-weight:600;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;max-width:60vw}.vpick select:focus-visible{outline:2px solid var(--a)}
+  .meta{align-items:center;display:flex;gap:26px;flex-wrap:wrap;color:var(--mut);font-size:.9rem;margin-bottom:26px}.meta b{color:var(--fg)}
   .tabs{display:inline-flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:18px}
   .tabs button{border:0;background:none;color:var(--mut);font:inherit;font-weight:600;padding:9px 20px;border-radius:9px;cursor:pointer}
   .tabs button[aria-selected=true]{background:linear-gradient(90deg,var(--a),var(--b));color:#fff}
@@ -184,8 +185,17 @@
 
 <section id="download"><div class="wrap">
   <h2>Download CodeCambo</h2>
-  <div class="meta"><span>Version <b id="ver">{{ version }}</b></span><span>Released <b>{{ released }}</b></span><span id="detected"></span></div>
-  {% if changes %}<div class="card" style="padding:14px 18px;margin:14px 0"><b>What's new in v{{ version }}</b><ul style="margin:8px 0 0 18px">{% for c in changes %}<li>{{ c }}</li>{% endfor %}</ul></div>{% endif %}
+  <div class="meta">
+    <label class="vpick">Version
+      <select id="ver-select" aria-label="Choose which version to download"><option value="">{{ version }} (latest)</option></select>
+    </label>
+    <span>Released <b id="rel-date">{{ released }}</b></span><span id="detected"></span>
+    <a id="rel-link" href="{{ repo }}/releases" target="_blank" rel="noopener">All releases ↗</a>
+  </div>
+  <div class="card" id="notes" style="padding:14px 18px;margin:14px 0"><b id="notes-title">What's new in v{{ version }}</b>
+    <ul id="notes-list" style="margin:8px 0 0 18px">{% for c in changes %}<li>{{ c }}</li>{% endfor %}</ul>
+    <pre id="notes-body" style="display:none;white-space:pre-wrap;margin:8px 0 0;font:inherit;color:var(--mut)"></pre>
+  </div>
   <div class="tabs" role="tablist" aria-label="Operating system">
     <button role="tab" data-tab="windows" aria-selected="false">🪟 Windows</button>
     <button role="tab" data-tab="macos" aria-selected="false"> macOS</button>
@@ -260,7 +270,7 @@ python manage.py runserver</pre>
       note.textContent = chip.dataset.name + (chip.dataset.size ? " · " + mb(+chip.dataset.size) : "");
     } else {
       main.href = "#source"; main.setAttribute("aria-disabled", "true"); main.textContent = "Coming soon";
-      note.innerHTML = chip.dataset.name + " isn’t published yet. You can <a href=\"#source\">run CodeCambo from source</a> today.";
+      note.innerHTML = chip.dataset.name + " isn’t available for this version. You can <a href=\"#source\">run CodeCambo from source</a> today.";
     }
   }
   function select(os, scroll) {
@@ -295,17 +305,33 @@ python manage.py runserver</pre>
   if (detected) document.getElementById("detected").textContent = "Detected: " + names[detected];
   initPanels();
 
-  // Live release data: whatever installers actually exist on the latest GitHub Release become real download links.
-  fetch("https://api.github.com/repos/" + REPO + "/releases/latest", {headers: {Accept: "application/vnd.github+json"}})
+  // Live release data from GitHub: fill the version picker; the chosen release's assets become the real download links.
+  const sel = document.getElementById("ver-select"), notesList = document.getElementById("notes-list"), notesBody = document.getElementById("notes-body");
+  const staticTitle = document.getElementById("notes-title").textContent, staticDate = document.getElementById("rel-date").textContent;
+  function applyRelease(rel, isLatest) {
+    const assets = Object.fromEntries((rel.assets || []).map(a => [a.name, a]));
+    document.querySelectorAll(".chip").forEach(c => {
+      const a = assets[c.dataset.name];
+      if (a) { c.dataset.ok = "1"; c.dataset.url = a.browser_download_url; c.dataset.size = a.size; }
+      else { c.dataset.ok = "0"; delete c.dataset.url; delete c.dataset.size; }
+    });
+    const v = (rel.tag_name || "").replace(/^v/, "");
+    document.getElementById("rel-date").textContent = (rel.published_at || "").slice(0, 10) || staticDate;
+    if (rel.html_url) document.getElementById("rel-link").href = rel.html_url;
+    document.getElementById("notes-title").textContent = isLatest ? staticTitle : "Release notes for v" + v;
+    notesList.style.display = isLatest ? "" : "none";
+    notesBody.style.display = isLatest ? "none" : "";
+    notesBody.textContent = isLatest ? "" : ((rel.body || "").trim().slice(0, 800) || "No release notes for this version.");
+    initPanels();
+  }
+  fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=30", {headers: {Accept: "application/vnd.github+json"}})
     .then(r => r.ok ? r.json() : Promise.reject())
-    .then(rel => {
-      const assets = Object.fromEntries((rel.assets || []).map(a => [a.name, a]));
-      document.querySelectorAll(".chip").forEach(c => {
-        const a = assets[c.dataset.name];
-        if (a) { c.dataset.ok = "1"; c.dataset.url = a.browser_download_url; c.dataset.size = a.size; }
-      });
-      if (rel.tag_name) document.getElementById("ver").textContent = rel.tag_name.replace(/^v/, "");
-      initPanels();
+    .then(list => {
+      const releases = list.filter(r => !r.draft && (r.assets || []).length);
+      if (!releases.length) return;
+      sel.innerHTML = releases.map((r, i) => '<option value="' + i + '">' + r.tag_name.replace(/^v/, "") + (i === 0 ? " (latest)" : r.prerelease ? " (pre-release)" : "") + "</option>").join("");
+      applyRelease(releases[0], true);
+      sel.addEventListener("change", () => { const i = +sel.value; applyRelease(releases[i], i === 0); });
     }).catch(() => {});
 </script>
 </body>
