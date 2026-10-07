@@ -48,3 +48,23 @@ class ApiTests(TestCase):
 
     def test_vercel_host_allowed(self):
         self.assertEqual(self.c.get("/", HTTP_HOST="code-forge-neon-two.vercel.app").status_code, 200)
+
+    def test_feedback_forwards_to_telegram(self):
+        from unittest import mock
+        with mock.patch("core.telegram.send", return_value=True) as send:
+            r = self.c.post("/api/feedback/", {"kind": "improvement", "message": "Please add a <b>dark</b> theme", "contact": "me@x.com"}, format="json")
+        self.assertEqual(r.status_code, 200)
+        text = send.call_args[0][0]
+        self.assertIn("Improvement", text)
+        self.assertIn("&lt;b&gt;dark&lt;/b&gt;", text)  # user text is HTML-escaped
+        self.assertNotIn("<b>dark</b>", text)
+
+    def test_feedback_validation_honeypot_and_failure(self):
+        from unittest import mock
+        with mock.patch("core.telegram.send", return_value=True) as send:
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "short"}, format="json").status_code, 400)
+            self.assertEqual(self.c.post("/api/feedback/", {"kind": "hack", "message": "x" * 20}, format="json").status_code, 400)
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20, "website": "spam"}, format="json").status_code, 200)
+            send.assert_not_called()  # honeypot hits are dropped silently
+        with mock.patch("core.telegram.send", return_value=False):
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20}, format="json").status_code, 503)
