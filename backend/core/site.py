@@ -27,7 +27,7 @@ DOWNLOADS = [
 ]
 PROJECTS = [
     {"name": "Portfolio (Django)", "description": "Single-page personal portfolio built with Django: typewriter intro, skills, experience, projects and a validated contact form.",
-     "tags": ["Django", "Python", "Tailwind", "Vercel"], "url": "https://portfolio-django-eta.vercel.app/", "source": "https://github.com/Asda168/portfolio-django"},
+     "tags": ["Django", "Python", "Tailwind", "Vercel"], "url": "https://oukasda.vercel.app/", "source": "https://github.com/Asda168/portfolio-django"},
 ]
 REQUIREMENTS = {"windows": "Windows 10 or 11 (x64 / ARM64)", "macos": "macOS 12+ (Apple Silicon & Intel)", "linux": "Ubuntu 20.04+, Fedora 36+ or similar (glibc 2.31+)"}
 
