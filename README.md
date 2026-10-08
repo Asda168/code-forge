@@ -41,3 +41,63 @@ Windows installer creates Desktop and Start Menu shortcuts (and "Open with CodeC
 ## Releasing installers
 Windows: `npm run dist:win` (works on Windows). macOS and Linux installers must be built on those systems; the workflow in `.github/workflows/release.yml` does it for all three:
 `git tag v1.0.0 && git push --tags` builds the installers and attaches them to a GitHub Release. Then set `available: True` in `backend/core/site.py`.
+
+## Technology summary
+
+### Languages
+| Language | Where |
+|---|---|
+| JavaScript (ES2022, no TypeScript, no bundler) | Electron main process, preload, renderer (`desktop/src`) |
+| HTML / CSS | Renderer UI, themes |
+| Python 3.12 | Django backend (`backend/`), catalog sync script |
+| JSON | Declarative extensions/catalog (`desktop/src/catalog`), settings |
+| NSIS script | Windows installer customisation (`desktop/scripts/installer.nsh`) |
+| YAML | GitHub Actions workflow |
+
+### Desktop app (`desktop/`)
+| Tech | Version | Use |
+|---|---|---|
+| Electron | ^33 | Desktop shell, main/renderer split, `contextBridge` |
+| Monaco Editor | ^0.52 | Code editor, markers, themes |
+| xterm.js + addon-fit | ^5.5 / ^0.10 | Terminal UI |
+| node-pty (optional) | ^1 | Real PTY shells (PowerShell, CMD, Git Bash, bash) |
+| JetBrains Mono (@fontsource) | ^5.1 | Default editor font |
+| sharp | ^0.33 | Icon generation (`npm run icons`) |
+| Node.js | 22 (CI) | Build and run tooling |
+
+### Backend (`backend/`)
+| Tech | Version | Use |
+|---|---|---|
+| Django | >=5.0,<6.0 | Web framework, admin, ORM |
+| Django REST Framework | >=3.15 | JSON API (auth, settings sync, releases) |
+| Channels + Daphne | >=4.1 | ASGI / WebSocket consumers |
+| channels-redis, Redis | >=4.2 / >=5.0 | Channel layer (in-memory fallback if `REDIS_URL` unset) |
+| PostgreSQL (psycopg 3) + dj-database-url | >=3.2 / >=2.2 | Database via `DATABASE_URL` (SQLite fallback for local dev) |
+| django-cors-headers | >=4.4 | CORS for the desktop client |
+
+### Packaging and deployment
+| Target | Tool / format |
+|---|---|
+| Windows | electron-builder (^25) -> NSIS installer, `CodeCambo-Setup-x64.exe` and `-arm64.exe` |
+| macOS | electron-builder -> universal `.dmg` (`CodeCambo-macOS-universal.dmg`) |
+| Linux | electron-builder -> `AppImage`, `.deb`, `.rpm` |
+| Backend + download site | Vercel (`*.vercel.app`; throwaway SQLite in `/tmp` when no `DATABASE_URL`) |
+| Config | `appId` `dev.codeforge.app`; `node-pty` unpacked from asar via `asarUnpack` |
+
+### Version control and releases
+- **Git + GitHub**: repo `Asda168/code-forge`, default branch `main`.
+- **Versioning**: SemVer, version in `desktop/package.json` (currently `1.3.4`), tagged `vMAJOR.MINOR.PATCH` (e.g. `v1.3.4`).
+- **CI/CD**: GitHub Actions (`.github/workflows/release.yml`, `actions/checkout@v4`, `setup-node@v4`, `setup-python@v5`, `upload-artifact@v4`, `softprops/action-gh-release@v2`).
+  - Build matrix: `windows-latest`, `macos-latest`, `ubuntu-latest`.
+  - Pushing a `v*` tag builds all installers and attaches them to a GitHub Release.
+  - Smoke-test jobs (`test-linux`, `test-macos`, `test-windows`) install the built packages and check the app starts; Windows also tests upgrading while the app is running.
+- **Release steps**:
+  1. Bump `version` in `desktop/package.json` and update `VERSION`/`CHANGES` in `backend/core/site.py`.
+  2. `git commit`, then `git tag vX.Y.Z && git push origin main --tags`.
+  3. Wait for the workflow to publish the GitHub Release, then set the download as available in `backend/core/site.py`.
+- **Auto-update**: the app reads the release feed from the backend and opens the download page (no in-place patching yet).
+
+### Testing
+- `node desktop/scripts/security-test.js`: path/command safety tests.
+- `desktop/scripts/e2e*.js`: Electron end-to-end scripts.
+- `python backend/manage.py test core`: backend tests.
