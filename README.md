@@ -2,6 +2,8 @@
 
 Lightweight IDE for Laravel / PHP / Python / Django / JS / Vue / React / SQL.
 
+**Website & downloads: https://astaide.vercel.app** (Asta IDE / AstaIDE)
+
 - `backend/` Django 5 + DRF + Channels. Accounts, settings sync, workspaces, releases (auto-update feed), download page.
 - `desktop/` Electron app: Monaco, xterm.js (+node-pty), Git, runner. All local work happens in the main process behind a `contextBridge`; no local server is opened.
 
