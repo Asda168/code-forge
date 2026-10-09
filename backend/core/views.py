@@ -1,3 +1,4 @@
+import os
 from django.contrib.auth import authenticate
 from django.shortcuts import render
 from rest_framework import generics, permissions, status, viewsets
@@ -132,7 +133,8 @@ def _site_url(request):
 def download_page(request):
     from . import site
     base = _site_url(request)
-    return render(request, "core/download.html", {**site.context(), "site_url": base, "canonical": base + "/", "og_image": base + "/og.png"})
+    return render(request, "core/download.html", {**site.context(), "site_url": base, "canonical": base + "/", "og_image": base + "/og.png",
+        "google_verification": os.environ.get("GOOGLE_SITE_VERIFICATION", ""), "bing_verification": os.environ.get("BING_SITE_VERIFICATION", "")})
 
 
 def robots_txt(request):
