@@ -49,7 +49,7 @@ Django 5 + DRF + Channels (`backend/core`). Models: UserProfile, Theme, EditorSe
 REST endpoints under `/api/`: `auth/{login,logout,register}`, `profile`, `settings`, `releases[/latest]`, `extensions`, `projects`, `workspaces`. A download page (`core/download.html`) serves installers; the `seed` command loads the extension catalog.
 
 ## Build and release
-electron-builder targets: NSIS (Windows x64/arm64), DMG (macOS universal), AppImage/deb/rpm (Linux). `.github/workflows/release.yml` builds all three on a version tag and attaches them to a GitHub Release.
+electron-builder targets: NSIS (Windows x64/arm64), DMG (macOS universal), AppImage/deb/rpm/pacman (Linux). `.github/workflows/release.yml` builds all three on a version tag and attaches them to a GitHub Release.
 
 ## Known gaps
 No LSP, no real debugger adapter, no PR/issue integration, auto-update opens the download page instead of patching, macOS/Linux installers untested.

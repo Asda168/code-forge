@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; worker-src blob: data:; connect-src 'self'">
-<title>CodeCambo</title>
+<title>Asta IDE</title>
 <link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/400.css">
 <link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/500.css">
 <link rel="stylesheet" href="../../node_modules/@fontsource/jetbrains-mono/700.css">
@@ -13,20 +13,20 @@
 <body>
 <div id="app">
   <header id="topbar">
-    <img src="../../assets/logo-map.png" class="logo" alt="">
-    <span class="brand">CodeCambo</span><span class="tagline">Code. Build. Run. Ship.</span>
+    <img src="../../assets/asda.png" class="logo" alt="">
+    <span class="brand">Asta IDE</span><span class="tagline">Code. Build. Run. Ship.</span>
     <button id="cmd-center" class="ghost">Search / Command Palette  <kbd>Ctrl+Shift+P</kbd></button>
     <span id="update-banner" hidden></span>
   </header>
   <nav id="activitybar">
-    <button data-view="explorer" title="Explorer"><i data-ic="explorer"></i></button>
-    <button data-view="search" title="Search"><i data-ic="search"></i></button>
-    <button data-view="git" title="Source Control"><i data-ic="git"></i></button>
-    <button data-view="gitlens" title="GitLens"><i data-ic="gitlens"></i></button>
-    <button data-view="run" title="Run"><i data-ic="run"></i></button>
-    <button data-view="extensions" title="Extensions"><i data-ic="extensions"></i></button>
+    <button data-view="explorer" title="Explorer" aria-label="Explorer"><i data-ic="explorer"></i></button>
+    <button data-view="search" title="Search" aria-label="Search"><i data-ic="search"></i></button>
+    <button data-view="git" title="Source Control" aria-label="Source Control"><i data-ic="git"></i></button>
+    <button data-view="gitlens" title="GitLens" aria-label="GitLens"><i data-ic="gitlens"></i></button>
+    <button data-view="run" title="Run" aria-label="Run"><i data-ic="run"></i></button>
+    <button data-view="extensions" title="Extensions" aria-label="Extensions"><i data-ic="extensions"></i></button>
     <span class="grow"></span>
-    <button data-view="settings" title="Settings"><i data-ic="settings"></i></button>
+    <button data-view="settings" title="Settings" aria-label="Settings"><i data-ic="settings"></i></button>
   </nav>
   <aside id="sidebar"><div id="side-title"></div><div id="side-body"></div></aside>
   <main id="main">
@@ -36,25 +36,34 @@
     </section>
     <section id="panel">
       <div id="panel-tabs">
-        <button data-panel="terminal" class="active">TERMINAL</button>
-        <button data-panel="problems">PROBLEMS <span id="prob-count"></span></button>
-        <button data-panel="debug">DEBUG CONSOLE</button>
+        <div id="panel-switch">
+          <button data-panel="terminal" class="active">Terminal</button>
+          <button data-panel="problems">Problems <span id="prob-count"></span></button>
+          <button data-panel="debug">Debug Console</button>
+        </div>
+        <div id="term-tabs"></div>
         <span class="grow"></span>
-        <select id="shell-select" title="Shell"></select>
-        <button id="term-new" title="New terminal (Ctrl+Shift+`)"><i data-ic="plus"></i></button>
-        <button id="term-split" title="Split terminal (Ctrl+Shift+5)"><i data-ic="split"></i></button>
-        <button id="term-kill" title="Kill terminal"><i data-ic="trash"></i></button>
+        <span class="term-only">
+          <button id="term-new" title="New terminal (Ctrl+Shift+`)"><i data-ic="plus"></i></button>
+          <button id="term-shell" title="Select terminal profile"><i data-ic="chevronDown"></i></button>
+          <button id="term-split" title="Split right (Ctrl+Shift+5)"><i data-ic="split"></i></button>
+          <button id="term-split-down" class="t-low" title="Split down (Ctrl+Shift+6)"><i data-ic="splitDown"></i></button>
+          <button id="term-clear" class="t-low" title="Clear terminal (Ctrl+Shift+K)"><i data-ic="clearTerm"></i></button>
+          <button id="term-zoom" class="t-low" title="Maximize / restore pane"><i data-ic="maximize"></i></button>
+          <button id="term-kill" class="t-low" title="Kill terminal"><i data-ic="trash"></i></button>
+          <button id="term-settings" class="t-low" title="Terminal settings"><i data-ic="settings"></i></button>
+          <button id="term-more" class="t-more" title="More terminal actions"><i data-ic="more"></i></button>
+        </span>
         <button id="panel-max" title="Maximize / restore panel"><i data-ic="chevronUp"></i></button>
         <button id="panel-close" title="Close panel (Ctrl+J)"><i data-ic="close"></i></button>
       </div>
-      <div id="term-tabs"></div>
       <div id="panel-terminal"></div>
       <div id="panel-problems" hidden></div>
       <div id="panel-debug" hidden></div>
     </section>
   </main>
   <footer id="statusbar">
-    <span id="sb-branch">⎇ —</span><span id="sb-problems">⊗ 0  ⚠ 0</span><span id="sb-blame" hidden></span><span class="grow"></span>
+    <span id="sb-branch">⎇ —</span><span id="sb-project" hidden></span><span id="sb-problems">⊗ 0  ⚠ 0</span><span id="sb-blame" hidden></span><span class="grow"></span>
     <span id="sb-pos">Ln 1, Col 1</span><span id="sb-indent">Spaces: 4</span><span id="sb-enc">UTF-8</span>
     <span id="sb-md" hidden title="Toggle file preview (Ctrl+Shift+V)" style="cursor:pointer">Preview</span><span id="sb-eol">LF</span><span id="sb-lang">Plain Text</span><span id="sb-font">JetBrains Mono</span>
   </footer>
@@ -75,6 +84,8 @@
 <script src="laravel.js"></script>
 <script src="ui.js"></script>
 <script src="shortcuts.js"></script>
+<script src="keybindings.js"></script>
+<script src="settings.js"></script>
 <script src="markdown.js"></script>
 <script src="ide.js"></script>
 <script src="boot.js"></script>

@@ -16,7 +16,7 @@ jobs:
           - os: macos-latest
             args: --mac --universal
           - os: ubuntu-latest
-            args: --linux AppImage deb rpm
+            args: --linux AppImage deb rpm pacman
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -48,11 +48,12 @@ jobs:
           name: installers-${{ matrix.os }}
           path: |
             desktop/dist/*.exe
-            !desktop/dist/CodeCambo-Setup.exe
+            !desktop/dist/Asta-Setup.exe
             desktop/dist/*.dmg
             desktop/dist/*.AppImage
             desktop/dist/*.deb
             desktop/dist/*.rpm
+            desktop/dist/*.pacman
           if-no-files-found: error
 
   release:
@@ -77,29 +78,34 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { name: installers-ubuntu-latest, path: pkg }
       - name: Install .deb
-        run: sudo apt-get update && sudo apt-get install -y ./pkg/CodeCambo.deb xvfb
+        run: sudo apt-get update && sudo apt-get install -y ./pkg/Asta.deb xvfb
       - name: .deb installs files and launcher
         run: |
-          test -x /opt/CodeCambo/codeforge
+          test -x /opt/Asta/codeforge
           test -f /usr/share/applications/codeforge.desktop
-          find /opt/CodeCambo -name pty.node | grep build/Release
+          find /opt/Asta -name pty.node | grep build/Release
       - name: .deb app starts and stays running
         run: |
-          xvfb-run -a /opt/CodeCambo/codeforge --no-sandbox > app.log 2>&1 &
+          xvfb-run -a /opt/Asta/codeforge --no-sandbox > app.log 2>&1 &
           sleep 20
-          pgrep -f /opt/CodeCambo/codeforge || { cat app.log; echo "app exited"; exit 1; }
-          pkill -f /opt/CodeCambo/codeforge || true
+          pgrep -f /opt/Asta/codeforge || { cat app.log; echo "app exited"; exit 1; }
+          pkill -f /opt/Asta/codeforge || true
       - name: AppImage starts and stays running
         run: |
-          chmod +x pkg/CodeCambo.AppImage
-          xvfb-run -a ./pkg/CodeCambo.AppImage --appimage-extract-and-run --no-sandbox > appimage.log 2>&1 &
+          chmod +x pkg/Asta.AppImage
+          xvfb-run -a ./pkg/Asta.AppImage --appimage-extract-and-run --no-sandbox > appimage.log 2>&1 &
           sleep 25
-          pgrep -f 'CodeCambo|codeforge' || { cat appimage.log; echo "AppImage exited"; exit 1; }
-          pkill -f 'CodeCambo|codeforge' || true
+          pgrep -f 'Asta|codeforge' || { cat appimage.log; echo "AppImage exited"; exit 1; }
+          pkill -f 'Asta|codeforge' || true
       - name: .rpm is valid
         run: |
           sudo apt-get install -y rpm
-          rpm -qip pkg/CodeCambo.rpm
+          rpm -qip pkg/Asta.rpm
+      - name: .pacman (Arch Linux) is valid
+        run: |
+          sudo apt-get install -y libarchive-tools
+          bsdtar -tf pkg/Asta.pacman | grep -q '^\.PKGINFO$'
+          bsdtar -xOf pkg/Asta.pacman .PKGINFO
 
   test-macos:
     needs: build
@@ -109,17 +115,17 @@ jobs:
         with: { name: installers-macos-latest, path: pkg }
       - name: Mount dmg and copy app
         run: |
-          hdiutil attach pkg/CodeCambo-macOS-universal.dmg -nobrowse -mountpoint /Volumes/cc
+          hdiutil attach pkg/Asta-macOS-universal.dmg -nobrowse -mountpoint /Volumes/cc
           ls /Volumes/cc
-          cp -R /Volumes/cc/CodeCambo.app /Applications/
+          cp -R /Volumes/cc/Asta.app /Applications/
           hdiutil detach /Volumes/cc
-          lipo -archs /Applications/CodeCambo.app/Contents/MacOS/CodeCambo
+          lipo -archs /Applications/Asta.app/Contents/MacOS/Asta
       - name: App starts and stays running
         run: |
-          /Applications/CodeCambo.app/Contents/MacOS/CodeCambo > app.log 2>&1 &
+          /Applications/Asta.app/Contents/MacOS/Asta > app.log 2>&1 &
           sleep 20
-          pgrep -f CodeCambo.app || { cat app.log; echo "app exited"; exit 1; }
-          pkill -f CodeCambo.app || true
+          pgrep -f Asta.app || { cat app.log; echo "app exited"; exit 1; }
+          pkill -f Asta.app || true
 
   test-windows:
     needs: build
@@ -130,19 +136,19 @@ jobs:
       - name: Clean install
         shell: pwsh
         run: |
-          Start-Process pkg\CodeCambo-Setup-x64.exe -ArgumentList '/S' -Wait
-          $exe = "$env:LOCALAPPDATA\Programs\CodeCambo\CodeCambo.exe"
+          Start-Process pkg\Asta-Setup-x64.exe -ArgumentList '/S' -Wait
+          $exe = "$env:LOCALAPPDATA\Programs\Asta\Asta.exe"
           if (-not (Test-Path $exe)) { throw "not installed at $exe" }
       - name: App starts and stays running
         shell: pwsh
         run: |
-          Start-Process "$env:LOCALAPPDATA\Programs\CodeCambo\CodeCambo.exe"
+          Start-Process "$env:LOCALAPPDATA\Programs\Asta\Asta.exe"
           Start-Sleep 15
-          if (-not (Get-Process CodeCambo -ErrorAction SilentlyContinue)) { throw "app exited" }
-      - name: Upgrade while CodeCambo is running (no manual close)
+          if (-not (Get-Process Asta -ErrorAction SilentlyContinue)) { throw "app exited" }
+      - name: Upgrade while Asta is running (no manual close)
         shell: pwsh
         run: |
-          $p = Start-Process pkg\CodeCambo-Setup-x64.exe -ArgumentList '/S' -PassThru
+          $p = Start-Process pkg\Asta-Setup-x64.exe -ArgumentList '/S' -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "installer hung (cannot close running app)" }
           if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
-          if (-not (Test-Path "$env:LOCALAPPDATA\Programs\CodeCambo\CodeCambo.exe")) { throw "app missing after upgrade" }
+          if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Asta\Asta.exe")) { throw "app missing after upgrade" }

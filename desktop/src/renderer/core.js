@@ -1,4 +1,4 @@
-// CodeCambo renderer core: state, helpers, themes, Monaco, editor groups & tabs.
+// Asta renderer core: state, helpers, themes, Monaco, editor groups & tabs.
 const CF = (window.CF = {
   S: {
     root: null,
@@ -213,7 +213,7 @@ CF.confirm = (msg, ok = "OK") =>
 // ---- themes ---------------------------------------------------------------
 const THEMES = {
   "codeforge-dark": {
-    name: "CodeCambo Dark",
+    name: "Asta Dark",
     base: "vs-dark",
     ui: {},
     ed: {
@@ -223,7 +223,7 @@ const THEMES = {
     },
   },
   "codeforge-light": {
-    name: "CodeCambo Light",
+    name: "Asta Light",
     base: "vs",
     ui: {
       "--bg": "#f7f8fc",
@@ -362,6 +362,11 @@ CF.applyTheme = (id) => {
   const bg = getComputedStyle(document.documentElement)
     .getPropertyValue("--bg")
     .trim();
+  const lm = bg.match(/^#([0-9a-f]{6})$/i), ln = lm ? parseInt(lm[1], 16) : 0;
+  document.documentElement.classList.toggle(
+    "ui-light",
+    !!lm && 0.299 * (ln >> 16) + 0.587 * ((ln >> 8) & 255) + 0.114 * (ln & 255) > 150,
+  );
   CF.S.terms &&
     CF.S.terms.forEach((x) => (x.xterm.options.theme = CF.termTheme()));
   return bg;
@@ -419,13 +424,40 @@ CF.termTheme = () => {
         brightCyan: "#a4daff",
         brightWhite: "#e6ebff",
       };
+  const panel = $("#panel");
+  if (panel) panel.classList.toggle("t-light", !!light);
+  if (light)
+    return {
+      ...pal,
+      background: bg,
+      foreground: g("--fg"),
+      cursor: g("--cyan"),
+      cursorAccent: bg,
+      selectionBackground: g("--sel"),
+    };
+  // dark themes: Zed-like charcoal surface and restrained colours
   return {
     ...pal,
-    background: bg,
-    foreground: g("--fg"),
-    cursor: g("--cyan"),
-    cursorAccent: bg,
-    selectionBackground: g("--sel"),
+    red: "#f07178",
+    green: "#8ccf8c",
+    background: "#151515",
+    foreground: "#e6e6e6",
+    cursor: "#e6e6e6",
+    cursorAccent: "#151515",
+    selectionBackground: "rgba(115,167,255,0.28)",
+  };
+};
+// Options shared by new terminals and live settings changes (font stack falls back to widely installed monospace fonts).
+CF.termOptions = () => {
+  const s = CF.S.settings;
+  return {
+    fontFamily: CF.termFont(),
+    fontSize: +s.termFontSize || 13,
+    lineHeight: +s.termLineHeight || 1.4,
+    cursorStyle: s.termCursorStyle || "block",
+    cursorBlink: s.termCursorBlink !== false,
+    fontWeight: "400",
+    fontWeightBold: "600",
   };
 };
 
@@ -471,8 +503,7 @@ CF.applySettings = () => {
   CF.S.groups.forEach((g) => g.editor.updateOptions(CF.editorOptions()));
   CF.S.terms &&
     CF.S.terms.forEach((x) => {
-      x.xterm.options.fontFamily = CF.termFont();
-      x.xterm.options.fontSize = Math.max(11, s.fontSize - 1);
+      Object.assign(x.xterm.options, CF.termOptions());
       x.fit();
     });
   CF.applyTheme(s.theme);
@@ -707,6 +738,8 @@ function makeGroup() {
   const host = h("div", { class: "editor-host" });
   const el = h("div", { class: "group" }, tabsEl, host);
   const g = { el, tabsEl, host, tabs: [], active: null, pinned: new Set() };
+  g.page = h("div", { class: "page", hidden: true });   // non-file tabs (e.g. extension details) render here, over the editor
+  host.append(g.page);
   g.editor = monaco.editor.create(host, { model: null, ...CF.editorOptions() });
   g.editor.onDidChangeCursorPosition((e) => {
     if (S.groups[S.active] === g)
@@ -763,8 +796,34 @@ CF.closeGroupIfEmpty = (g) => {
   }
 };
 
+// Virtual tabs ("ext://<id>") have no Monaco model; they draw into g.page via CF.renderPage (ui.js).
+// Each scheme registers { icon, title(path), render(group) } in CF.pages (ext:// in ui.js, kbd:// in keybindings.js).
+CF.pages = {};
+CF.isPage = (p) => /^(ext|kbd|settings):\/\//.test(p || "");
+const pageOf = (p) => CF.pages[String(p).split(":")[0]];
+CF.renderPage = (g) => {
+  const pg = pageOf(g.active);
+  return pg && pg.render(g);
+};
+CF.showActive = (g) => {
+  const pg = CF.isPage(g.active);
+  g.page.hidden = !pg;
+  if (pg) return CF.renderPage(g);
+  const m = g.active && S.models.get(g.active);
+  g.editor.setModel(m ? m.model : null);
+};
 CF.openFile = CF.guard(async (path, { group, line, col } = {}) => {
   const g = group || CF.activeGroup();
+  if (CF.isPage(path)) {
+    if (!g.tabs.includes(path)) g.tabs.push(path);
+    g.active = path;
+    S.active = S.groups.indexOf(g);
+    $("#welcome").hidden = true;
+    CF.showActive(g);
+    CF.renderTabs();
+    CF.updateStatus();
+    return;
+  }
   let m = S.models.get(path);
   if (!m) {
     const r = await cf.fs.read(path);
@@ -791,6 +850,7 @@ CF.openFile = CF.guard(async (path, { group, line, col } = {}) => {
   }
   if (!g.tabs.includes(path)) g.tabs.push(path);
   g.active = path;
+  g.page.hidden = true;
   g.editor.setModel(m.model);
   $("#welcome").hidden = true;
   if (line) {
@@ -821,7 +881,7 @@ CF.renderTabs = () =>
             (m && m.dirty ? " dirty" : "") +
             (g.pinned.has(p) ? " pinned" : ""),
           draggable: "true",
-          title: p,
+          title: CF.isPage(p) ? CF.pageTitle(p) : p,
           onclick: () => CF.openFile(p, { group: g }),
           onauxclick: (e) => {
             if (e.button === 1) CF.closeTab(g, p);
@@ -875,9 +935,13 @@ CF.renderTabs = () =>
                   }
                 },
               ],
-              "-",
-              ["Copy Path", () => navigator.clipboard.writeText(p)],
-              ["Reveal in File Manager", () => cf.fs.reveal(p)],
+              ...(CF.isPage(p)
+                ? []
+                : [
+                    "-",
+                    ["Copy Path", () => navigator.clipboard.writeText(p)],
+                    ["Reveal in File Manager", () => cf.fs.reveal(p)],
+                  ]),
             ]);
           },
           ondragstart: (e) =>
@@ -909,8 +973,13 @@ CF.renderTabs = () =>
             }
           },
         },
-        h("span", { class: "ic", html: CF.fileIconHtml(base(p), false) }),
-        h("span", { class: "name" }, base(p)),
+        h("span", {
+          class: "ic",
+          html: CF.isPage(p)
+            ? CF.iconHtml((pageOf(p) || {}).icon || "extensions", 15)
+            : CF.fileIconHtml(base(p), false),
+        }),
+        h("span", { class: "name" }, CF.isPage(p) ? CF.pageTitle(p) : base(p)),
         h(
           "span",
           {
@@ -975,7 +1044,7 @@ CF.closeTab = CF.guard(async (g, p, force) => {
   g.pinned.delete(p);
   if (g.active === p) {
     g.active = g.tabs[g.tabs.length - 1] || null;
-    g.editor.setModel(g.active ? S.models.get(g.active).model : null);
+    CF.showActive(g);
   }
   if (!S.groups.some((x) => x.tabs.includes(p)) && m) {
     clearTimeout(m.timer);
@@ -988,7 +1057,8 @@ CF.closeTab = CF.guard(async (g, p, force) => {
   CF.updateProblems();
   {
     const ag = CF.activeGroup();
-    if (ag && ag.active && CF.revealInTree) CF.revealInTree(ag.active);
+    if (ag && ag.active && !CF.isPage(ag.active) && CF.revealInTree)
+      CF.revealInTree(ag.active);
   }
   if (S.root && S.groups.every((x) => !x.tabs.length) && !S.root)
     $("#welcome").hidden = false;
@@ -1021,6 +1091,11 @@ CF.save = CF.guard(async (path) => {
   m.saved = text;
   m.dirty = false;
   CF.renderTabs();
+  if (path === S.keyboardFile) {
+    // hand-edited keyboard.json: re-read it so the shortcuts change immediately
+    await CF.loadKeys();
+    CF.toast("Keyboard shortcuts reloaded");
+  }
   if (path === S.settingsFile) {
     // hand-edited settings.json: re-read it and reload extensions
     try {
@@ -1036,6 +1111,10 @@ CF.save = CF.guard(async (path) => {
   CF.gitRefresh && CF.gitRefresh();
 });
 CF.saveAll = () => [...S.models.keys()].forEach((p) => CF.save(p));
+CF.pageTitle = (p) => {
+  const pg = pageOf(p);
+  return pg ? pg.title(p) : p;
+};
 CF.updateStatus = () => {
   const g = CF.activeGroup();
   const m = g && g.active && S.models.get(g.active);

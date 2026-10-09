@@ -120,7 +120,7 @@
     const norm = (p) => p.split('\\').join('/').toLowerCase(); const switched = !!S.root && norm(S.root) !== norm(root);
     if (switched && CF.closeAllTerminals) CF.closeAllTerminals();   // terminals belong to the project they were opened in
     CF.closeAllEditors(); S.root = root; T.expanded.clear(); T.kids.clear(); T.sel = null; $('#welcome').hidden = true;
-    document.title = `${base(root)} — CodeCambo`;
+    document.title = `${base(root)} — Asta IDE`; { const sp = $('#sb-project'); sp.textContent = base(root); sp.title = root; sp.hidden = false; }
     CF.watchRoot && CF.watchRoot(); CF.showView('explorer'); CF.gitRefresh && CF.gitRefresh(); CF.detectProject && CF.detectProject();
     CF.newTerminal && !S.terms.length && CF.newTerminal(undefined, root);   // new project -> fresh terminal opened in the new folder
   });
@@ -130,9 +130,9 @@
     const w = $('#welcome'); w.hidden = false; w.innerHTML = '';
     const recents = await cf.ws.recents();
     w.append(h('div', { class: 'welcome-in' },
-      h('img', { src: '../../assets/logo-map.png', width: 64 }), h('h1', {}, 'Code', h('span', {}, 'Cambo')),
+      h('img', { src: '../../assets/asda.png', width: 64 }), h('h1', {}, 'As', h('span', {}, 'ta')),
       h('div', { class: 'sub' }, 'Your development workspace.  ·  Code. Build. Run. Ship.'),
-      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: CF.openFolder }, 'Open Folder'), h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone Repository'), h('button', { class: 'btn sec', onclick: () => CF.newProjectWizard() }, 'New Project')),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: CF.openFolder }, 'Open Folder'), h('button', { class: 'btn sec', onclick: () => cf.win.newPick() }, 'Open in New Window'), h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone Repository'), h('button', { class: 'btn sec', onclick: () => CF.newProjectWizard() }, 'New Project')),
       h('h3', {}, 'Recent'), recents.length ? recents.map((r) => h('div', { class: 'recent', onclick: CF.guard(async () => CF.setRoot(await cf.ws.openRecent(r.path))) }, h('span', {}, r.name), h('small', {}, r.path))) : h('div', { class: 'muted' }, 'No recent projects yet.')));
   };
 

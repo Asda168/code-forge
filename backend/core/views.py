@@ -123,9 +123,38 @@ class ExtensionList(generics.ListAPIView):
     queryset = models.Extension.objects.all()
 
 
+def _site_url(request):
+    """Canonical origin: SITE_URL env/setting if set, else the request's own origin."""
+    from django.conf import settings
+    return (getattr(settings, "SITE_URL", "") or request.build_absolute_uri("/")).rstrip("/")
+
+
 def download_page(request):
     from . import site
-    return render(request, "core/download.html", site.context())
+    base = _site_url(request)
+    return render(request, "core/download.html", {**site.context(), "site_url": base, "canonical": base + "/", "og_image": base + "/og.png"})
+
+
+def robots_txt(request):
+    from django.http import HttpResponse
+    body = "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: " + _site_url(request) + "/sitemap.xml\n"
+    return HttpResponse(body, content_type="text/plain")
+
+
+def sitemap_xml(request):
+    from django.http import HttpResponse
+    from . import site
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+           f'<url><loc>{_site_url(request)}/</loc><lastmod>{site.RELEASED}</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url></urlset>')
+    return HttpResponse(xml, content_type="application/xml")
+
+
+def og_image(request):
+    from pathlib import Path
+    from django.http import HttpResponse
+    r = HttpResponse((Path(__file__).parent / "seo" / "og.png").read_bytes(), content_type="image/png")
+    r["Cache-Control"] = "public, max-age=86400"
+    return r
 
 
 class FeedbackView(APIView):

@@ -1,13 +1,13 @@
-; Close a running CodeCambo before installing/upgrading. Graceful first (WM_CLOSE to CodeCambo.exe and its child tree,
-; so the app can save/kill its terminals), wait up to ~10s, then force-kill ONLY the CodeCambo.exe process tree (/t) -
+; Close a running Asta before installing/upgrading. Graceful first (WM_CLOSE to Asta.exe and its child tree,
+; so the app can save/kill its terminals), wait up to ~10s, then force-kill ONLY the Asta.exe process tree (/t) -
 ; this also removes node-pty's conpty/OpenConsole helpers that would otherwise lock files in the install folder.
 ; Never touches other node/powershell/cmd/electron processes.
 !macro customCheckAppRunning
-  nsExec::Exec 'taskkill /t /im CodeCambo.exe'
+  nsExec::Exec 'taskkill /t /im Asta.exe'
   Pop $0
   StrCpy $1 0
   cf_wait:
-    nsExec::Exec 'cmd /c tasklist /fi "imagename eq CodeCambo.exe" /nh | find /i "CodeCambo.exe"'
+    nsExec::Exec 'cmd /c tasklist /fi "imagename eq Asta.exe" /nh | find /i "Asta.exe"'
     Pop $0
     StrCmp $0 0 0 cf_closed
     IntOp $1 $1 + 1
@@ -15,20 +15,20 @@
     Sleep 500
     Goto cf_wait
   cf_force:
-    nsExec::Exec 'taskkill /f /t /im CodeCambo.exe'
+    nsExec::Exec 'taskkill /f /t /im Asta.exe'
     Pop $0
     Sleep 1000
   cf_closed:
 !macroend
 
-; Extra NSIS steps: "Open with CodeCambo" context menu + add to PATH (per-user).
+; Extra NSIS steps: "Open with Asta" context menu + add to PATH (per-user).
 !macro customInstall
-  WriteRegStr HKCU "Software\Classes\*\shell\CodeCambo" "" "Open with CodeCambo"
-  WriteRegStr HKCU "Software\Classes\*\shell\CodeCambo" "Icon" "$INSTDIR\CodeCambo.exe"
-  WriteRegStr HKCU "Software\Classes\*\shell\CodeCambo\command" "" '"$INSTDIR\CodeCambo.exe" "%1"'
-  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeCambo" "" "Open with CodeCambo"
-  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeCambo" "Icon" "$INSTDIR\CodeCambo.exe"
-  WriteRegStr HKCU "Software\Classes\Directory\shell\CodeCambo\command" "" '"$INSTDIR\CodeCambo.exe" "%V"'
+  WriteRegStr HKCU "Software\Classes\*\shell\Asta" "" "Open with Asta"
+  WriteRegStr HKCU "Software\Classes\*\shell\Asta" "Icon" "$INSTDIR\Asta.exe"
+  WriteRegStr HKCU "Software\Classes\*\shell\Asta\command" "" '"$INSTDIR\Asta.exe" "%1"'
+  WriteRegStr HKCU "Software\Classes\Directory\shell\Asta" "" "Open with Asta"
+  WriteRegStr HKCU "Software\Classes\Directory\shell\Asta" "Icon" "$INSTDIR\Asta.exe"
+  WriteRegStr HKCU "Software\Classes\Directory\shell\Asta\command" "" '"$INSTDIR\Asta.exe" "%V"'
   ; PATH: append install dir for current user (simple form; does not dedupe).
   ReadRegStr $0 HKCU "Environment" "Path"
   StrCmp $0 "" +2
@@ -39,6 +39,6 @@
 !macroend
 
 !macro customUnInstall
-  DeleteRegKey HKCU "Software\Classes\*\shell\CodeCambo"
-  DeleteRegKey HKCU "Software\Classes\Directory\shell\CodeCambo"
+  DeleteRegKey HKCU "Software\Classes\*\shell\Asta"
+  DeleteRegKey HKCU "Software\Classes\Directory\shell\Asta"
 !macroend

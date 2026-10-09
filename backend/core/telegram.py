@@ -27,7 +27,7 @@ def send(text):
 
 def feedback_text(kind, message, contact, version):
     icon = {"feedback": "💬", "improvement": "💡", "bug": "🐞"}.get(kind, "💬")
-    lines = [f"{icon} <b>{html.escape(kind.title())}</b> · CodeCambo website", "", html.escape(message)]
+    lines = [f"{icon} <b>{html.escape(kind.title())}</b> · Asta website", "", html.escape(message)]
     if contact:
         lines += ["", f"From: {html.escape(contact)}"]
     if version:

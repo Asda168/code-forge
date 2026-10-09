@@ -71,5 +71,4 @@
     area().append(pane); area().classList.add('md-open'); last = ''; update(); timer = setInterval(() => { update(); sync(); }, 350); CF.renderTabs && CF.renderTabs();
     setTimeout(() => S.groups.forEach((g) => g.editor.layout()), 30);
   };
-  document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyV' && !(e.target.closest && e.target.closest('.xterm'))) { e.preventDefault(); CF.toggleMdPreview(); } }, true);
 })();

@@ -34,14 +34,14 @@
   CF.invalidateIndex = () => { indexRoot = null; };
 
   // ---- Find / switch project (Ctrl+R) ------------------------------------------------------------
-  CF.findProject = CF.guard(async () => {
+  CF.findProject = CF.guard(async (newWin = false) => {
     const recents = (await cf.ws.recents()).filter((r) => r.path !== S.root);
     const o = $('#overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
     let sel = 0, shown = recents;
     const list = h('div', { class: 'list' });
     const draw = () => {
       list.innerHTML = '';
-      shown.forEach((r, i) => list.append(h('div', { class: 'it' + (i === sel ? ' sel' : ''), onclick: () => go(r) }, h('span', {}, r.name), h('span', { class: 'muted mono', style: 'font-size:11px' }, r.path))));
+      shown.forEach((r, i) => list.append(h('div', { class: 'it' + (i === sel ? ' sel' : ''), onclick: (e) => go(r, newWin || e.ctrlKey || e.shiftKey) }, h('span', {}, r.name), h('span', { class: 'muted mono', style: 'font-size:11px' }, r.path), h('button', { class: 'btn sec', title: 'Open in New Window (Ctrl+Enter)', style: 'margin-left:auto;padding:0 6px', onclick: (e) => { e.stopPropagation(); go(r, true); } }, '↗'))));
       if (!shown.length) list.append(h('div', { class: 'it muted' }, recents.length ? 'No matching project' : 'No other recent projects'));
     };
     const filter = () => {
@@ -49,15 +49,14 @@
       shown = q ? recents.map((r) => [r, score(r.name + ' ' + r.path, q)]).filter((x) => x[1] >= 0).sort((a, b) => a[1] - b[1]).map((x) => x[0]) : recents;
       sel = 0; draw();
     };
-    const go = (r) => { CF.closeOverlay(); CF.guard(async () => CF.setRoot(await cf.ws.openRecent(r.path)))(); };
-    const input = h('input', { placeholder: 'Find project…  (Enter to open, Ctrl+O for a new folder)', oninput: filter, onkeydown: (e) => {
+    const go = (r, inNew) => { CF.closeOverlay(); CF.guard(async () => { if (inNew) await cf.win.new(r.path); else CF.setRoot(await cf.ws.openRecent(r.path)); })(); };
+    const input = h('input', { placeholder: newWin ? 'Open project in new window…' : 'Find project…  (Enter to open, Ctrl+Enter for a new window)', oninput: filter, onkeydown: (e) => {
       if (e.key === 'ArrowDown') { sel = Math.min(shown.length - 1, sel + 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { sel = Math.max(0, sel - 1); draw(); e.preventDefault(); }
-      else if (e.key === 'Enter' && shown[sel]) go(shown[sel]); else if (e.key === 'Escape') CF.closeOverlay();
+      else if (e.key === 'Enter' && shown[sel]) go(shown[sel], newWin || e.ctrlKey || e.shiftKey); else if (e.key === 'Escape') CF.closeOverlay();
     } });
     o.append(h('div', { class: 'palette' }, input, list)); o.onmousedown = (e) => { if (e.target === o) CF.closeOverlay(); };
     draw(); input.focus();
   });
-  // Ctrl+R stays reverse-search inside the terminal
   // Ctrl+F: always open the editor's find widget (works even when focus is on a tab, the explorer or a preview)
   document.addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyF') return;
@@ -68,10 +67,6 @@
     if (!g || !g.active) return CF.quickOpen();   // no file open: Ctrl+F finds a file instead
     g.editor.focus(); setTimeout(() => { const a = g.editor.getAction('actions.find'); a && a.run(); }, 0);
   }, true);
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyR' && !(e.target.closest && e.target.closest('.xterm'))) { e.preventDefault(); e.stopPropagation(); CF.findProject(); }
-  }, true);
-
   // ---- tab shortcuts --------------------------------------------------------------------------
   CF.closeActiveTab = () => { const g = CF.activeGroup(); if (g.active) CF.closeTab(g, g.active); };
   CF.cycleTab = (d) => { const g = CF.activeGroup(); if (g.tabs.length < 2) return; const i = g.tabs.indexOf(g.active); CF.openFile(g.tabs[(i + d + g.tabs.length) % g.tabs.length], { group: g }); };
@@ -92,9 +87,9 @@
   $('#app').append(sv); $('#panel').before(sh);
   const place = () => { const sb = $('#sidebar'); sv.style.left = (sb.offsetLeft + sb.offsetWidth - 2) + 'px'; sv.style.display = S.settings.sidebar ? '' : 'none'; };
   const saved = JSON.parse(localStorage.getItem('cf.layout') || '{}');
-  if (saved.side) $('#app').style.gridTemplateColumns = `48px ${saved.side}px 1fr`;
+  if (saved.side) $('#app').style.setProperty('--side-w', saved.side + 'px');   // a variable, not inline columns, so .no-sidebar can still collapse the column
   if (saved.panel) $('#panel').style.height = saved.panel + 'px';
-  drag(sv, (e) => { const w = Math.min(640, Math.max(160, e.clientX - 48)); $('#app').style.gridTemplateColumns = `48px ${w}px 1fr`; saved.side = w; localStorage.setItem('cf.layout', JSON.stringify(saved)); place(); });
+  drag(sv, (e) => { const w = Math.min(640, Math.max(160, e.clientX - 48)); $('#app').style.setProperty('--side-w', w + 'px'); saved.side = w; localStorage.setItem('cf.layout', JSON.stringify(saved)); place(); });
   const setPanel = (ph) => { $('#panel').classList.remove('max'); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); };
   CF.toggleMaxPanel = () => { const p = $('#panel'); p.classList.remove('hidden'); const on = p.classList.toggle('max'); sh.hidden = on; $('#panel-max').innerHTML = CF.iconHtml(on ? 'chevronDown' : 'chevronUp', 15); setTimeout(() => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }, 30); };
   sh.addEventListener('dblclick', () => setPanel(260));
@@ -112,7 +107,7 @@
   });
 
   // ---- empty editor watermark ----------------------------------------------------------------------------------
-  const wm = h('div', { id: 'watermark' }, h('img', { src: '../../assets/logo-map.png', width: 96 }), h('div', {}, [['Quick Open', 'Ctrl+P'], ['Command Palette', 'Ctrl+Shift+P'], ['Toggle Terminal', 'Ctrl+`'], ['Find in Files', 'Ctrl+Shift+F']].map(([a, k]) => h('div', {}, a + '  ', h('kbd', {}, k)))));
+  const wm = h('div', { id: 'watermark' }, h('img', { src: '../../assets/asda.png', width: 96 }), h('div', {}, [['Quick Open', 'Ctrl+P'], ['Command Palette', 'Ctrl+Shift+P'], ['Toggle Terminal', 'Ctrl+`'], ['Find in Files', 'Ctrl+Shift+F']].map(([a, k]) => h('div', {}, a + '  ', h('kbd', {}, k)))));
   $('#editor-area').append(wm);
   const sync = () => { wm.style.display = !S.groups.some((g) => g.tabs.length) && $('#welcome').hidden ? '' : 'none'; };
   setInterval(sync, 300);

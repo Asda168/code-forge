@@ -53,7 +53,6 @@
       },
       initials(name),
     );
-  CF.avatar = avatar;
 
   async function me() {
     if (L.user == null)
@@ -234,7 +233,6 @@
       updateFile(g.editor).catch(() => {});
     });
   }
-  CF.blameUpdate = updateAll;
 
   let timer;
   const hook = (ed) => {
@@ -713,20 +711,4 @@
     );
   };
 
-  // ---- shortcuts ----------------------------------------------------------------------------------
-  document.addEventListener(
-    "keydown",
-    (e) => {
-      if (!e.altKey || e.ctrlKey || e.metaKey) return;
-      const k = e.code;
-      if (k === "KeyB") {
-        e.preventDefault();
-        e.shiftKey ? CF.toggleFileBlame() : CF.toggleLineBlame();
-      } else if (k === "KeyH") {
-        e.preventDefault();
-        e.shiftKey ? CF.lineHistory() : CF.fileHistory();
-      }
-    },
-    true,
-  );
 })();

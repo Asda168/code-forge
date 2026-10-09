@@ -6,12 +6,13 @@
 
   CF.initTerminal = CF.guard(async () => {
     S.shells = await cf.term.shells();
-    const sel = $('#shell-select'); sel.innerHTML = '';
-    S.shells.forEach((s) => sel.append(h('option', { value: s.id, selected: s.id === S.settings.defaultShell }, s.name)));
+    $('#term-shell').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: r.left, clientY: r.top - 4 - 26 * S.shells.length }, S.shells.map((s) => [(s.id === S.settings.defaultShell ? '✓ ' : '   ') + s.name, () => CF.newTerminal(s.id)])); };
     cf.term.onData((id, d) => { const t = S.terms.find((x) => x.id === id); if (t) t.xterm.write(d); });
     cf.term.onExit((id) => { const t = S.terms.find((x) => x.id === id); if (t) { t.xterm.write('\r\n[process exited]\r\n'); t.exited = true; } });
-    $('#term-new').onclick = () => CF.newTerminal($('#shell-select').value);
-    $('#term-split').onclick = CF.splitTerminal; $('#term-kill').onclick = CF.killTerminal;
+    $('#term-new').onclick = () => CF.newTerminal();
+    $('#term-split').onclick = () => CF.splitTerminal('row'); $('#term-split-down').onclick = () => CF.splitTerminal('col'); $('#term-kill').onclick = CF.killTerminal;
+    $('#term-clear').onclick = CF.clearTerminal; $('#term-zoom').onclick = CF.zoomPane; $('#term-settings').onclick = () => CF.settingsDialog();
+    $('#term-more').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: r.left - 120, clientY: r.bottom + 2 }, [['Split Down', () => CF.splitTerminal('col')], ['Clear Terminal', CF.clearTerminal], ['Maximize / Restore Pane', CF.zoomPane], ['Kill Terminal', CF.killTerminal], '-', ['Terminal Settings', () => CF.settingsDialog()]]); };
     new ResizeObserver(() => activeTerm && activeTerm.grp.terms.forEach((x) => x.fit())).observe($('#panel-terminal'));
   });
 
@@ -38,7 +39,7 @@
   }
 
   // Monospace stack with safe fallbacks: a missing/proportional font made Git Bash text overlap.
-  CF.termFont = () => `"${S.settings.fontFamily}", "Cascadia Mono", Consolas, "Courier New", monospace`;
+  CF.termFont = () => `"${(S.settings.termFontFamily || S.settings.fontFamily).replace(/"/g, '')}", "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace`;
   const URL_RE = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:!?)\]}]/g;
   function linkProvider(xterm) {
     return { provideLinks(y, cb) {
@@ -54,7 +55,7 @@
   CF.newTerminal = CF.guard(async (shellId, cwd, opts = {}) => {
     CF.showPanel('terminal');
     const host = h('div', { class: 'term' }); $('#panel-terminal').append(host);
-    const xterm = new Terminal({ fontFamily: CF.termFont(), fontSize: Math.max(11, S.settings.fontSize - 1), lineHeight: 1, letterSpacing: 0, cursorBlink: true, minimumContrastRatio: 4.5, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000, windowsPty: S.platform.platform === 'win32' ? { backend: 'conpty' } : undefined });
+    const xterm = new Terminal({ ...CF.termOptions(), letterSpacing: 0, minimumContrastRatio: 4.5, theme: CF.termTheme(), allowProposedApi: true, scrollback: 5000, windowsPty: S.platform.platform === 'win32' ? { backend: 'conpty' } : undefined });
     const fitAddon = new FitAddon.FitAddon(); xterm.loadAddon(fitAddon); xterm.open(host);
     const fit = () => { try { fitAddon.fit(); cf.term.resize(t.id, xterm.cols, xterm.rows); } catch { /* hidden */ } };
     const split = opts.split && activeTerm;
@@ -73,30 +74,40 @@
       // Ctrl+C copies when text is selected (otherwise it is SIGINT); Ctrl+V pastes
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyC' && xterm.hasSelection()) { navigator.clipboard.writeText(xterm.getSelection()); xterm.clearSelection(); return false; }
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyV') { e.preventDefault(); paste(); return false; }
-      if (e.ctrlKey && e.shiftKey && e.code === 'Digit5') { CF.splitTerminal(); return false; }
-      if (e.ctrlKey && e.shiftKey && e.code === 'Backquote') { CF.newTerminal(); return false; }
-      if (e.ctrlKey && e.shiftKey && e.code === 'KeyW') { closeTerm(t); return false; }
-      if (e.ctrlKey && e.shiftKey && e.code === 'KeyK') { xterm.clear(); return false; }
       if (e.altKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && t.grp.terms.length > 1) { CF.focusPane(e.code === 'ArrowLeft' ? -1 : 1); return false; }
       if (e.ctrlKey && (e.code === 'PageUp' || e.code === 'PageDown')) { CF.cycleTerminal(e.code === 'PageUp' ? -1 : 1); return false; }
-      // App shortcuts: xterm must not consume these (it would send them to the shell and cancel the menu accelerator).
-      // Readline keys (Ctrl+C/D/L/R/W/A/E/K/U...) still go to the shell.
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && (e.shiftKey || APP_KEYS.has(e.code) || APP_CHARS.has(e.key.toLowerCase()))) return false;
-      if (mod && e.altKey) return false;                       // Ctrl+Alt+S etc. are never readline keys
-      if (mod && ['KeyS', 'KeyO', 'KeyN', 'KeyG'].includes(e.code)) return false;   // Save / Open / New / Go to line (menu accelerators)
-      if ((e.altKey && (e.code === 'KeyG' || e.key.toLowerCase() === 'g')) || e.code === 'F5' || e.code === 'F12') return false;
-      return true;
+      // App shortcuts (keybindings.js) are dispatched before xterm sees them; anything CF.termAppKey claims must not reach the shell either.
+      return !CF.termAppKey(e);
     });
     host.addEventListener('mousedown', () => { if (activeTerm !== t) selectTerm(t); });
     wireDrop(t);
-    if (split) { t.grp = activeTerm.grp; t.grp.terms.splice(t.grp.terms.indexOf(activeTerm) + 1, 0, t); }
-    else { t.grp = { terms: [t] }; S.tgroups.push(t.grp); }
+    host.append(h('div', { class: 'pane-ctl' },
+      h('button', { title: 'Split right', onclick: (e) => { e.stopPropagation(); selectTerm(t); CF.splitTerminal('row'); } }, CF.icon('split', 12)),
+      h('button', { title: 'Split down', onclick: (e) => { e.stopPropagation(); selectTerm(t); CF.splitTerminal('col'); } }, CF.icon('splitDown', 12)),
+      h('button', { title: 'Maximize / restore pane', onclick: (e) => { e.stopPropagation(); selectTerm(t); CF.zoomPane(); } }, CF.icon('maximize', 12)),
+      h('button', { title: 'Close pane', onclick: (e) => { e.stopPropagation(); closeTerm(t); } }, CF.icon('close', 12))));
+    // one split direction per tab: the latest split choice wins
+    if (split) { t.grp = activeTerm.grp; const nd = opts.split === 'col' ? 'col' : 'row'; if (t.grp.dir !== nd) { t.grp.dir = nd; t.grp.terms.forEach((x) => (x.host.style.flex = '')); } t.grp.zoom = null; t.grp.terms.splice(t.grp.terms.indexOf(activeTerm) + 1, 0, t); }
+    else { t.grp = { terms: [t], dir: 'row' }; S.tgroups.push(t.grp); }
     S.terms.push(t); selectTerm(t);
     if (!info.pty) xterm.write('\x1b[33m[node-pty not installed: limited line-mode terminal. Run `npm i node-pty` for a full terminal.]\x1b[0m\r\n');
     return t;
   });
-  CF.splitTerminal = () => (activeTerm ? CF.newTerminal(undefined, undefined, { split: true }) : CF.newTerminal());
+  // true when a key press belongs to the app, not the shell (readline keys such as Ctrl+C/D/L/R/W/A/E/K/U stay with the shell)
+  CF.termAppKey = (e) => {
+    const mod = e.ctrlKey || e.metaKey, k = (e.key || '').toLowerCase();
+    if (/^F\d{1,2}$/.test(e.code)) return true;
+    if (mod && (e.shiftKey || APP_KEYS.has(e.code) || APP_CHARS.has(k))) return true;
+    if (mod && e.altKey) return true;                         // Ctrl+Alt+S etc. are never readline keys
+    if (mod && ['KeyS', 'KeyO', 'KeyN', 'KeyG'].includes(e.code)) return true;   // Save / Open / New / Go to line
+    return !!e.altKey && (e.code === 'KeyG' || k === 'g');
+  };
+  CF.closeActivePane = () => activeTerm && CF.closePane(activeTerm);
+  CF.termFontStep = (d) => CF.setSetting({ termFontSize: d === 0 ? 13 : Math.min(32, Math.max(8, (+S.settings.termFontSize || 13) + d)) });
+  CF.splitTerminal = (dir) => (activeTerm ? CF.newTerminal(undefined, undefined, { split: dir === 'col' ? 'col' : 'row' }) : CF.newTerminal());
+  CF.zoomPane = () => { const g = activeTerm && activeTerm.grp; if (!g || g.terms.length < 2) return; g.zoom = g.zoom ? null : activeTerm; selectTerm(activeTerm); };
+  // keyboard close asks first while the shell is still alive, so a stray shortcut cannot kill a running task
+  CF.closePane = CF.guard(async (t) => { if (!t.exited && !(await CF.confirm(`Close ${t.name}? Its running process will be terminated.`, 'Close'))) return; closeTerm(t); activeTerm && activeTerm.xterm.focus(); });
   CF.cycleTerminal = (d) => { if (S.terms.length < 2) return; const i = S.terms.indexOf(activeTerm); selectTerm(S.terms[(i + d + S.terms.length) % S.terms.length]); };
   CF.focusPane = (d) => { const l = activeTerm.grp.terms; selectTerm(l[(l.indexOf(activeTerm) + d + l.length) % l.length]); };
   CF.clearTerminal = () => activeTerm && activeTerm.xterm.clear();
@@ -107,38 +118,44 @@
     const tabs = $('#term-tabs'); tabs.innerHTML = '';
     S.tgroups.forEach((g) => {
       const on = activeTerm && g === activeTerm.grp;
-      const tab = h('div', { class: 'tt' + (on ? ' active' : ''), draggable: 'true', onclick: () => selectTerm(g.last && g.terms.includes(g.last) ? g.last : g.terms[0]),
-        oncontextmenu: (e) => { e.preventDefault(); selectTerm(g.terms[0]); CF.menu(e, [['Split Terminal', CF.splitTerminal], ['New Terminal', () => CF.newTerminal()], ['Rename…', CF.renameTerminal], ['Clear', CF.clearTerminal], '-', ['Kill Terminal', CF.killTerminal]]); },
+      const tab = h('div', { class: 'tt' + (on ? ' active' : ''), draggable: 'true', title: g.terms.map((x) => x.name).join(' | '), onclick: () => selectTerm(g.last && g.terms.includes(g.last) ? g.last : g.terms[0]),
+        ondblclick: () => { selectTerm(g.last && g.terms.includes(g.last) ? g.last : g.terms[0]); CF.renameTerminal(); },
+        onauxclick: (e) => { if (e.button === 1) { e.preventDefault(); closeTerm(g.terms[0]); } },
+        oncontextmenu: (e) => { e.preventDefault(); selectTerm(g.terms[0]); CF.menu(e, [['Split Right', () => CF.splitTerminal('row')], ['Split Down', () => CF.splitTerminal('col')], ['Maximize / Restore Pane', CF.zoomPane], ['New Terminal', () => CF.newTerminal()], ['Rename…', CF.renameTerminal], ['Clear', CF.clearTerminal], '-', ['Kill Terminal', CF.killTerminal]]); },
         ondragstart: (e) => { e.dataTransfer.setData('text/cf-tab', String(S.tgroups.indexOf(g))); },
         ondragover: (e) => { if (e.dataTransfer.types.includes('text/cf-tab')) { e.preventDefault(); tab.classList.add('drop'); } },
         ondragleave: () => tab.classList.remove('drop'),
         ondrop: (e) => { e.preventDefault(); tab.classList.remove('drop'); const from = +e.dataTransfer.getData('text/cf-tab'); const to = S.tgroups.indexOf(g); if (isNaN(from) || from === to) return; const [m] = S.tgroups.splice(from, 1); S.tgroups.splice(to, 0, m); renderTermTabs(); } },
         CF.icon('terminal', 13),
         // each split pane has its own name + close button so one terminal can be closed without killing the others
-        ...g.terms.map((x, i) => h('span', { class: 'tt-pane' + (x === activeTerm ? ' cur' : ''), onclick: (e) => { if (g.terms.length > 1) { e.stopPropagation(); selectTerm(x); } } }, (i ? '| ' : '') + x.name,
+        ...g.terms.map((x, i) => h('span', { class: 'tt-pane' + (x === activeTerm ? ' sel' : ''), onclick: (e) => { if (g.terms.length > 1) { e.stopPropagation(); selectTerm(x); } } }, (i ? h('span', { class: 'sep' }, '|') : null), h('span', { class: 'tt-label', title: x.name }, x.name.length > 24 ? x.name.slice(0, 23) + '…' : x.name),
           g.terms.length > 1 ? h('span', { class: 'x', title: `Close ${x.name}`, onclick: (e) => { e.stopPropagation(); closeTerm(x); } }, CF.icon('close', 11)) : null)),
         g.terms.length > 1 ? null : h('span', { class: 'x', title: 'Kill terminal', onclick: (e) => { e.stopPropagation(); closeTerm(g.terms[0]); } }, CF.icon('close', 12)));
       tabs.append(tab);
     });
   }
   function selectTerm(t) {
-    activeTerm = t; t.grp.last = t;
-    S.terms.forEach((x) => { x.host.classList.toggle('hidden', x.grp !== t.grp); x.host.classList.toggle('focus', x === t && t.grp.terms.length > 1); });
-    t.grp.terms.forEach((x, i) => { x.host.style.order = i * 2; });
+    activeTerm = t; const g = t.grp; g.last = t;
+    if (g.zoom) g.zoom = t;                                  // zoomed group follows the selected pane
+    $('#panel-terminal').style.flexDirection = g.dir === 'col' ? 'column' : 'row';
+    S.terms.forEach((x) => { x.host.classList.toggle('hidden', x.grp !== g || (!!g.zoom && x !== g.zoom)); x.host.classList.toggle('split', x.grp === g && g.terms.length > 1 && !g.zoom); x.host.classList.toggle('focus', x === t); });
+    g.terms.forEach((x, i) => { x.host.style.order = i * 2; });
     layoutDividers();
     renderTermTabs();
-    requestAnimationFrame(() => { t.grp.terms.forEach((x) => x.fit()); t.xterm.focus(); });
+    requestAnimationFrame(() => { g.terms.forEach((x) => x.fit()); t.xterm.focus(); });
   }
-  // draggable dividers between split panes
+  // draggable dividers between split panes (horizontal row or vertical column); sizes set by dragging are kept
   function layoutDividers() {
     $$('#panel-terminal .pane-div').forEach((d) => d.remove());
-    const g = activeTerm && activeTerm.grp; if (!g) return;
+    const g = activeTerm && activeTerm.grp; if (!g || g.zoom) return;
+    const col = g.dir === 'col', MIN = col ? 60 : 120;
     g.terms.slice(0, -1).forEach((a, i) => {
-      const b = g.terms[i + 1]; const d = h('div', { class: 'pane-div', style: `order:${i * 2 + 1}` });
+      const b = g.terms[i + 1]; const d = h('div', { class: 'pane-div' + (col ? ' col' : ''), style: `order:${i * 2 + 1}` });
       d.onmousedown = (e) => {
         e.preventDefault(); document.body.style.userSelect = 'none';
-        const wa = a.host.getBoundingClientRect().width, wb = b.host.getBoundingClientRect().width, x0 = e.clientX;
-        const mv = (ev) => { const dx = Math.max(-wa + 120, Math.min(wb - 120, ev.clientX - x0)); a.host.style.flex = `0 0 ${wa + dx}px`; b.host.style.flex = `0 0 ${wb - dx}px`; a.fit(); b.fit(); };
+        const size = (x) => { const r = x.host.getBoundingClientRect(); return col ? r.height : r.width; };
+        const wa = size(a), wb = size(b), x0 = col ? e.clientY : e.clientX;
+        const mv = (ev) => { const dx = Math.max(MIN - wa, Math.min(wb - MIN, (col ? ev.clientY : ev.clientX) - x0)); a.host.style.flex = `0 0 ${wa + dx}px`; b.host.style.flex = `0 0 ${wb - dx}px`; a.fit(); b.fit(); };
         const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.userSelect = ''; };
         document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
       };
@@ -149,6 +166,7 @@
   function closeTerm(t) {
     cf.term.kill(t.id); t.xterm.dispose(); t.host.remove();
     S.terms.splice(S.terms.indexOf(t), 1); const g = t.grp; g.terms.splice(g.terms.indexOf(t), 1);
+    if (g.zoom === t) g.zoom = null; if (g.terms.length < 2) g.zoom = null;
     if (!g.terms.length) S.tgroups.splice(S.tgroups.indexOf(g), 1);
     if (runTerm === t) runTerm = null; for (const [k, v] of runTerms) if (v === t) runTerms.delete(k);
     if (g.terms.length) selectTerm(g.terms[0]);
@@ -158,9 +176,9 @@
   CF.closeAllTerminals = () => { [...S.terms].forEach(closeTerm); runTerm = null; runTerms.clear(); };
   CF.showPanel = (name) => {
     $('#panel').classList.remove('hidden');
-    $$('#panel-tabs [data-panel]').forEach((b) => b.classList.toggle('active', b.dataset.panel === name));
+    $$('#panel-switch [data-panel]').forEach((b) => b.classList.toggle('active', b.dataset.panel === name));
     ['terminal', 'problems', 'debug'].forEach((p) => ($('#panel-' + p).hidden = p !== name));
-    $('#term-tabs').hidden = name !== 'terminal';
+    $('#term-tabs').hidden = name !== 'terminal'; $('#panel-tabs .term-only').hidden = name !== 'terminal';
     if (name === 'terminal' && activeTerm) setTimeout(() => activeTerm.grp.terms.forEach((x) => x.fit()), 0);
   };
   const $$ = CF.$$;

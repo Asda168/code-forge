@@ -11,7 +11,7 @@
   CF.bindMenu();
 
   $$('#activitybar [data-view]').forEach((b) => (b.onclick = () => CF.showView(b.dataset.view)));
-  $$('#panel-tabs [data-panel]').forEach((b) => (b.onclick = () => CF.showPanel(b.dataset.panel)));
+  $$('#panel-switch [data-panel]').forEach((b) => (b.onclick = () => CF.showPanel(b.dataset.panel)));
   $('#panel-close').onclick = CF.togglePanel; $('#panel-max').onclick = CF.toggleMaxPanel;
   $('#cmd-center').onclick = CF.palette;
   $('#sb-branch').onclick = () => (CF.G && (CF.G.ahead || CF.G.behind) ? CF.gitSync() : CF.showView('git'));   // ahead/behind: click to sync
@@ -20,12 +20,6 @@
   $('#sb-font').onclick = CF.settingsDialog;
   monaco.editor.onDidChangeMarkers(() => CF.updateProblems());
 
-  let chord = 0;
-  document.addEventListener('keydown', (e) => {
-    const mod = e.ctrlKey || e.metaKey;
-    if (mod && !e.shiftKey && e.key.toLowerCase() === 'k') { chord = Date.now(); return; }
-    if (chord && Date.now() - chord < 1500 && mod && e.key.toLowerCase() === 't') { e.preventDefault(); chord = 0; CF.themePicker(); }
-  }, true);
   window.addEventListener('blur', () => { if (S.settings.autoSave === 'onWindowChange' || S.settings.autoSave === 'onFocusChange') CF.saveAll(); });
 
   cf.onOpenPath(async ({ root, file }) => { await CF.setRoot(root); if (file) CF.openFile(file); });
@@ -65,9 +59,10 @@
     save(); restoring = true;
     try { await baseSetRoot(root); await restore(root); } finally { restoring = false; save(); }
   };
-  CF.saveSession = save; setInterval(save, 1500); window.addEventListener('beforeunload', save);
+  setInterval(save, 1500); window.addEventListener('beforeunload', save);
   let restored = false;
-  const last = load().last;
+  const qs = new URLSearchParams(location.search), fresh = qs.get('fresh'), want = qs.get('root');   // new windows never restore the previous window's project
+  const last = want || (fresh ? null : load().last);
   if (last) {
     try { await CF.setRoot(await cf.ws.openRecent(last)); restored = true; }
     catch { /* folder moved or deleted: fall back to the welcome screen */ }

@@ -35,8 +35,8 @@ class ApiTests(TestCase):
     def test_download_page_without_db_rows(self):
         r = self.c.get("/")
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "Download CodeCambo")
-        self.assertContains(r, "CodeCambo-Setup-x64.exe")
+        self.assertContains(r, "Download Asta")
+        self.assertContains(r, "Asta-Setup-x64.exe")
 
     def test_update_check_and_download_page(self):
         r = Release.objects.create(version="1.2.0", released_at="2026-01-01")

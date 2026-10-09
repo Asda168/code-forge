@@ -8,7 +8,10 @@ REPO = "https://github.com/Asda168/code-forge"
 VERSION = "1.3.4"
 RELEASED = "2026-10-07"
 CHANGES = [
-    "Installer can upgrade over a running CodeCambo",
+    "Renamed to Asta IDE",
+    "Arch Linux package (.pacman)",
+    "Website SEO: canonical URLs, sitemap, robots.txt and structured data",
+    "Installer can upgrade over a running Asta",
     "Sticky scroll improvements",
     "Editor scrolling improvements",
     "Ctrl+F fixes",
@@ -18,12 +21,13 @@ CHANGES = [
 _REL = f"{REPO}/releases/latest/download"
 
 DOWNLOADS = [
-    {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "CodeCambo-Setup-x64.exe", "url": f"{_REL}/CodeCambo-Setup-x64.exe", "available": True},
-    {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "CodeCambo-Setup-arm64.exe", "url": f"{_REL}/CodeCambo-Setup-arm64.exe", "available": True},
-    {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "CodeCambo-macOS-universal.dmg", "url": f"{_REL}/CodeCambo-macOS-universal.dmg", "available": True},
-    {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "CodeCambo.AppImage", "url": f"{_REL}/CodeCambo.AppImage", "available": True},
-    {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "CodeCambo.deb", "url": f"{_REL}/CodeCambo.deb", "available": True},
-    {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "CodeCambo.rpm", "url": f"{_REL}/CodeCambo.rpm", "available": True},
+    {"platform": "windows", "arch": "x64", "kind": "exe", "filename": "Asta-Setup-x64.exe", "url": f"{_REL}/Asta-Setup-x64.exe", "available": True},
+    {"platform": "windows", "arch": "arm64", "kind": "exe", "filename": "Asta-Setup-arm64.exe", "url": f"{_REL}/Asta-Setup-arm64.exe", "available": True},
+    {"platform": "macos", "arch": "universal", "kind": "dmg", "filename": "Asta-macOS-universal.dmg", "url": f"{_REL}/Asta-macOS-universal.dmg", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "AppImage", "filename": "Asta.AppImage", "url": f"{_REL}/Asta.AppImage", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "deb", "filename": "Asta.deb", "url": f"{_REL}/Asta.deb", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "rpm", "filename": "Asta.rpm", "url": f"{_REL}/Asta.rpm", "available": True},
+    {"platform": "linux", "arch": "x64", "kind": "pacman", "filename": "Asta.pacman", "url": f"{_REL}/Asta.pacman", "available": True},
 ]
 # Set True to show the project cards below; while False the Projects section shows "Coming soon".
 SHOW_PROJECTS = False

@@ -8,7 +8,7 @@
 | xterm.js (+ addon-fit) | ^5.5 / ^0.10 | Terminal emulator UI |
 | node-pty | ^1 (optional) | Real PTY shells (PowerShell, CMD, Git Bash, bash) |
 | JetBrains Mono (@fontsource) | ^5.1 | Default editor font |
-| electron-builder | ^25 | NSIS / DMG / AppImage / deb / rpm installers |
+| electron-builder | ^25 | NSIS / DMG / AppImage / deb / rpm / pacman installers |
 | sharp | ^0.33 | Icon generation (`npm run icons`) |
 | Vanilla JS + CSS | - | Renderer UI, no framework or bundler |
 

@@ -12,7 +12,7 @@ exports.default = async function afterPack(ctx) {
   const icon = path.join(ctx.packager.projectDir, 'build', 'icon.ico');
   if (!rcedit || !fs.existsSync(icon)) { console.warn('afterPack: rcedit or icon missing; exe keeps the default icon'); return; }
   const v = ctx.packager.appInfo.version;
-  execFileSync(rcedit, [exe, '--set-icon', icon, '--set-version-string', 'ProductName', 'CodeCambo', '--set-version-string', 'FileDescription', 'CodeCambo',
-    '--set-version-string', 'CompanyName', 'CodeCambo', '--set-file-version', v, '--set-product-version', v]);
+  execFileSync(rcedit, [exe, '--set-icon', icon, '--set-version-string', 'ProductName', 'Asta', '--set-version-string', 'FileDescription', 'Asta',
+    '--set-version-string', 'CompanyName', 'Asta', '--set-file-version', v, '--set-product-version', v]);
   console.log('afterPack: icon + version set on', path.basename(exe));
 };

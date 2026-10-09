@@ -1,4 +1,4 @@
-"""CodeCambo backend settings.
+"""Asta backend settings.
 
 PostgreSQL via DATABASE_URL (falls back to SQLite for quick local dev).
 Redis via REDIS_URL (falls back to in-memory channel layer).
@@ -108,3 +108,6 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Public origin used for canonical/OG/sitemap URLs (e.g. https://asta.example.com); falls back to the request origin.
+SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")

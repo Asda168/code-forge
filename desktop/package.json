@@ -1,11 +1,11 @@
 {
   "name": "codeforge",
-  "productName": "CodeCambo",
+  "productName": "Asta",
   "version": "1.3.4",
-  "description": "CodeCambo - Code. Build. Run. Ship.",
+  "description": "Asta - Code. Build. Run. Ship.",
   "main": "src/main.js",
   "author": {
-    "name": "CodeCambo",
+    "name": "Asta",
     "email": "Asda168@users.noreply.github.com"
   },
   "homepage": "https://github.com/Asda168/code-forge",
@@ -38,7 +38,7 @@
   },
   "build": {
     "appId": "dev.codeforge.app",
-    "productName": "CodeCambo",
+    "productName": "Asta",
     "directories": {
       "output": "dist"
     },
@@ -61,7 +61,7 @@
     "win": {
       "icon": "build/icon.ico",
       "target": "nsis",
-      "artifactName": "CodeCambo-Setup-${arch}.${ext}",
+      "artifactName": "Asta-Setup-${arch}.${ext}",
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -70,7 +70,7 @@
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "include": "scripts/installer.nsh",
-      "shortcutName": "CodeCambo",
+      "shortcutName": "Asta",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
@@ -87,7 +87,7 @@
           ]
         }
       ],
-      "artifactName": "CodeCambo-macOS-universal.${ext}"
+      "artifactName": "Asta-macOS-universal.${ext}"
     },
     "linux": {
       "icon": "assets/icons/png",
@@ -95,12 +95,13 @@
       "target": [
         "AppImage",
         "deb",
-        "rpm"
+        "rpm",
+        "pacman"
       ],
-      "artifactName": "CodeCambo.${ext}",
-      "maintainer": "CodeCambo <Asda168@users.noreply.github.com>",
+      "artifactName": "Asta.${ext}",
+      "maintainer": "Asta <Asda168@users.noreply.github.com>",
       "desktop": {
-        "Name": "CodeCambo",
+        "Name": "Asta",
         "Comment": "Code. Build. Run. Ship.",
         "Categories": "Development;IDE;TextEditor;",
         "MimeType": "inode/directory;text/plain;"

@@ -1,4 +1,4 @@
-// CodeCambo main process: the secure local bridge.
+// Asta main process: the secure local bridge.
 // Everything local (fs, terminal, git, processes) lives here and is reachable ONLY through
 // contextBridge -> ipcMain from our own window. No local HTTP/WebSocket server is opened.
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, session } = require('electron');
@@ -16,21 +16,40 @@ const API_BASE = process.env.CODEFORGE_API || 'http://127.0.0.1:8000/api';
 const userData = () => app.getPath('userData');
 const storeFile = (n) => path.join(userData(), n);
 
+// Asta was called FastForge and, before that, CodeCambo (the data folder is named after the product). On the first run copy the
+// user's data across once from the newest old folder: settings, shortcuts, recent projects, workspaces, sign-in token, extensions
+// and the saved session/layout.
+(function migrateFromOldName() {
+  try {
+    const to = userData();
+    const from = ['FastForge', 'CodeCambo'].map((n) => path.join(app.getPath('appData'), n)).find((d) => path.resolve(d) !== path.resolve(to) && fs.existsSync(path.join(d, 'settings.json')));
+    if (!from || fs.existsSync(path.join(to, 'settings.json'))) return;
+    fs.mkdirSync(to, { recursive: true });
+    for (const n of ['settings.json', 'keyboard.json', 'recents.json', 'workspaces.json', 'token.bin', 'Local State', 'extensions', 'Local Storage']) {
+      const s = path.join(from, n), d = path.join(to, n);
+      if (fs.existsSync(s) && !fs.existsSync(d)) fs.cpSync(s, d, { recursive: true });
+    }
+  } catch { /* starting fresh is fine */ }
+})();
+
 function readJson(name, def) { try { return JSON.parse(fs.readFileSync(storeFile(name), 'utf8')); } catch { return def; } }
 function writeJson(name, v) { fs.mkdirSync(userData(), { recursive: true }); fs.writeFileSync(storeFile(name), JSON.stringify(v, null, 2)); }
 
 const roots = new Set();      // workspace roots the user opened via dialog / recents
-let win = null;
+const wins = new Set();       // every open Asta window (each one hosts one project)
 
 // ---------------------------------------------------------------- window
-function createWindow() {
-  win = new BrowserWindow({
-    width: 1400, height: 900, minWidth: 900, minHeight: 600, backgroundColor: '#0b1020', title: 'CodeCambo',
+function createWindow(query = {}) {
+  const win = new BrowserWindow({
+    width: 1400, height: 900, minWidth: 900, minHeight: 600, backgroundColor: '#0b1020', title: 'Asta IDE',
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   if (process.env.CODEFORGE_DEBUG) win.webContents.on('console-message', (_e, level, msg, line, src) => { if (level >= 2) console.log(`[renderer:${level}] ${msg} (${path.basename(src)}:${line})`); });
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  wins.add(win); currentWin = win;
+  win.on('focus', () => { currentWin = win; });
+  win.on('closed', () => { wins.delete(win); if (currentWin === win) currentWin = [...wins].pop() || null; });
+  win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query });
   if (process.env.CODEFORGE_E2E) win.webContents.once('did-finish-load', () => setTimeout(async () => {
     try {
       const dir = process.env.CODEFORGE_E2E_ROOT; if (dir) registerRoot(dir);
@@ -45,34 +64,135 @@ function createWindow() {
   ).then((r) => console.log('[selftest]', r)).catch((e) => console.log('[selftest-error]', e.message)), 8000);
   let forceClose = false;
   // Closing asks the renderer (unsaved-files prompt) unless the app is already quitting (installer/OS shutdown/app.quit) or the renderer is gone.
-  win.on('close', (e) => { if (!forceClose && !quitting && !win.webContents.isCrashed()) { e.preventDefault(); send('ask-close'); } });
+  win.on('close', (e) => { if (!forceClose && !quitting && !win.webContents.isCrashed()) { e.preventDefault(); win.webContents.send('ask-close'); } });
   win.on('session-end', () => shutdown('session-end'));
-  ipcMain.removeHandler('app:forceClose');
-  ipcMain.handle('app:forceClose', () => { forceClose = true; win.close(); });
+  forceCloses.set(win.webContents.id, () => { forceClose = true; win.close(); });
   win.webContents.setWindowOpenHandler(({ url }) => { openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) e.preventDefault(); });
-  buildMenu();
+  ensureKeyFile();
+  if (!Menu.getApplicationMenu()) buildMenu();
+  return win;
+}
+const forceCloses = new Map();
+ipcMain.handle('app:forceClose', (e) => forceCloses.get(e.sender.id)?.());
+let currentWin = null;
+function send(ch, ...a) { const w = BrowserWindow.getFocusedWindow() || currentWin; if (w && !w.isDestroyed()) w.webContents.send(ch, ...a); }
+const sendTo = (wc, ch, ...a) => { try { if (!wc.isDestroyed()) wc.send(ch, ...a); } catch { /* window closed */ } };
+
+// New window: empty (welcome screen) or on a project the user already opened/registered. Never restores the last session.
+function openProjectWindow(root) {
+  const w = createWindow(root ? { root } : { fresh: '1' });
+  return w;
+}
+ipcMain.handle('win:new', (_e, p) => {
+  if (p == null) { openProjectWindow(null); return true; }
+  const r = path.resolve(String(p));
+  if (!roots.has(r) && !readJson('recents.json', []).some((x) => x.path === r)) throw new Error('Not a known project');
+  openProjectWindow(registerRoot(r)); return true;
+});
+ipcMain.handle('win:newPick', async () => {                // pick a folder and open it in its own window
+  const r = await dialog.showOpenDialog(currentWin, { properties: ['openDirectory', 'createDirectory'] });
+  if (r.canceled) return false;
+  openProjectWindow(registerRoot(r.filePaths[0])); return true;
+});
+
+// ---------------------------------------------------------------- keyboard shortcuts
+// Defaults live here; the user overrides them in <userData>/keyboard.json ({ "command-id": "ctrl+shift+b", "other": "" }).
+// "mod" = Cmd on macOS, Ctrl elsewhere; a space separates the two parts of a chord ("mod+k mod+s").
+// The renderer (keybindings.js) dispatches every shortcut; menu accelerators are only shown, never registered.
+const DEFAULT_KEYS = {
+  'open-folder': 'mod+o', 'new-window': 'mod+shift+n', 'new-file': 'mod+n', 'quick-open': 'mod+p', save: 'mod+s', 'close-tab': 'mod+w', 'next-tab': 'ctrl+tab', 'prev-tab': 'ctrl+shift+tab', split: 'mod+\\', 'save-all': 'mod+alt+s',
+  search: 'mod+shift+f', palette: 'mod+shift+p', 'toggle-sidebar': 'mod+b', 'toggle-terminal': 'mod+`', 'view-explorer': 'mod+shift+e', 'view-git': 'ctrl+shift+g', 'view-extensions': 'mod+shift+x', 'view-gitlens': 'alt+g', 'view-run': 'mod+shift+d',
+  'font-inc': 'mod+=', 'font-dec': 'mod+-', 'font-reset': 'mod+0', 'goto-line': 'mod+g', 'goto-def': 'f12', run: 'f5', stop: 'shift+f5', restart: 'mod+shift+f5', settings: 'mod+,',
+  'new-terminal': 'ctrl+shift+`', 'split-terminal': 'mod+shift+5', 'term-split-down': 'mod+shift+6', 'term-close-pane': 'mod+shift+w', 'clear-terminal': 'mod+shift+k', 'term-font-inc': 'mod+=', 'term-font-dec': 'mod+-', 'term-font-reset': 'mod+0',
+  'toggle-panel': 'mod+j', 'show-problems': 'mod+shift+m', 'show-debug': 'mod+shift+y', 'find-project': 'mod+r', 'toggle-preview': 'mod+shift+v',
+  'keyboard-shortcuts': 'mod+k mod+s', 'color-theme': 'mod+k mod+t', 'blame-line': 'alt+b', 'blame-file': 'alt+shift+b', 'file-history': 'alt+h', 'line-history': 'alt+shift+h',
+};
+const keyFile = () => storeFile('keyboard.json');
+const KEY_ID = /^[\w.:-]{1,64}$/, KEY_SEQ = /^[a-z0-9+=,.\\\/`\[\]';\- ]{0,60}$/;
+function cleanKeys(o) {
+  const out = {};
+  if (o && typeof o === 'object' && !Array.isArray(o)) for (const [k, v] of Object.entries(o)) if (KEY_ID.test(k) && (v === null || (typeof v === 'string' && KEY_SEQ.test(v.trim().toLowerCase())))) out[k] = v === null ? '' : v.trim().toLowerCase();
+  return out;
+}
+// Group and title of every command, in the order they are listed in keyboard.json (commands without a default key are listed too).
+const KEY_META = {
+  palette: ['General', 'Command Palette'], 'quick-open': ['General', 'Go to File'], 'find-project': ['General', 'Find Project'], settings: ['General', 'Open Settings'], 'keyboard-shortcuts': ['General', 'Open Keyboard Shortcuts'], 'color-theme': ['General', 'Color Theme'], 'toggle-preview': ['General', 'Toggle File Preview'],
+  'open-folder': ['File', 'Open Folder'], 'new-window': ['File', 'New Window'], 'open-folder-new-window': ['File', 'Open Folder in New Window'], 'new-file': ['File', 'New File'], save: ['File', 'Save'], 'save-all': ['File', 'Save All'],
+  'close-tab': ['Editor', 'Close Editor'], 'next-tab': ['Editor', 'Next Editor'], 'prev-tab': ['Editor', 'Previous Editor'], split: ['Editor', 'Split Editor Right'], 'goto-line': ['Editor', 'Go to Line'], 'goto-def': ['Editor', 'Go to Definition'],
+  'view-explorer': ['View', 'Show Explorer'], search: ['View', 'Find in Files'], 'view-git': ['View', 'Show Source Control'], 'view-gitlens': ['View', 'Show GitLens'], 'view-run': ['View', 'Show Run and Debug'], 'view-extensions': ['View', 'Show Extensions'],
+  'toggle-sidebar': ['View', 'Toggle Sidebar'], 'toggle-panel': ['View', 'Toggle Panel'], 'toggle-terminal': ['View', 'Toggle Terminal'], 'show-problems': ['View', 'Show Problems'], 'show-debug': ['View', 'Show Debug Console'],
+  'font-inc': ['View', 'Increase Editor Font Size'], 'font-dec': ['View', 'Decrease Editor Font Size'], 'font-reset': ['View', 'Reset Editor Font Size'],
+  'new-terminal': ['Terminal', 'New Terminal'], 'split-terminal': ['Terminal', 'Split Terminal Right'], 'term-split-down': ['Terminal', 'Split Terminal Down'], 'term-close-pane': ['Terminal', 'Close Terminal Pane (terminal focused)'], 'clear-terminal': ['Terminal', 'Clear Terminal (terminal focused)'],
+  'term-font-inc': ['Terminal', 'Increase Terminal Font Size (terminal focused)'], 'term-font-dec': ['Terminal', 'Decrease Terminal Font Size (terminal focused)'], 'term-font-reset': ['Terminal', 'Reset Terminal Font Size (terminal focused)'],
+  run: ['Run', 'Run Project'], stop: ['Run', 'Stop'], restart: ['Run', 'Restart'],
+  'blame-line': ['GitLens', 'Toggle Line Blame'], 'blame-file': ['GitLens', 'Toggle File Blame'], 'file-history': ['GitLens', 'File History'], 'line-history': ['GitLens', 'Line History'],
+};
+const KEYS_MARK = '// ---- Default shortcuts';
+function readKeys() {                    // { map, error } — a broken file never disables shortcuts, it just reports the problem
+  try { return { map: cleanKeys(JSON.parse(fs.readFileSync(keyFile(), 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*})/g, '$1').replace(/"(\s*\n\s*)"/g, '",$1"'))) }; }   // forgiving: full-line // comments, a trailing comma, and a missing comma between lines
+  catch (e) { return e.code === 'ENOENT' ? { map: {} } : { map: {}, error: e.message }; }
+}
+// keyboard.json = the user's overrides as real lines, plus every default as a commented-out line to uncomment and edit.
+function writeKeys(map) {
+  fs.mkdirSync(userData(), { recursive: true });
+  const groups = [];
+  for (const [id, [g, title]] of Object.entries(KEY_META)) { let e = groups.find((x) => x[0] === g); if (!e) groups.push((e = [g, []])); e[1].push([id, title]); }
+  const lines = [];
+  for (const [g, cmds] of groups) {
+    lines.push({ t: `  ${KEYS_MARK}: ${g} ----` });
+    for (const [id, title] of cmds) {
+      if (id in map) lines.push({ t: `  ${JSON.stringify(id)}: ${JSON.stringify(map[id])}`, real: true });
+      else lines.push({ t: `  // ${JSON.stringify(id)}: ${JSON.stringify(DEFAULT_KEYS[id] || '')},` });
+    }
+  }
+  for (const id of Object.keys(map)) if (!(id in KEY_META)) lines.push({ t: `  ${JSON.stringify(id)}: ${JSON.stringify(map[id])}`, real: true });
+  const last = lines.map((l) => !!l.real).lastIndexOf(true);
+  const body = lines.map((l, i) => l.t + (l.real && i !== last ? ',' : '')).join('\n');
+  const header = [
+    '// Asta keyboard shortcuts (keyboard.json).',
+    '// Add a line like  "toggle-sidebar": "mod+shift+b"  to change a shortcut, or "" to remove it. Changes apply when you save.',
+    '// Every default is listed below as a commented line: remove the leading // and edit the keys to override it.',
+    '// "mod" is Cmd on macOS and Ctrl elsewhere. A space makes a chord, for example "mod+k mod+s". Keys: ctrl alt shift cmd + a key.',
+    '// You can also change shortcuts from Preferences > Keyboard Shortcuts (Ctrl+K Ctrl+S).', '',
+  ].join('\n');
+  fs.writeFileSync(keyFile(), header + '{\n' + body + '\n}\n');
+}
+// make sure the file exists and uses the current layout (older versions only wrote a header and the overrides)
+function ensureKeyFile() {
+  try {
+    if (!fs.existsSync(keyFile())) return writeKeys({});
+    const r = readKeys(); if (r.error) return;                      // never overwrite a file the user broke
+    if (!fs.readFileSync(keyFile(), 'utf8').includes(KEYS_MARK)) writeKeys(r.map);
+  } catch { /* the shortcuts keep working from the built-in defaults */ }
+}
+// shortcut text for the menu ("mod+shift+p" -> "CmdOrCtrl+Shift+P"); chords and unknown keys have no menu label
+function toAccel(seq) {
+  if (!seq || /\s/.test(seq)) return undefined;
+  const names = { mod: 'CmdOrCtrl', ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift', cmd: 'Cmd', tab: 'Tab', left: 'Left', right: 'Right', up: 'Up', down: 'Down', pageup: 'PageUp', pagedown: 'PageDown', home: 'Home', end: 'End', enter: 'Enter', space: 'Space', escape: 'Escape', backspace: 'Backspace', delete: 'Delete', insert: 'Insert' };
+  const parts = seq.split('+'); if (seq.endsWith('++')) return undefined;
+  const out = parts.map((p) => names[p] || (/^f\d{1,2}$/.test(p) ? p.toUpperCase() : p.length === 1 ? p.toUpperCase() : null));
+  return out.includes(null) ? undefined : out.join('+');
 }
 
-function send(ch, ...a) { if (win && !win.isDestroyed()) win.webContents.send(ch, ...a); }
-
 function buildMenu() {
-  const cmd = (label, id, accelerator) => ({ label, accelerator, click: () => send('menu', id) });
+  const user = readKeys().map;
+  const cmd = (label, id) => { const k = id in user ? user[id] : DEFAULT_KEYS[id]; return { label, id: 'cf-' + id, accelerator: toAccel(k), registerAccelerator: false, click: () => send('menu', id) }; };
   const mac = process.platform === 'darwin';
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(mac ? [{ role: 'appMenu' }] : []),
-    { label: 'File', submenu: [cmd('Open Folder…', 'open-folder', 'CmdOrCtrl+O'), cmd('New File', 'new-file', 'CmdOrCtrl+N'), cmd('New Folder', 'new-folder'),
-      cmd('Quick Open…', 'quick-open', 'CmdOrCtrl+P'), cmd('Save', 'save', 'CmdOrCtrl+S'), cmd('Close Editor', 'close-tab', 'CmdOrCtrl+W'), cmd('Next Editor', 'next-tab', 'Ctrl+Tab'), cmd('Previous Editor', 'prev-tab', 'Ctrl+Shift+Tab'), cmd('Split Editor', 'split', 'CmdOrCtrl+\\'), cmd('Save All', 'save-all', 'CmdOrCtrl+Alt+S'), { type: 'separator' }, cmd('Save Workspace', 'save-workspace'), cmd('Open Workspace', 'open-workspace'), cmd('Close Workspace', 'close-workspace'), { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
-    { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, cmd('Find in Files', 'search', 'CmdOrCtrl+Shift+F')] },
+    { label: 'File', submenu: [cmd('New Window', 'new-window'), cmd('Open Folder…', 'open-folder'), cmd('Open Folder in New Window…', 'open-folder-new-window'), cmd('New File', 'new-file'), cmd('New Folder', 'new-folder'),
+      cmd('Quick Open…', 'quick-open'), cmd('Save', 'save'), cmd('Close Editor', 'close-tab'), cmd('Next Editor', 'next-tab'), cmd('Previous Editor', 'prev-tab'), cmd('Split Editor', 'split'), cmd('Save All', 'save-all'), { type: 'separator' }, cmd('Save Workspace', 'save-workspace'), cmd('Open Workspace', 'open-workspace'), cmd('Close Workspace', 'close-workspace'), { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
+    { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, cmd('Find in Files', 'search')] },
     { label: 'Selection', submenu: [cmd('Select All', 'select-all')] },
-    { label: 'View', submenu: [cmd('Command Palette…', 'palette', 'CmdOrCtrl+Shift+P'), cmd('Toggle Sidebar', 'toggle-sidebar', 'CmdOrCtrl+B'), cmd('Toggle Terminal', 'toggle-terminal', 'CmdOrCtrl+`'), cmd('Explorer', 'view-explorer', 'CmdOrCtrl+Shift+E'), cmd('Source Control', 'view-git', 'Ctrl+Shift+G'), cmd('GitLens', 'view-gitlens'), cmd('Extensions', 'view-extensions', 'CmdOrCtrl+Shift+X'),
+    { label: 'View', submenu: [cmd('Command Palette…', 'palette'), cmd('Toggle Sidebar', 'toggle-sidebar'), cmd('Toggle Terminal', 'toggle-terminal'), cmd('Explorer', 'view-explorer'), cmd('Source Control', 'view-git'), cmd('GitLens', 'view-gitlens'), cmd('Extensions', 'view-extensions'),
       { label: 'Tab Bar: Close Saved / Close All Buttons', type: 'checkbox', checked: ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }).tabActions !== false, click: () => send('menu', 'toggle-tab-actions') },
-      { type: 'separator' }, cmd('Increase Font Size', 'font-inc', 'CmdOrCtrl+='), cmd('Decrease Font Size', 'font-dec', 'CmdOrCtrl+-'), cmd('Reset Font Size', 'font-reset', 'CmdOrCtrl+0'), { type: 'separator' }, { role: 'toggleDevTools' }, { role: 'togglefullscreen' }] },
-    { label: 'Go', submenu: [cmd('Go to Line…', 'goto-line', 'CmdOrCtrl+G'), cmd('Go to Definition', 'goto-def', 'F12')] },
-    { label: 'Run', submenu: [cmd('Run Project', 'run', 'F5'), cmd('Stop', 'stop', 'Shift+F5'), cmd('Restart', 'restart', 'CmdOrCtrl+Shift+F5')] },
-    { label: 'Terminal', submenu: [cmd('New Terminal', 'new-terminal', 'Ctrl+Shift+`'), cmd('Split Terminal', 'split-terminal'), cmd('Clear Terminal', 'clear-terminal'), cmd('New Git Bash', 'new-gitbash')] },
+      { type: 'separator' }, cmd('Increase Font Size', 'font-inc'), cmd('Decrease Font Size', 'font-dec'), cmd('Reset Font Size', 'font-reset'), { type: 'separator' }, { role: 'toggleDevTools' }, { role: 'togglefullscreen' }] },
+    { label: 'Go', submenu: [cmd('Go to Line…', 'goto-line'), cmd('Go to Definition', 'goto-def')] },
+    { label: 'Run', submenu: [cmd('Run Project', 'run'), cmd('Stop', 'stop'), cmd('Restart', 'restart')] },
+    { label: 'Terminal', submenu: [cmd('New Terminal', 'new-terminal'), cmd('Split Terminal', 'split-terminal'), cmd('Split Terminal Down', 'term-split-down'), cmd('Clear Terminal', 'clear-terminal'), cmd('New Git Bash', 'new-gitbash')] },
     { label: 'Git', submenu: [cmd('Clone Repository…', 'git-clone'), cmd('Initialize Repository', 'git-init'), cmd('Commit', 'git-commit'), cmd('Push', 'git-push'), cmd('Pull', 'git-pull'), cmd('Fetch', 'git-fetch')] },
-    { label: 'Help', submenu: [cmd('Check for Updates…', 'check-updates'), cmd('Settings', 'settings', 'CmdOrCtrl+,')] },
+    { label: 'Help', submenu: [cmd('Keyboard Shortcuts', 'keyboard-shortcuts'), cmd('Settings', 'settings'), cmd('Check for Updates…', 'check-updates')] },
   ]));
 }
 
@@ -86,7 +206,7 @@ function openExternal(url) {
 
 function assertInRoot(p) {
   if (typeof p !== 'string' || !path.isAbsolute(p)) throw new Error('Absolute path required');
-  if (path.resolve(p) === path.resolve(storeFile('settings.json'))) return path.resolve(p);   // the one config file editable in-app
+  if (path.resolve(p) === path.resolve(storeFile('settings.json')) || path.resolve(p) === path.resolve(keyFile())) return path.resolve(p);   // the two config files editable in-app
   if (!sec.insideAnyRoot(p, [...roots])) throw new Error('Path is outside the open workspace');
   return path.resolve(p);
 }
@@ -105,7 +225,7 @@ const IGNORE_SEARCH = new Set(['node_modules', '.git', 'vendor', '__pycache__', 
 
 // ---------------------------------------------------------------- workspace
 ipcMain.handle('ws:openDialog', async () => {
-  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
+  const r = await dialog.showOpenDialog(currentWin, { properties: ['openDirectory', 'createDirectory'] });
   return r.canceled ? null : registerRoot(r.filePaths[0]);
 });
 ipcMain.handle('ws:recents', () => readJson('recents.json', []).filter((r) => fs.existsSync(r.path)));
@@ -115,7 +235,7 @@ ipcMain.handle('ws:openRecent', (_e, p) => {
   return registerRoot(p);
 });
 ipcMain.handle('ws:pickDir', async () => {           // for "Location" fields in wizards / clone
-  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
+  const r = await dialog.showOpenDialog(currentWin, { properties: ['openDirectory', 'createDirectory'] });
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle('ws:saveWorkspace', (_e, ws) => {
@@ -184,7 +304,7 @@ ipcMain.handle('fs:copy', async (_e, src, destDir) => {
 ipcMain.handle('fs:delete', async (_e, p) => {
   p = assertInRoot(p);
   if (sec.isProtectedPath(p) || [...roots].some((r) => path.resolve(r) === p)) throw new Error('Refusing to delete a protected path or workspace root');
-  const { response } = await dialog.showMessageBox(win, {
+  const { response } = await dialog.showMessageBox(currentWin, {
     type: 'warning', buttons: ['Move to Trash', 'Cancel'], defaultId: 1, cancelId: 1,
     message: `Delete "${path.basename(p)}"?`, detail: p,
   });
@@ -255,22 +375,25 @@ ipcMain.handle('fs:files', async (_e, root) => {
   }
   await walk(root); return out;
 });
-let watcher = null, watchTimer = null;
-ipcMain.handle('fs:watch', (_e, root) => {
+const watchers = new Map();   // webContents id -> { watcher, timer }
+ipcMain.handle('fs:watch', (e, root) => {
   root = assertInRoot(root);
-  if (watcher) { watcher.close(); watcher = null; }
+  const wc = e.sender, st = watchers.get(wc.id) || {}; watchers.set(wc.id, st);
+  if (st.watcher) { st.watcher.close(); st.watcher = null; }
+  wc.once('destroyed', () => { try { st.watcher && st.watcher.close(); } catch { /* gone */ } watchers.delete(wc.id); });
+  const ping = () => { clearTimeout(st.timer); st.timer = setTimeout(() => sendTo(wc, 'fs:changed'), 400); };
   try {
-    watcher = fs.watch(root, { recursive: true }, (_ev, name) => {
+    st.watcher = fs.watch(root, { recursive: true }, (_ev, name) => {
       if (!name) return;
       const parts = String(name).split(/[\\/]/);
       if (parts[0] === '.git') {      // commits/pushes/fetches done in a terminal move HEAD or refs: refresh source control
-        if (parts[1] === 'HEAD' || parts[1] === 'ORIG_HEAD' || parts[1] === 'MERGE_HEAD' || parts[1] === 'refs') { clearTimeout(watchTimer); watchTimer = setTimeout(() => send('fs:changed'), 400); }
+        if (parts[1] === 'HEAD' || parts[1] === 'ORIG_HEAD' || parts[1] === 'MERGE_HEAD' || parts[1] === 'refs') ping();
         return;
       }
       if (parts.some((p) => IGNORE_SEARCH.has(p))) return;
-      clearTimeout(watchTimer); watchTimer = setTimeout(() => send('fs:changed'), 400);
+      ping();
     });
-    watcher.on('error', () => {});
+    st.watcher.on('error', () => {});
   } catch { /* unsupported: manual refresh still works */ }
   return true;
 });
@@ -316,11 +439,12 @@ ipcMain.handle('term:shells', () => detectShells());
 ipcMain.handle('term:detectGitBash', () => findGitBash());
 
 const terms = new Map(); let termSeq = 0;
-ipcMain.handle('term:create', (_e, { shellId, cwd, cols = 80, rows = 24 }) => {
+ipcMain.handle('term:create', (e, { shellId, cwd, cols = 80, rows = 24 }) => {
   const sh = detectShells().find((x) => x.id === shellId) || detectShells()[0];
   if (!sh) throw new Error('No shell found');
   const dir = cwd && sec.insideAnyRoot(cwd, [...roots]) ? cwd : (roots.size ? [...roots][0] : os.homedir());
-  const id = ++termSeq;
+  const id = ++termSeq, wc = e.sender, send = (...a) => sendTo(wc, ...a);
+  wc.once('destroyed', () => { terms.get(id)?.kill(); terms.delete(id); });   // window closed: its shells go with it
   const env = { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' };
   if (pty) {
     const p = pty.spawn(sh.file, sh.args, { name: 'xterm-256color', cols, rows, cwd: dir, env });
@@ -393,7 +517,7 @@ function readJson2(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } c
 ipcMain.handle('project:detect', (_e, root) => detectProject(assertInRoot(root)));
 ipcMain.handle('project:confirmDangerous', async (_e, command) => {
   if (!sec.isDangerousCommand(command)) return true;
-  const { response } = await dialog.showMessageBox(win, { type: 'warning', buttons: ['Cancel', 'Run anyway'], defaultId: 0, cancelId: 0, message: 'This command looks destructive.', detail: command });
+  const { response } = await dialog.showMessageBox(currentWin, { type: 'warning', buttons: ['Cancel', 'Run anyway'], defaultId: 0, cancelId: 0, message: 'This command looks destructive.', detail: command });
   return response === 1;
 });
 ipcMain.handle('project:scaffold', async (_e, { kind, name, location }) => {
@@ -424,6 +548,7 @@ ipcMain.handle('project:openRoot', (_e, p) => {            // after scaffold com
 const DEFAULT_SETTINGS = {
   gitlensSeeded: false,
   fontFamily: 'JetBrains Mono', fontSize: 14, fontWeight: '400', lineHeight: 1.5, letterSpacing: 0, ligatures: true, smoothFonts: true,
+  termFontFamily: '', termFontSize: 13, termLineHeight: 1.4, termCursorStyle: 'block', termCursorBlink: true,
   minimap: true, wordWrap: false, tabSize: 4, insertSpaces: true, autoSave: 'afterDelay', autoSaveDelay: 1000,
   theme: 'monokai-dimmed', iconTheme: 'symbols', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
   defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true, tabActions: true,
@@ -462,6 +587,8 @@ function cleanManifest(m, source) {
     rules: (Array.isArray(t.rules) ? t.rules : []).slice(0, 400).filter((r) => r && /^[\w.-]{1,80}$/.test(String(r.token))).map((r) => ({ token: String(r.token), foreground: /^[0-9a-f]{6}$/i.test(String(r.foreground)) ? String(r.foreground) : undefined, fontStyle: /^(italic|bold|underline|\s)*$/.test(String(r.fontStyle || '')) ? String(r.fontStyle || '') : '' })) }));
   out.snippets = {};
   for (const [lang, list] of Object.entries(m.snippets || {})) if (/^[\w-]+$/.test(lang) && Array.isArray(list)) out.snippets[lang] = list.slice(0, 500).filter((s) => s && s.prefix && s.body).map((s) => ({ prefix: String(s.prefix), body: Array.isArray(s.body) ? s.body.join('\n') : String(s.body), description: String(s.description || '') }));
+  out.readme = String(m.readme || '').slice(0, 4000);   // optional long description (plain text, blank line = new paragraph)
+  out.screenshots = (Array.isArray(m.screenshots) ? m.screenshots : []).slice(0, 6).filter((x) => x && /^https:\/\/[^\s"'<>]{4,300}$/.test(String(x.src))).map((x) => ({ src: String(x.src), caption: String(x.caption || '').slice(0, 120) }));   // https images only
   out.navigation = (Array.isArray(m.navigation) ? m.navigation : []).filter((n) => n === 'laravel' || n === 'gitlens' || n === 'gitblame');   // built-in navigation features an extension can switch on
   out.fileAssociations = Object.fromEntries(Object.entries(m.fileAssociations || {}).filter(([k, v]) => /^\.[\w.-]+$/.test(k) && /^[\w-]+$/.test(String(v))));
   return out;
@@ -496,7 +623,7 @@ function refreshBundled(m) {
 function listExtensions() {
   const dis = new Set(readJson('settings.json', {}).disabledExtensions || []);
   let installed = [];
-  try { installed = fs.readdirSync(extDir()).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join('extensions', f), null)).filter(Boolean).map(refreshBundled); } catch { /* none */ }
+  try { installed = fs.readdirSync(extDir()).filter((f) => f.endsWith('.json')).map((f) => { const m = readJson(path.join('extensions', f), null); return m && { m, at: fs.statSync(path.join(extDir(), f)).mtimeMs }; }).filter(Boolean).map(({ m, at }) => ({ ...refreshBundled(m), installedAt: at })); } catch { /* none */ }
   return [...installed, ...readLocalManifests()].map((m) => ({ ...m, enabled: !dis.has(m.id) }));
 }
 const catalogDir = path.join(__dirname, 'catalog');
@@ -508,7 +635,7 @@ ipcMain.handle('ext:installBundled', (_e, id) => {
   fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), m.id + '.json'), JSON.stringify(m, null, 2)); return m;
 });
 ipcMain.handle('ext:pickThemeFile', async () => {       // user explicitly picks a VS Code theme .json
-  const r = await dialog.showOpenDialog(win, { title: 'Import VS Code theme', properties: ['openFile'], filters: [{ name: 'Theme JSON', extensions: ['json', 'jsonc'] }] });
+  const r = await dialog.showOpenDialog(currentWin, { title: 'Import VS Code theme', properties: ['openFile'], filters: [{ name: 'Theme JSON', extensions: ['json', 'jsonc'] }] });
   if (r.canceled) return null;
   const st = fs.statSync(r.filePaths[0]); if (st.size > 2 * 1024 * 1024) throw new Error('Theme file too large (>2 MB)');
   return { name: path.basename(r.filePaths[0]), text: fs.readFileSync(r.filePaths[0], 'utf8') };
@@ -525,6 +652,9 @@ ipcMain.handle('ext:sync', async () => {          // download everything listed 
   for (const url of s.extensions || []) { try { await installFromUrl(String(url)); } catch (e) { errors.push(`${url}: ${e.message}`); } }
   return { errors, list: listExtensions() };
 });
+ipcMain.handle('keys:get', () => { const r = readKeys(); return { defaults: DEFAULT_KEYS, user: r.map, error: r.error || null, file: keyFile() }; });
+ipcMain.handle('keys:set', (_e, map) => { const clean = cleanKeys(map); writeKeys(clean); buildMenu(); return clean; });
+ipcMain.handle('keys:file', () => { ensureKeyFile(); return keyFile(); });
 ipcMain.handle('settings:file', () => { const p = storeFile('settings.json'); if (!fs.existsSync(p)) writeJson('settings.json', { ...DEFAULT_SETTINGS }); return p; });
 
 function getToken() {
@@ -564,10 +694,10 @@ ipcMain.handle('app:openExternal', (_e, url) => openExternal(url));
 ipcMain.handle('app:platform', () => ({ platform: process.platform, arch: process.arch, version: app.getVersion(), pty: !!pty }));
 
 // ---------------------------------------------------------------- lifecycle
-// Shutdown: kill every terminal CodeCambo started (PTY + its conpty/OpenConsole helpers live under the install dir and
-// would otherwise keep files locked, making the installer report "CodeCambo cannot be closed").
+// Shutdown: kill every terminal Asta started (PTY + its conpty/OpenConsole helpers live under the install dir and
+// would otherwise keep files locked, making the installer report "Asta cannot be closed").
 let quitting = false;
-const dlog = (...a) => { if (process.env.CODEFORGE_DEBUG) console.log('[CodeCambo]', ...a); };
+const dlog = (...a) => { if (process.env.CODEFORGE_DEBUG) console.log('[Asta]', ...a); };
 function killTerminals() {
   dlog('Closing terminal sessions:', terms.size);
   for (const t of [...terms.values()]) { try { t.kill(); } catch { /* already gone */ } }
@@ -585,23 +715,26 @@ const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
 else {
   app.on('second-instance', (_e, argv) => {
-    if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
-    openArgvPath(argv);
+    if (currentWin) { if (currentWin.isMinimized()) currentWin.restore(); currentWin.focus(); }
+    openArgvPath(argv, true);
   });
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
-    createWindow();
-    win.webContents.once('did-finish-load', () => openArgvPath(process.argv));
+    const w = createWindow();
+    w.webContents.once('did-finish-load', () => openArgvPath(process.argv, false));
   });
   app.on('window-all-closed', () => { shutdown('window-all-closed'); app.quit(); });
 }
-function openArgvPath(argv) {
-  // "Open with CodeCambo": the user explicitly chose this path in the OS shell.
+function openArgvPath(argv, newWin) {
+  // "Open with Asta": the user explicitly chose this path in the OS shell.
   const p = argv.slice(app.isPackaged ? 1 : 2).find((a) => !a.startsWith('-') && fs.existsSync(a));
   if (!p) return;
   try {
     const st = fs.statSync(p);
     const root = registerRoot(st.isDirectory() ? p : path.dirname(p));
-    send('open-path', { root, file: st.isFile() ? path.resolve(p) : null });
+    if (newWin && currentWin && !currentWin.isDestroyed()) {      // already running: a second project gets its own window
+      const w = createWindow({ root });
+      if (st.isFile()) w.webContents.once('did-finish-load', () => sendTo(w.webContents, 'open-path', { root, file: path.resolve(p) }));
+    } else send('open-path', { root, file: st.isFile() ? path.resolve(p) : null });
   } catch (e) { /* protected folder */ }
 }
