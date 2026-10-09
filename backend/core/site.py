@@ -5,18 +5,14 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.3.4"
-RELEASED = "2026-10-07"
+VERSION = "1.3.5"
+RELEASED = "2026-10-09"
 CHANGES = [
     "Renamed to Asta IDE",
+    "New Settings and Keyboard Shortcuts pages",
     "Arch Linux package (.pacman)",
-    "Website SEO: canonical URLs, sitemap, robots.txt and structured data",
-    "Installer can upgrade over a running Asta",
-    "Sticky scroll improvements",
-    "Editor scrolling improvements",
-    "Ctrl+F fixes",
-    "File history improvements",
-    "Windows x64 and ARM64 installers",
+    "New logo and icons",
+    "Website SEO improvements",
 ]
 _REL = f"{REPO}/releases/latest/download"
 

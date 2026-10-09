@@ -1,7 +1,7 @@
 {
   "name": "codeforge",
   "productName": "Asta",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "Asta - Code. Build. Run. Ship.",
   "main": "src/main.js",
   "author": {
