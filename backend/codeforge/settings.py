@@ -109,5 +109,5 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Public origin used for canonical/OG/sitemap URLs (e.g. https://asta.example.com); falls back to the request origin.
-SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
+# Public origin used for canonical/OG/sitemap URLs (production: https://astaide.vercel.app); override with the SITE_URL env var.
+SITE_URL = os.environ.get("SITE_URL", "https://astaide.vercel.app").rstrip("/")

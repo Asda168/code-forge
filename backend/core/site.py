@@ -7,6 +7,8 @@ for it instead of a link that would 404. Flip it (and set `url`) when you publis
 REPO = "https://github.com/Asda168/code-forge"
 VERSION = "1.3.5"
 RELEASED = "2026-10-09"
+# Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
+VERSIONS = ["1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
     "Renamed to Asta IDE",
     "New Settings and Keyboard Shortcuts pages",
@@ -45,6 +47,6 @@ def catalog():
 def context():
     return {
         "extensions": catalog(),
-        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS, "show_projects": SHOW_PROJECTS,
+        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "versions": VERSIONS, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS, "show_projects": SHOW_PROJECTS,
         "source_zip": f"{REPO}/archive/refs/heads/main.zip",
     }

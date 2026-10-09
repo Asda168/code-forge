@@ -36,6 +36,14 @@
   StrCmp $0 "" 0 +2
     WriteRegExpandStr HKCU "Environment" "Path" "$INSTDIR"
   SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  ; Shortcuts: point them at the bundled .ico explicitly so they never show the default/stale icon.
+  SetOutPath "$INSTDIR"
+  IfFileExists "$DESKTOP\Asta.lnk" 0 +2
+    CreateShortCut "$DESKTOP\Asta.lnk" "$INSTDIR\Asta.exe" "" "$INSTDIR\resources\icon.ico" 0
+  IfFileExists "$SMPROGRAMS\Asta.lnk" 0 +2
+    CreateShortCut "$SMPROGRAMS\Asta.lnk" "$INSTDIR\Asta.exe" "" "$INSTDIR\resources\icon.ico" 0
+  ; Refresh the Explorer icon cache (SHCNE_ASSOCCHANGED).
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 !macroend
 
 !macro customUnInstall

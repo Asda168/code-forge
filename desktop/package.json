@@ -48,6 +48,12 @@
       "node_modules/**",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
     "asarUnpack": [
       "**/node-pty/**"
     ],

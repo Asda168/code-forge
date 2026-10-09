@@ -422,7 +422,7 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
   <div class="sec-h c reveal"><p class="eyebrow">Download</p><h2 id="h-dl">Download Asta</h2><p class="lead">One lightweight IDE. Every platform.</p></div>
   <div class="dl-meta">
     <label class="vpick" for="ver-select">Version
-      <select id="ver-select" aria-label="Choose which version to download"><option value="">v{{ version }} (latest)</option></select>
+      <select id="ver-select" aria-label="Choose which version to download">{% for v in versions %}<option value="{{ v }}">v{{ v }}{% if forloop.first %} (latest){% endif %}</option>{% endfor %}</select>
     </label>
     <span>Released <b id="rel-date" class="mono">{{ released }}</b></span>
     <span class="pill"><i></i>Free &amp; Open Source</span>
@@ -724,12 +724,23 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
     nl.hidden = !latest; nb.hidden = latest; nb.textContent = latest ? "" : ((rel.body || "").trim().slice(0, 900) || "No release notes for this version.");
     refresh();
   }
+  /* Offline fallback: if GitHub's API is unreachable (rate limit), the server-rendered list still works via tag URLs. */
+  let live = false;
+  sel.addEventListener("change", () => {
+    if (live) return;
+    const v = sel.value, first = sel.selectedIndex === 0;
+    $$("[data-asset]").forEach(c => {
+      c.dataset.url = "{{ repo }}/releases/" + (first ? "latest/download/" : "download/v" + v + "/") + c.dataset.asset; c.dataset.ok = "1"; delete c.dataset.size;
+    });
+    refresh();
+  });
   fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=30", {headers: {Accept: "application/vnd.github+json"}})
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(list => {
       const vt = r => (r.tag_name || "").replace(/^v/, "").split(".").map(n => parseInt(n, 10) || 0);
       const rels = list.filter(r => !r.draft && (r.assets || []).length).sort((a, b) => { const x = vt(a), y = vt(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return y[i] - x[i]; return 0; });
       if (!rels.length) return;
+      live = true;
       sel.innerHTML = rels.map((r, i) => '<option value="' + i + '">' + r.tag_name + (i === 0 ? " (latest)" : r.prerelease ? " (pre-release)" : "") + "</option>").join("");
       applyRelease(rels[0], true);
       sel.addEventListener("change", () => { const i = +sel.value; applyRelease(rels[i], i === 0); });
