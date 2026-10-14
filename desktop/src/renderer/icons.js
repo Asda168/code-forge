@@ -48,6 +48,9 @@
     caseSens: '<path d="M3 17 8 6l5 11M5 13h6M15 10.5a3 3 0 0 1 5 1.5V17M15 15a2 2 0 0 1 5 0"/>',
     word: '<path d="M3 6v12M21 6v12M7 15l3-8 3 8M8 13h4"/>',
     regex: '<path d="M6 8l12 8M6 16 18 8M12 5v14"/>',
+    listView: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    treeView: '<path d="M4 5h7M8 5v13M8 10h5M8 18h5M15 8h6M15 15h6"/>',
+    newSearch: '<circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 6 6M10 7.5v5M7.5 10h5"/>',
     pin: '<path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z"/>',
   };
   CF.icon = (name, size = 16, extra = '') => h('span', { class: 'svg ' + extra, html: `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${UI[name] || ''}</svg>` });
@@ -73,14 +76,26 @@
     pdf: 'M4 1.8h5l3.5 3.5V13a1.2 1.2 0 0 1-1.2 1.2H4A1.2 1.2 0 0 1 2.8 13V3A1.2 1.2 0 0 1 4 1.8zM5.5 12c1.5-1 2.3-3 2.5-5.5.3 2.5 1.5 4 3 4.5-2 0-4 .2-5.5 1z',
     key: 'M5.5 7.5a3 3 0 1 0 .01 0M8.2 7.5H14M12 7.5V10M10 7.5V9.5',
     flask: 'M6 2h4M7 2v4.5L3 12.5a1 1 0 0 0 .9 1.5h8.2a1 1 0 0 0 .9-1.5L9 6.5V2M4.8 10h6.4',
+    laravel: 'M2 3.8 5 2.2l3 1.7v3.4L5 9 2 7.3zM8 3.9l3 1.7v3.4M11 9l3-1.7V4M8 7.3l3 1.7v3.4l-3 1.7-3-1.7V9',
+    blade: 'M5 2.5c-1.2 0-1.6.5-1.6 1.6v1.3c0 .8-.5 1.2-1.2 1.2.7 0 1.2.4 1.2 1.2v1.3c0 1.1.4 1.6 1.6 1.6M11 2.5c1.2 0 1.6.5 1.6 1.6v1.3c0 .8.5 1.2 1.2 1.2-.7 0-1.2.4-1.2 1.2v1.3c0 1.1-.4 1.6-1.6 1.6M6.8 8h2.4',
+    docker: 'M1.5 8.5h12.6c.6-.1 1-.6 1.2-1.2-.7-.3-1.3-.1-1.6.3-.1-.9-.7-1.4-1.2-1.8-.4.7-.3 1.4-.1 1.8M3.5 6.5h1.6v1.6H3.5zM5.5 6.5h1.6v1.6H5.5zM7.5 6.5h1.6v1.6H7.5zM5.5 4.6h1.6v1.6H5.5zM7.5 4.6h1.6v1.6H7.5zM1.5 8.5c.2 2.7 2.2 4.3 5.3 4.3 3.4 0 5.5-1.6 6.5-4.3',
+    gitlab: 'M8 13.8 2.2 9.5l1.1-3.6L4.6 2.2 6 6h4l1.4-3.8 1.3 3.7 1.1 3.6zM6 6l2 7.8L10 6',
+    diamond: 'M8 1.8 14.2 8 8 14.2 1.8 8zM8 5.2 10.8 8 8 10.8 5.2 8z',
+    node: 'M8 1.8 13.4 4.9v6.2L8 14.2 2.6 11.1V4.9zM6 10.2V5.8l4 4.4V5.8',
+    neon: 'M9 1.8 4 9h3.5L6.8 14.2 12 7H8.5z',
+    spark: 'M8 1.8v12.4M1.8 8h12.4M3.6 3.6l8.8 8.8M12.4 3.6l-8.8 8.8',
+    globe: 'M8 2a6 6 0 1 0 .01 0M2 8h12M8 2c2 1.8 2.8 3.8 2.8 6S10 12.2 8 14M8 2C6 3.8 5.2 5.8 5.2 8S6 12.2 8 14',
+    layout: 'M2.5 3h11a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM1.5 6.5h13M6 6.5V13',
     // elephant (PHP): side view facing left, trunk, ear, eye, two legs
     elephant: 'M3 6.5a3 3 0 0 1 3-3h4.5a3 3 0 0 1 3 3v6h-2.2V10H7v2.5H4.8V9.6M3 6.5v5.4c0 .8-1.2 1-1.4.2M7.6 5.6c1 0 1.6.8 1.6 1.7S8.4 9 7.6 8.6M5.2 5.6h.01',
     // snake (Python): S-curve body, head with eye at upper right
     snake: 'M12 4.6a2 2 0 0 0-2-2H6.4a2.8 2.8 0 0 0 0 5.6h3.2a2.8 2.8 0 0 1 0 5.6H3.5M12 4.6v1.2M10.4 4.2h.01',
   };
   // Icon themes: symbols (flat coloured glyphs), badges (glyph on a tinted tile), minimal (monochrome).
-  CF.ICON_THEMES = { symbols: 'Symbols (default)', badges: 'Colour Badges', minimal: 'Minimal (monochrome)' };
-  const theme = () => (CF.S && CF.S.settings && CF.S.settings.iconTheme) || 'symbols';
+  CF.ICON_THEMES = { symbols: 'Symbols by Miguel Solorio (default)', asta: 'Asta Glyphs', jetbrains: 'JetBrains (PhpStorm)', badges: 'Colour Badges', minimal: 'Minimal (monochrome)' };
+  const darcula = () => !!(CF.S && CF.S.settings && CF.S.settings.theme === 'jetbrains-darcula');   // PhpStorm look: navy folders, purple PHP badges
+  let themeOverride = null;                                               // lets the picker render each theme's preview
+  const theme = () => themeOverride || (CF.S && CF.S.settings && CF.S.settings.iconTheme) || 'symbols';
   const glyph = (color, g) => {
     const t = theme(); if (t === 'minimal') color = '#9AA0A6';
     const tile = t === 'badges' ? `<rect x="0.5" y="0.5" width="15" height="15" rx="3" fill="${color}" fill-opacity=".18" stroke="none"/>` : '';
@@ -91,7 +106,7 @@
   const KIND = {
     html: ['#E37933', 'code'], htm: ['#E37933', 'code'], xml: ['#E37933', 'code'], vue: ['#6FBF8B', 'code'], svg: ['#E6B450', 'angle'],
     js: ['#E6C84F', 'braces'], mjs: ['#E6C84F', 'braces'], cjs: ['#E6C84F', 'braces'], jsx: ['#5CC8E0', 'braces'], ts: ['#5A9BD5', 'braces'], tsx: ['#5CC8E0', 'braces'],
-    json: ['#CBCB41', 'braces'], php: ['#8E9AD6', 'elephant'], py: ['#5A9BD5', 'snake'], java: ['#E8744F', 'code'], go: ['#5CC8E0', 'code'], rs: ['#E8744F', 'code'], rb: ['#E8605A', 'code'],
+    json: ['#CBCB41', 'braces'], php: ['#A07CE0', 'elephant'], py: ['#5A9BD5', 'snake'], java: ['#E8744F', 'code'], go: ['#5CC8E0', 'code'], rs: ['#E8744F', 'code'], rb: ['#E8605A', 'code'],
     c: ['#6C8BD6', 'code'], h: ['#9B8BD6', 'code'], cpp: ['#6C8BD6', 'code'], cs: ['#A579D0', 'code'], kt: ['#A579D0', 'code'], swift: ['#E8744F', 'code'], dart: ['#5CC8E0', 'code'],
     css: ['#5A9BD5', 'hash'], scss: ['#D670A6', 'hash'], sass: ['#D670A6', 'hash'], less: ['#5A7DB5', 'hash'],
     sh: ['#8BC46A', 'term'], bash: ['#8BC46A', 'term'], bat: ['#8BC46A', 'term'], ps1: ['#5A9BD5', 'term'], cmd: ['#8BC46A', 'term'],
@@ -101,12 +116,24 @@
     lock: ['#9AA0A6', 'lock'], png: ['#4DB6AC', 'image'], jpg: ['#4DB6AC', 'image'], jpeg: ['#4DB6AC', 'image'], gif: ['#4DB6AC', 'image'], webp: ['#4DB6AC', 'image'], ico: ['#4DB6AC', 'image'], bmp: ['#4DB6AC', 'image'],
     zip: ['#C9A26B', 'zip'], gz: ['#C9A26B', 'zip'], tar: ['#C9A26B', 'zip'], '7z': ['#C9A26B', 'zip'], pdf: ['#E8605A', 'pdf'],
   };
+  // Resolution order (first hit wins): 1. exact file name  2. multi-part suffix (longest first)  3. single extension  4. generic document.
   const NAMED = {
-    'package.json': ['#E8605A', 'box'], 'package-lock.json': ['#E8605A', 'lock'], 'composer.json': ['#C98A5A', 'box'], 'composer.lock': ['#C98A5A', 'lock'], 'artisan': ['#F0604D', 'term'],
-    'manage.py': ['#4DB68A', 'snake'], 'requirements.txt': ['#5A9BD5', 'box'], 'dockerfile': ['#5AA9E6', 'box'], 'docker-compose.yml': ['#5AA9E6', 'box'], '.gitignore': ['#F0794D', 'git'], '.gitattributes': ['#F0794D', 'git'],
-    'readme.md': ['#7FB4DA', 'md'], 'vite.config.js': ['#A579D0', 'gear'], 'vite.config.ts': ['#A579D0', 'gear'], 'tsconfig.json': ['#5A9BD5', 'gear'], 'webpack.config.js': ['#8DD6F9', 'gear'],
-    'license': ['#C0A060', 'doc'], 'makefile': ['#9AA0A6', 'gear'],
+    'package.json': ['#8BC46A', 'node'], 'package-lock.json': ['#E8605A', 'lock'], 'composer.json': ['#C98A5A', 'box'], 'composer.lock': ['#C98A5A', 'lock'], 'artisan': ['#F0604D', 'laravel'],
+    'manage.py': ['#4DB68A', 'snake'], 'requirements.txt': ['#5A9BD5', 'box'], 'dockerfile': ['#5AA9E6', 'docker'], 'docker-compose.yml': ['#5AA9E6', 'docker'], 'docker-compose.yaml': ['#5AA9E6', 'docker'],
+    'compose.yml': ['#5AA9E6', 'docker'], 'compose.yaml': ['#5AA9E6', 'docker'], '.dockerignore': ['#5AA9E6', 'docker'], '.gitlab-ci.yml': ['#FC6D26', 'gitlab'],
+    '.gitignore': ['#F0604D', 'diamond'], '.gitattributes': ['#F0604D', 'diamond'], '.gitmodules': ['#F0604D', 'diamond'],
+    '.env': ['#E6C84F', 'gear'], '.env.example': ['#E6C84F', 'gear'], '.env.local': ['#E6C84F', 'gear'], '.env.testing': ['#E6C84F', 'gear'],
+    'phpunit.xml': ['#8BC46A', 'flask'], 'phpunit.xml.dist': ['#8BC46A', 'flask'], '.phpunit.result.cache': ['#8BC46A', 'flask'],
+    'phpstan.neon': ['#6C95EB', 'neon'], 'phpstan.neon.dist': ['#6C95EB', 'neon'], 'phpstan-baseline.neon': ['#6C95EB', 'neon'],
+    'claude.md': ['#D97757', 'spark'], 'readme.md': ['#7FB4DA', 'md'], 'vite.config.js': ['#A579D0', 'gear'], 'vite.config.ts': ['#A579D0', 'gear'], 'tsconfig.json': ['#5A9BD5', 'gear'],
+    'webpack.config.js': ['#8DD6F9', 'gear'], 'license': ['#C0A060', 'doc'], 'makefile': ['#9AA0A6', 'gear'],
   };
+  // Multi-part suffixes beat the single extension: x.blade.php is a Blade view, not plain PHP. Longest suffixes first.
+  const MULTI = [
+    ['.blade.php', '#F0604D', 'blade'], ['.test.php', '#8BC46A', 'flask'], ['.d.ts', '#5A9BD5', 'braces'], ['.min.js', '#9AA0A6', 'braces'], ['.min.css', '#9AA0A6', 'hash'],
+    ['.module.css', '#D670A6', 'hash'], ['.stories.tsx', '#E8605A', 'braces'], ['.env.example', '#E6C84F', 'gear'], ['.xml.dist', '#E37933', 'code'], ['.neon.dist', '#6C95EB', 'neon'],
+  ];
+  const TEST_RE = /\.(test|spec)\.[jt]sx?$/;
 
   // ---- Symbols-style folders: outlined, tinted by purpose --------------------------------------
   const FOLDERS = {
@@ -116,28 +143,76 @@
     public: '#A579D0', static: '#A579D0', assets: '#A579D0', resources: '#A579D0', media: '#A579D0',
     config: '#9AA0A6', '.github': '#9AA0A6', '.vscode': '#5A9BD5', '.idea': '#9AA0A6', docs: '#4DB6AC', migrations: '#E8A23D', database: '#E8A23D', routes: '#E37933', scripts: '#8BC46A', bin: '#8BC46A', '.git': '#F0794D',
   };
-  const folderSvg = (color, open) => open
+  const EMBLEM = {
+    app: 'code', config: 'gear', database: 'db', migrations: 'db', public: 'globe', resources: 'layout', routes: 'git', tests: 'flask', test: 'flask', __tests__: 'flask',
+    vendor: 'box', node_modules: 'box', '.vscode': 'gear', '.idea': 'gear', storage: 'db', scripts: 'term', docs: 'md', '.github': 'git', '.git': 'git',
+  };
+  const folderSvg = (color, open, emblem) => (!emblem ? folderBase(color, open) : folderBase(color, open).replace('</svg>',
+    `<path transform="translate(${open ? '5.3 7.4' : '5.1 6.5'}) scale(${open ? .33 : .36})" stroke-width="3.4" d="${G[emblem]}"/></svg>`));
+  const folderBase = (color, open) => open
     ? `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="1.3" stroke-linejoin="round"><path d="M2 12.5V3.8a1 1 0 0 1 1-1h3l1.5 1.5H12a1 1 0 0 1 1 1V6"/><path d="M2 12.5 3.6 7.2a1 1 0 0 1 .95-.7H14a.6.6 0 0 1 .58.78L13.1 12.1a1 1 0 0 1-.95.7H2z" fill="${color}" fill-opacity=".25"/></svg>`
     : `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="${color}" stroke-width="1.3" stroke-linejoin="round"><path d="M2 4a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" fill="${color}" fill-opacity=".2"/></svg>`;
 
+  // ---- JetBrains (PhpStorm New UI) icon theme: grey document with a coloured type label; flat blue-grey folders, tinted for source / test / vendor roots ----
+  const JB_LABEL = { php: 'PHP', phtml: 'PHP', js: 'JS', mjs: 'JS', cjs: 'JS', jsx: 'JSX', ts: 'TS', tsx: 'TSX', json: '{ }', md: 'MD', css: 'CSS', scss: 'SCSS', html: 'HTML', htm: 'HTML', vue: 'VUE', xml: 'XML',
+    yml: 'YML', yaml: 'YML', py: 'PY', sql: 'SQL', sh: 'SH', env: 'ENV', lock: 'LCK', txt: 'TXT', log: 'LOG', png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', svg: 'SVG', zip: 'ZIP', neon: 'NEON' };
+  const JB_FOLDER = { src: '#5A9BD5', app: '#5A9BD5', lib: '#5A9BD5', tests: '#8BC46A', test: '#8BC46A', __tests__: '#8BC46A', resources: '#A97BDC', vendor: '#D4A05A', node_modules: '#D4A05A',
+    storage: '#D4A05A', dist: '#D4A05A', build: '#D4A05A', public: '#4DB6AC', database: '#E8A23D', config: '#9AA7B0', routes: '#E37933' };
+  const JB_NAMED = { dockerfile: 'DKR', 'docker-compose.yml': 'DKR', 'compose.yml': 'DKR', 'package.json': 'NPM', 'package-lock.json': 'NPM', 'composer.json': 'CMP', 'composer.lock': 'CMP', 'claude.md': 'CLD', 'readme.md': 'MD' };
+  const jbFile = (n) => {
+    let hit = NAMED[n];
+    if (!hit) { const m = MULTI.find(([suf]) => n.endsWith(suf) && n.length > suf.length); if (m) hit = [m[1], m[2]]; }
+    const ext = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : '';
+    if (!hit && KIND[ext]) hit = KIND[ext];
+    const color = (darcula() && ext === 'php' && !n.endsWith('.blade.php')) ? '#a97bdc' : (hit ? hit[0] : '#9AA0A6');
+    let label = n.endsWith('.blade.php') ? 'BLD' : JB_LABEL[ext] || (ext ? ext.slice(0, 3).toUpperCase() : n.replace(/[^a-z]/g, '').slice(0, 3).toUpperCase());
+    if (JB_NAMED[n]) label = JB_NAMED[n];
+    else if (NAMED[n] && !ext.length) label = n.replace(/[^a-z]/g, '').slice(0, 3).toUpperCase();
+    return `<svg viewBox="0 0 16 16" width="16" height="16" fill="none"><path d="M3.5 1.5h5.8l3.7 3.7v8.3a.8.8 0 0 1-.8.8H3.5a.8.8 0 0 1-.8-.8V2.3a.8.8 0 0 1 .8-.8z" fill="#2b2d30" stroke="#6f737a" stroke-width="1"/>`
+      + `<path d="M9.3 1.6v3.7H13" stroke="#6f737a" stroke-width="1"/><rect x="2.7" y="8" width="10.6" height="5.2" rx=".6" fill="${color}"/>`
+      + `<text x="8" y="12" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="${label.length > 3 ? 3.6 : 4.4}" font-weight="700" fill="#1e1f22" stroke="none">${label.replace('&', '')}</text></svg>`;
+  };
+  const jbFolder = (n, open) => {
+    const c = JB_FOLDER[n] || '#7F8FA6';
+    return open
+      ? `<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 12.2V3.8a1 1 0 0 1 1-1h3.2l1.3 1.5h6a1 1 0 0 1 1 1V6" fill="${c}" fill-opacity=".55"/><path d="M1.5 12.4 3.2 6.9a1 1 0 0 1 1-.7h10.1a.6.6 0 0 1 .6.8l-1.600 5.100a1 1 0 0 1-1 .7H2.400a.9.9 0 0 1-.9-.8z" fill="${c}"/></svg>`
+      : `<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.500 4a1 1 0 0 1 1-1h3.200l1.300 1.500h6.500a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="${c}"/></svg>`;
+  };
+
+  // ---- "Symbols" by Miguel Solorio: the real icon pack (src/icons/symbols, MIT). Resolution follows VS Code icon themes:
+  // exact file name, then compound extensions (longest first, so x.blade.php -> "blade.php" before "php"), then language id, then the default file icon.
+  const SYM_BASE = '../icons/symbols/icons/';
+  const symImg = (id) => { const T = CF.SYMBOLS, p = T && T.defs[id]; return p ? `<img class="sym" src="${SYM_BASE}${p}" width="16" height="16" alt="" draggable="false">` : ''; };
+  const symbolsIcon = (n, isDir) => {
+    const T = CF.SYMBOLS; if (!T) return null;
+    if (isDir) return symImg(T.folderNames[n] || T.folder);
+    let id = T.fileNames[n];
+    for (let i = n.indexOf('.'); !id && i >= 0; i = n.indexOf('.', i + 1)) id = T.fileExtensions[n.slice(i + 1)];
+    if (!id && CF.langFor) id = T.languageIds[CF.langFor(n)];
+    return symImg(id || T.file);
+  };
+
   CF.fileIconHtml = (name, isDir, open) => {
-    const n = name.toLowerCase();
-    if (isDir) return folderSvg(theme() === 'minimal' ? '#9AA0A6' : (FOLDERS[n] || '#8FA9BF'), open);
-    if (NAMED[n]) return glyph(...NAMED[n]);
-    if (n.endsWith('.blade.php')) return glyph('#F0604D', 'code');
+    const n = String(name).toLowerCase();
+    if (theme() === 'symbols') { const sy = symbolsIcon(n, isDir); if (sy) return sy; }
+    if (theme() === 'jetbrains') return isDir ? jbFolder(n, open) : jbFile(n);
+    if (isDir) return folderSvg(theme() === 'minimal' ? '#9AA0A6' : darcula() ? '#4f78c4' : (FOLDERS[n] || '#8FA9BF'), open, theme() === 'minimal' ? '' : EMBLEM[n]);
+    if (NAMED[n]) return glyph(...NAMED[n]);                                   // 1. exact file name
+    for (const [suffix, color, g] of MULTI) if (n.endsWith(suffix) && n.length > suffix.length) return glyph(color, g);   // 2. multi-part suffix
+    if (TEST_RE.test(n)) return glyph('#8BC46A', 'flask');
     if (/\.(pyw|pyi)$/.test(n)) return glyph(...KIND.py);
     if (/\.(phtml|php\d)$/.test(n)) return glyph(...KIND.php);
-    if (/\.(test|spec)\.[jt]sx?$/.test(n)) return glyph('#8BC46A', 'flask');
-    if (n.startsWith('.env')) return glyph(...KIND.env);
-    const ext = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : '';
-    return KIND[ext] ? glyph(...KIND[ext]) : glyph('#9AA0A6', 'doc');
+    if (n.startsWith('.env')) return glyph('#E6C84F', 'gear');
+    const ext = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : '';        // 3. single extension
+    if (darcula() && ext === 'php') return glyph('#a97bdc', 'elephant');
+    return KIND[ext] ? glyph(...KIND[ext]) : glyph('#9AA0A6', 'doc');          // 4. generic document
   };
 
   CF.iconThemePicker = () => {
     const { h } = CF; const o = document.getElementById('overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
     const cur = theme();
     const list = h('div', { class: 'list' }, Object.entries(CF.ICON_THEMES).map(([id, name]) => h('div', { class: 'it' + (id === cur ? ' sel' : ''), onclick: async () => { CF.closeOverlay(); await CF.setSetting({ iconTheme: id }); } },
-      h('span', { html: ['a.js', 'b.py', 'c.css', 'd.json'].map((f) => CF.fileIconHtml(f, false)).join(' ') }), h('span', {}, name), h('span', { class: 'muted' }, id === cur ? 'current' : ''))));
+      h('span', { html: (() => { themeOverride = id; try { return [['src', 1], ['index.php', 0], ['home.blade.php', 0], ['app.js', 0], ['composer.json', 0]].map(([f, d]) => CF.fileIconHtml(f, !!d)).join(' '); } finally { themeOverride = null; } })() }), h('span', {}, name), h('span', { class: 'muted' }, id === cur ? 'current' : ''))));
     o.append(h('div', { class: 'palette' }, list)); o.onmousedown = (e) => { if (e.target === o) CF.closeOverlay(); };
   };
 

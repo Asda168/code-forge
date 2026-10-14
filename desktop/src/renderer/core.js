@@ -41,9 +41,11 @@ const rel = (p) =>
   CF.S.root && p.startsWith(CF.S.root) ? p.slice(CF.S.root.length + 1) : p;
 Object.assign(CF, { $, $$, h, esc, base, dirOf, join, rel });
 
+// Toasts stack in one fixed host above the status bar, so several never overlap and none leaves the window.
+CF.toastHost = () => document.getElementById("toasts") || document.body.appendChild(h("div", { id: "toasts" }));
 CF.toast = (msg, err) => {
   const t = h("div", { class: "toast" + (err ? " err" : "") }, String(msg));
-  document.body.append(t);
+  CF.toastHost().append(t);
   setTimeout(() => t.remove(), err ? 7000 : 3500);
 };
 CF.guard =
@@ -347,6 +349,7 @@ CF.applyTheme = (id) => {
     "--sel",
     "--status",
     "--status-fg",
+    "--chrome",
   ].forEach((k) => root.removeProperty(k));
   Object.entries(t.ui).forEach(([k, v]) => root.setProperty(k, v));
   if (window.monaco) {
@@ -799,7 +802,7 @@ CF.closeGroupIfEmpty = (g) => {
 // Virtual tabs ("ext://<id>") have no Monaco model; they draw into g.page via CF.renderPage (ui.js).
 // Each scheme registers { icon, title(path), render(group) } in CF.pages (ext:// in ui.js, kbd:// in keybindings.js).
 CF.pages = {};
-CF.isPage = (p) => /^(ext|kbd|settings):\/\//.test(p || "");
+CF.isPage = (p) => /^(ext|kbd|settings|search):\/\//.test(p || "");
 const pageOf = (p) => CF.pages[String(p).split(":")[0]];
 CF.renderPage = (g) => {
   const pg = pageOf(g.active);
@@ -939,7 +942,7 @@ CF.renderTabs = () =>
                 ? []
                 : [
                     "-",
-                    ["Copy Path", () => navigator.clipboard.writeText(p)],
+                    ["Copy Path", () => cf.clip.write(p)],
                     ["Reveal in File Manager", () => cf.fs.reveal(p)],
                   ]),
             ]);

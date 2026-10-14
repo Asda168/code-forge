@@ -16,7 +16,10 @@
     C('open-folder', 'Open Folder', 'File', null, { alias: 'Open Folder' }), C('new-file', 'New File', 'File', null, { alias: 'New File' }), C('save', 'Save', 'File'), C('save-all', 'Save All', 'File', null, { alias: 'Save All' }),
     C('close-tab', 'Close Editor', 'Editor'), C('next-tab', 'Next Editor', 'Editor'), C('prev-tab', 'Previous Editor', 'Editor'), C('split', 'Split Editor Right', 'Editor', null, { alias: 'Split Editor Right' }),
     C('goto-line', 'Go to Line…', 'Editor', null, { alias: 'Go to Line…' }), C('goto-def', 'Go to Definition', 'Editor'),
-    C('view-explorer', 'Show Explorer', 'View'), C('search', 'Find in Files', 'View', null, { alias: 'Find in Files' }), C('view-git', 'Show Source Control', 'View'), C('view-gitlens', 'Show GitLens', 'View', () => CF.showView('gitlens')),
+    C('view-explorer', 'Show Explorer', 'View'), C('search', 'Find in Files', 'View', null, { alias: 'Find in Files' }),
+    C('search-replace', 'Replace in Files', 'View', () => CF.findInFiles({ replace: true })), C('search-new-editor', 'Search: Open New Search Editor', 'View', () => CF.newSearchEditor()),
+    C('search-toggle-details', 'Search: Toggle Search Details', 'View', () => CF.searchToggle('details')),
+    C('search-toggle-case', 'Search: Match Case', 'View', () => CF.searchToggle('case'), { when: 'search' }), C('search-toggle-word', 'Search: Match Whole Word', 'View', () => CF.searchToggle('word'), { when: 'search' }), C('search-toggle-regex', 'Search: Use Regular Expression', 'View', () => CF.searchToggle('regex'), { when: 'search' }), C('view-git', 'Show Source Control', 'View'), C('view-gitlens', 'Show GitLens', 'View', () => CF.showView('gitlens')),
     C('view-run', 'Show Run and Debug', 'View', () => CF.showView('run')), C('view-extensions', 'Show Extensions', 'View'), C('toggle-sidebar', 'Toggle Sidebar', 'View', null, { alias: 'Toggle Sidebar' }),
     C('toggle-panel', 'Toggle Panel', 'View', () => CF.togglePanel()), C('toggle-terminal', 'Toggle Terminal', 'View', null, { alias: 'Toggle Terminal' }), C('show-problems', 'Show Problems', 'View', () => CF.showPanel('problems'), { alias: 'Show Problems' }),
     C('show-debug', 'Show Debug Console', 'View', () => CF.showPanel('debug')),
@@ -75,8 +78,8 @@
     const editable = !inTerm && !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
     if (editable && !(e.ctrlKey || e.altKey || e.metaKey || /^f\d/.test(keyOf(e)))) { pending = null; return; }
     if (inTerm && (TERM_RESERVED.has(combo) || !(CF.termAppKey && CF.termAppKey(e)))) { pending = null; return; }
-    const ctx = inTerm ? 'terminal' : '!terminal';
-    const pick = (list) => { const l = (list || []).filter((c) => !c.when || c.when === ctx); return l.find((c) => c.when) || l[0]; };
+    const ctx = inTerm ? 'terminal' : '!terminal', inSearch = !!(el && el.closest('.sv'));
+    const pick = (list) => { const l = (list || []).filter((c) => !c.when || c.when === ctx || (c.when === 'search' && inSearch)); return l.find((c) => c.when) || l[0]; };
     let seq = combo, had = false;
     if (pending && Date.now() - pendingAt < 1500) { seq = pending + ' ' + combo; had = true; }
     pending = null;
@@ -88,7 +91,7 @@
 
   // ---- Keyboard Shortcuts tab -----------------------------------------------------------------------------------------------------
   const KB = { q: '' };
-  const whenLabel = (c) => (c.when === 'terminal' ? 'In terminal' : c.when === '!terminal' ? 'Outside terminal' : '');
+  const whenLabel = (c) => (c.when === 'search' ? 'In search view' : c.when === 'terminal' ? 'In terminal' : c.when === '!terminal' ? 'Outside terminal' : '');
   const overlap = (a, b) => !a.when || !b.when || a.when === b.when;
   const chips = (seq) => h('span', { class: 'kb-keys' }, seq.split(' ').map((c) => h('kbd', {}, prettyCombo(c))));
   const conflictsOf = (cmd, seq) => COMMANDS.filter((c) => c !== cmd && effective(c) === seq && overlap(c, cmd));

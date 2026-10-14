@@ -68,6 +68,7 @@
     catch { /* folder moved or deleted: fall back to the welcome screen */ }
   }
   if (!restored) CF.renderWelcome();
+  if (restored && qs.get('file')) CF.openFile(qs.get('file')).catch(() => {});
   CF.updateProblems();
   if (S.settings.autoUpdate) setTimeout(() => CF.checkUpdates(false).catch(() => {}), 4000);   // silent when offline / signed out
 })();

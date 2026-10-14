@@ -3359,3 +3359,119 @@ textarea {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* ---- Shell layout hardening: nothing may exceed the window; the editor area absorbs all resizing ---- */
+html, body { height: 100%; margin: 0; overflow: hidden; }
+#app {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    grid-template-columns: 48px minmax(0, var(--side-w, 280px)) minmax(0, 1fr);
+    grid-template-rows: 34px minmax(0, 1fr) 24px;
+}
+#app.no-sidebar { grid-template-columns: 48px 0 minmax(0, 1fr); }
+#app.no-activity { grid-template-columns: 0 minmax(0, var(--side-w, 280px)) minmax(0, 1fr); }
+#app.no-activity.no-sidebar { grid-template-columns: 0 0 minmax(0, 1fr); }
+#activitybar, #sidebar, #main { min-height: 0; min-width: 0; overflow: hidden; }
+#main { overflow: hidden; }
+#editor-area { flex: 1 1 0; min-height: 80px; min-width: 0; overflow: hidden; }
+#welcome { overflow: auto; min-height: 0; }
+#panel {
+    flex: 0 0 auto;
+    min-height: 80px;
+    max-height: calc(100% - 80px);   /* editor keeps at least 80px even in a tiny window */
+    overflow: hidden;
+}
+#panel-tabs { flex: none; min-width: 0; overflow: hidden; }
+#panel-terminal, #panel-problems, #panel-debug { flex: 1 1 0; min-height: 0; min-width: 0; }
+#statusbar { flex: none; min-width: 0; overflow: hidden; white-space: nowrap; position: relative; z-index: 30; }
+
+/* toasts: one stack above the status bar, clamped to the window */
+#toasts {
+    position: fixed;
+    right: 16px;
+    bottom: 36px;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+    pointer-events: none;
+}
+#toasts .toast { position: static; pointer-events: auto; max-width: min(420px, 100%); overflow-wrap: anywhere; }
+
+/* ---- Maximized terminal: fills #main completely (no 80px editor strip), opaque, editor/welcome layer hidden ---- */
+#panel.max {
+    position: absolute;
+    inset: 0;
+    height: auto !important;
+    max-height: none;
+    min-height: 0;
+    z-index: 40;
+    background-color: var(--t-bg, var(--panel));
+    opacity: 1;
+}
+#panel.max #panel-terminal, #panel.max #panel-problems, #panel.max #panel-debug { flex: 1 1 0; height: auto; background-color: var(--t-bg, var(--panel)); }
+#main:has(#panel.max) #editor-area { visibility: hidden; }
+
+/* ---- Find in Files (search.js): sidebar view and Search Editor tab ---- */
+.sv { display: flex; flex-direction: column; min-height: 0; height: 100%; font-size: 13px; }
+.sv-bar { display: flex; align-items: center; gap: 2px; padding: 4px 8px 0; flex: none; }
+.sv-title { font-weight: 600; font-size: 12px; color: var(--mut); text-transform: uppercase; letter-spacing: .04em; }
+.sv-b { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--mut); cursor: pointer; }
+.sv-b.sm { width: 20px; height: 20px; }
+.sv-b:hover, .sv-t:hover, .sv-exp:hover, .sv-det-b:hover { background: var(--hover); color: var(--fg); }
+.sv-form { display: flex; gap: 2px; padding: 6px 8px 0 4px; flex: none; }
+.sv-exp { flex: none; width: 18px; align-self: stretch; border: 0; border-radius: 4px; background: transparent; color: var(--mut); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+.sv-exp .svg { transition: transform 120ms ease; }
+.sv-exp.open .svg { transform: rotate(90deg); }
+.sv-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sv-field { display: flex; align-items: center; gap: 1px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0 2px 0 0; min-width: 0; }
+.sv-field:focus-within { border-color: var(--accent); }
+.sv-field[hidden] { display: none; }
+.sv-in { flex: 1; min-width: 0; border: 0 !important; outline: 0; background: transparent !important; color: var(--fg); padding: 5px 8px; font: inherit; box-shadow: none !important; }
+.sv-t { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--mut); cursor: pointer; }
+.sv-t.on { background: color-mix(in srgb, var(--accent) 28%, transparent); border-color: var(--accent); color: var(--fg); }
+.sv-detrow { display: flex; justify-content: flex-end; padding: 2px 8px 0; flex: none; }
+.sv-det-b { width: 24px; height: 18px; border: 0; border-radius: 4px; background: transparent; color: var(--mut); cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.sv-det-b.on { color: var(--accent); }
+.sv-det { display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 0 22px; flex: none; }
+.sv-det[hidden] { display: none; }
+.sv-det label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--mut); }
+.sv-det .sv-in { background: var(--bg) !important; border: 1px solid var(--border) !important; border-radius: 6px; font-size: 13px; }
+.sv-det .sv-in:focus { border-color: var(--accent) !important; }
+.sv-sum { flex: none; padding: 8px 12px 4px; font-size: 12px; color: var(--mut); min-height: 8px; }
+.sv-sum.err { color: var(--err); }
+.sv-list { flex: 1 1 0; min-height: 0; overflow: auto; padding-bottom: 8px; }
+.sv-file { display: flex; align-items: center; gap: 5px; padding: 3px 10px 3px 4px; cursor: pointer; white-space: nowrap; min-width: 0; }
+.sv-file:hover, .sv-hit:hover { background: var(--hover); }
+.sv-file .nm { font-weight: 600; flex: none; }
+.sv-file small { overflow: hidden; text-overflow: ellipsis; font-size: 11px; min-width: 0; }
+.sv-file .ic { flex: none; display: inline-flex; }
+.sv-chev { flex: none; display: inline-flex; width: 14px; justify-content: center; color: var(--mut); }
+.sv-chev .svg { transition: transform 120ms ease; }
+.sv-chev.open .svg { transform: rotate(90deg); }
+.sv-acts { display: none; gap: 2px; }
+.sv-file:hover .sv-acts { display: inline-flex; }
+.sv-hit { display: flex; align-items: center; gap: 6px; padding: 2px 10px 2px 16px; cursor: pointer; font: 12px var(--mono); white-space: nowrap; min-width: 0; }
+.sv-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sv-hit mark { background: color-mix(in srgb, var(--accent) 38%, transparent); color: inherit; border-radius: 2px; }
+.sv-hit mark.del { background: color-mix(in srgb, var(--err) 30%, transparent); text-decoration: line-through; }
+.sv-hit mark.ins { background: color-mix(in srgb, #2ea043 35%, transparent); }
+.sv-ln { flex: none; color: var(--mut); font-size: 11px; }
+.sv-hit .sv-b { display: none; }
+.sv-hit:hover .sv-b { display: inline-flex; }
+.svpage { height: 100%; overflow: hidden; background: var(--bg); }
+.svpage .sv { max-width: 980px; margin: 0 auto; padding-top: 8px; }
+.svpage .sv-list { font-size: 13px; }
+
+/* Themes may set --chrome for the title bar and activity bar (JetBrains Darcula: darker than the side bar) */
+#topbar, #activitybar { background: var(--chrome, var(--side)); }
+#activitybar button.active { box-shadow: inset 2px 0 0 #fff; }
+
+/* Symbols icon pack: <img> icons must never take drag / click events from the row */
+img.sym { width: 16px; height: 16px; display: block; pointer-events: none; flex: none; }
+.ic img.sym, .tab .ic img.sym, #sb-lang img.sym { margin: 0 auto; }

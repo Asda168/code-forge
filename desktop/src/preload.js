@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('cf', {
   api: { login: inv('api:login'), logout: inv('api:logout'), loggedIn: inv('api:loggedIn'), request: inv('api:request') },
   app: { checkUpdates: inv('app:checkUpdates'), openExternal: inv('app:openExternal'), platform: inv('app:platform') },
   app2: { forceClose: inv('app:forceClose') },
+  clip: { read: inv('clip:read'), write: inv('clip:write') },
   win: { new: inv('win:new'), newPick: inv('win:newPick') },
   onFsChanged: (fn) => on('fs:changed', fn),
   onAskClose: (fn) => on('ask-close', fn),

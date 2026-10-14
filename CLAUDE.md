@@ -31,7 +31,7 @@ python manage.py test core
 - Commands appear in the palette list in `ui.js` (search `Preferences: Color Theme`).
 - Keyboard shortcuts: commands are registered in `renderer/keybindings.js` (id, title, optional `when: 'terminal'|'!terminal'`); defaults are `DEFAULT_KEYS` + `KEY_META` (group/title, drives the generated `keyboard.json`) in `main.js`; users override them in `<userData>/keyboard.json` (`{ "command-id": "ctrl+shift+b", "x": "" }`) or by clicking a binding in the Keyboard Shortcuts tab (`kbd://shortcuts`). One document-level dispatcher handles every shortcut (chords supported); menu accelerators are display-only (`registerAccelerator: false`). New shortcut = add a command + a default key, never a separate `keydown` listener.
 - Non-file editor tabs use `ext://` / `kbd://` paths and `CF.pages[scheme] = { icon, title, render }` (drawn into `g.page`).
-- File icons: `icons.js` (`KIND` by extension, `NAMED` by filename, `FOLDERS`; icon themes via the `iconTheme` setting).
+- File icons: `icons.js` (`KIND` by extension, `NAMED` by filename, `FOLDERS`; icon themes via the `iconTheme` setting). Default theme `symbols` is the bundled Symbols pack by Miguel Solorio (`desktop/src/icons/symbols/`: SVGs + generated `theme.js`, MIT, no extension code).
 - Extensions are declarative JSON only and must never execute code.
 
 ## Security rules (do not weaken)

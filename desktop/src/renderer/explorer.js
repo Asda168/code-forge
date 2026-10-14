@@ -1,4 +1,4 @@
-// Explorer (virtualized lazy tree), file operations, global search, welcome screen.
+// Explorer (virtualized lazy tree), file operations, welcome screen. Find in Files lives in search.js.
 (() => {
   const { S, $, h, base, dirOf, join, rel } = CF;
   const ROW = 22;
@@ -99,7 +99,7 @@
       ['Copy', () => { T.clip = { path: node.path, cut: false }; }], ['Cut (Move)', () => { T.clip = { path: node.path, cut: true }; paint(); }], ['Paste', () => paste(dir)],
       ['Duplicate', CF.guard(async () => { await cf.fs.copy(node.path, dirOf(node.path)); CF.refreshTree([dirOf(node.path)]); })], '-',
       ['Open in Terminal', () => CF.newTerminal(undefined, dir)], ['Open in Git Bash', () => CF.newTerminal('gitbash', dir)],
-      ['Copy Path', () => navigator.clipboard.writeText(node.path)], ['Copy Relative Path', () => navigator.clipboard.writeText(rel(node.path))],
+      ['Copy Path', () => cf.clip.write(node.path)], ['Copy Relative Path', () => cf.clip.write(rel(node.path))],
       ['Reveal in File Manager', () => cf.fs.reveal(node.path)], ['Refresh', () => CF.refreshTree()],
     ]);
   }
@@ -134,35 +134,5 @@
       h('div', { class: 'sub' }, 'Your development workspace.  ·  Code. Build. Run. Ship.'),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: CF.openFolder }, 'Open Folder'), h('button', { class: 'btn sec', onclick: () => cf.win.newPick() }, 'Open in New Window'), h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone Repository'), h('button', { class: 'btn sec', onclick: () => CF.newProjectWizard() }, 'New Project')),
       h('h3', {}, 'Recent'), recents.length ? recents.map((r) => h('div', { class: 'recent', onclick: CF.guard(async () => CF.setRoot(await cf.ws.openRecent(r.path))) }, h('span', {}, r.name), h('small', {}, r.path))) : h('div', { class: 'muted' }, 'No recent projects yet.')));
-  };
-
-  // ---- global search ------------------------------------------------------------------------
-  CF.renderSearch = (body) => {
-    const o = { case: false, word: false, regex: false };
-    const q = h('input', { placeholder: 'Search', onkeydown: (e) => e.key === 'Enter' && run() });
-    const r = h('input', { placeholder: 'Replace' });
-    const tog = (k, label, ti) => { const b = h('button', { class: 'btn sec sm', title: ti, onclick: () => { o[k] = !o[k]; b.classList.toggle('on', o[k]); } }, label); return b; };
-    const res = h('div', { style: 'flex:1;overflow:auto' });
-    let last = [];
-    const run = CF.guard(async () => {
-      if (!S.root) return CF.toast('Open a folder first', true);
-      res.innerHTML = '<div class="pad muted">Searching…</div>';
-      last = await cf.fs.search(S.root, q.value, o);
-      res.innerHTML = ''; const by = {}; last.forEach((x) => (by[x.rel] = by[x.rel] || []).push(x));
-      res.append(h('div', { class: 'pad muted' }, `${last.length}${last.length >= 2000 ? '+' : ''} results in ${Object.keys(by).length} files`));
-      for (const [f, hits] of Object.entries(by)) {
-        res.append(h('div', { class: 'file-h' }, h('span', { class: 'ic', html: CF.fileIconHtml(base(f), false) }), h('span', { class: 'nm' }, base(f)), h('small', { class: 'muted' }, dirOf(f)), h('span', { class: 'grow' }), h('span', { class: 'badge' }, hits.length)));
-        hits.forEach((x) => res.append(h('div', { class: 'hit', onclick: () => CF.openFile(x.path, { line: x.line, col: x.col }) }, h('span', { class: 'muted' }, x.line + ': '), x.text.trim())));
-      }
-    });
-    const replaceAll = CF.guard(async () => {
-      const files = [...new Set(last.map((x) => x.path))];
-      if (!files.length || !(await CF.confirm(`Replace "${q.value}" with "${r.value}" in ${files.length} files? This writes to disk.`, 'Replace All'))) return;
-      for (const f of files) await cf.fs.replaceInFile(f, q.value, r.value, o);
-      await CF.reloadOpenFiles(); CF.toast(`Replaced in ${files.length} files`); run();
-    });
-    body.append(h('div', { class: 'pad' }, q, r, h('div', { class: 'row' }, tog('case', CF.icon('caseSens', 14), 'Case sensitive'), tog('word', CF.icon('word', 14), 'Whole word'), tog('regex', CF.icon('regex', 14), 'Regex'),
-      h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: run }, 'Search'), h('button', { class: 'btn sec sm', onclick: replaceAll }, 'Replace All'))), res);
-    setTimeout(() => q.focus(), 0);
   };
 })();

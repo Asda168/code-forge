@@ -58,7 +58,7 @@
         h('button', { class: 'btn sm', onclick: CF.guard(async () => { t.remove(); await cf.ext.installBundled(hit.id); await CF.loadExtensions(); CF.toast('Installed ' + hit.name); if ($('#side-title').dataset.view === 'extensions') CF.showView('extensions'); }) }, 'Install'),
         h('button', { class: 'btn sec sm', onclick: () => t.remove() }, 'Not now'),
         h('button', { class: 'btn sec sm', onclick: CF.guard(async () => { t.remove(); await CF.setSetting({ dismissedSuggestions: [...(S.settings.dismissedSuggestions || []), hit.id] }); }) }, "Don't ask again")));
-    document.body.append(t); setTimeout(() => t.remove(), 15000);
+    CF.toastHost().append(t); setTimeout(() => t.remove(), 15000);
   });
   CF.openSettingsJson = CF.guard(async () => { const p = await cf.settings.file(); S.settingsFile = p; CF.closeOverlay(); CF.openFile(p); });
   // ---- extensions view: search, filters, cards, details. All data comes from real manifests (catalog + installed). ----
@@ -288,7 +288,7 @@
     ['Change Font Size: Increase', () => CF.fontStep(1)], ['Change Font Size: Decrease', () => CF.fontStep(-1)], ['Change Font Size: Reset', () => CF.fontStep(0)],
     ['Toggle Sidebar', CF.toggleSidebar, 'Ctrl+B'], ['Toggle Terminal', CF.togglePanel, 'Ctrl+`'], ['Open Settings', () => CF.settingsDialog(), 'Ctrl+,'],
     ['New Project…', () => CF.newProjectWizard()], ['Split Editor Right', () => CF.split(false)], ['Split Editor Down', () => CF.split(true)], ['Save All', CF.saveAll],
-    ['Find in Files', () => CF.showView('search'), 'Ctrl+Shift+F'], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
+    ['Find in Files', () => CF.findInFiles(), 'Ctrl+Shift+F'], ['Replace in Files', () => CF.findInFiles({ replace: true }), 'Ctrl+Shift+H'], ['Search: Open New Search Editor', () => CF.newSearchEditor()], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
     ['Save Workspace', saveWorkspace], ['Open Workspace', openWorkspace], ['Close Workspace', closeWorkspace], ['Check for Updates', () => CF.checkUpdates(true)],
     ['Preferences: File Icon Theme', () => CF.iconThemePicker()], ['Preview: Toggle File Preview (Markdown, HTML, SVG)', () => CF.toggleMdPreview()], ['Git: Sync Changes', () => CF.gitSync && CF.gitSync()], ['View: Close Saved Editors', () => CF.closeSaved(CF.activeGroup())], ['View: Close All Editors', () => CF.closeAllEditors()], ['View: Toggle Tab Bar Close Buttons', () => CF.setSetting({ tabActions: CF.S.settings.tabActions === false })],
     ['New Window', () => cf.win.new(null)], ['Open Folder in New Window…', () => cf.win.newPick()], ['Open Project in New Window…', () => CF.findProject(true)],
@@ -311,7 +311,7 @@
   const ed = () => CF.activeGroup().editor;
   const MENU = {
     'open-folder': CF.openFolder, 'new-window': () => cf.win.new(null), 'open-folder-new-window': () => cf.win.newPick(), 'new-file': () => CF.newFile(), 'new-folder': () => CF.newFolder(), save: () => CF.save(), 'save-all': CF.saveAll, 'save-workspace': saveWorkspace, 'open-workspace': openWorkspace, 'close-workspace': closeWorkspace,
-    search: () => CF.showView('search'), 'select-all': () => ed().trigger('menu', 'selectAll'), palette: CF.palette, 'toggle-sidebar': CF.toggleSidebar, 'toggle-terminal': CF.togglePanel,
+    search: () => CF.findInFiles(), 'select-all': () => ed().trigger('menu', 'selectAll'), palette: CF.palette, 'toggle-sidebar': CF.toggleSidebar, 'toggle-terminal': CF.togglePanel,
     'font-inc': () => CF.fontStep(1), 'font-dec': () => CF.fontStep(-1), 'font-reset': () => CF.fontStep(0), 'goto-line': () => ed().getAction('editor.action.gotoLine').run(), 'goto-def': () => ed().getAction('editor.action.revealDefinition').run(),
     run: () => CF.runProject(), stop: CF.stopRun, restart: CF.restartRun, 'new-terminal': () => CF.newTerminal(), 'new-gitbash': () => CF.newTerminal('gitbash'),
     'git-clone': () => CF.cloneDialog(), 'git-init': () => CF.gitInit(), 'git-commit': () => CF.showView('git'), 'git-push': () => CF.gitCmd('Push', ['push']), 'git-pull': () => CF.gitCmd('Pull', ['pull']), 'git-fetch': () => CF.gitCmd('Fetch', ['fetch', '--all']),

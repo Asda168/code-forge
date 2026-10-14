@@ -38,6 +38,70 @@
     'vsc-red': mk('Red', 'vs-dark', { bg: '#390000', side: '#330000', panel: '#390000', fg: '#f8f8f8', mut: '#e7c0c0', border: '#ff666633', hover: '#800000', sel: '#750000', accent: '#cc3333', status: '#cc3333', ln: '#ff6666aa', line: '#ff000033', edsel: '#750000', guide: '#ff666633', tok: { comment: 'E7C0C0', string: 'FFD2A7', keyword: 'FF6666', number: 'FFD2A7', type: 'FFAA77', fn: 'FFD2A7', variable: 'F8F8F8', tag: 'FF6666', attr: 'FFD2A7', delim: 'F8F8F8' } }),
   });
 
+  // JetBrains / PhpStorm "Darcula" (New UI dark). Monaco's PHP tokenizer cannot tell class names, calls and properties apart,
+  // so a small semantic-token provider (active only while this theme is selected) classifies them from the source text.
+  const DARCULA = 'jetbrains-darcula';
+  CF.THEMES[DARCULA] = mk('JetBrains Darcula (PhpStorm)', 'vs-dark', {
+    bg: '#19191c', side: '#1e1f22', panel: '#19191c', fg: '#bcbec4', mut: '#7a7e85', border: '#2b2d30', hover: '#2a2c31', sel: '#2e436e', accent: '#3574f0', accent2: '#56a8f5',
+    status: '#1a1a1a', statusFg: '#bcbec4', ln: '#5a5d63', line: '#23252a', edsel: '#214283', cursor: '#ced0d6', guide: '#2e3138',
+    tok: { comment: '6f737a', commentStyle: 'italic', string: '6aab73', escape: 'cf8e6d', keyword: 'cf8e6d', control: 'cf8e6d', number: '6c95eb', type: 'cf8e6d', fn: '56a8f5',
+      variable: 'bcbec4', tag: 'd5b778', attr: 'bcbec4', delim: 'bcbec4', regexp: '42c3d4' },
+  });
+  CF.THEMES[DARCULA].ui['--chrome'] = '#1a1a1a';          // title bar + activity bar are darker than the side bar
+  Object.assign(CF.THEMES[DARCULA].ed, {
+    'editor.lineHighlightBorder': '#2e3138', 'editorInlayHint.foreground': '#6e7681', 'editorInlayHint.background': '#00000000', 'editorCodeLens.foreground': '#6e7681', 'breadcrumb.background': '#1e1f22', 'editorGroupHeader.tabsBackground': '#1e1f22',
+    'editorLineNumber.activeForeground': '#bcbec4', 'editorBracketMatch.border': '#3574f0', 'editorBracketMatch.background': '#3574f033',
+  });
+  CF.THEMES[DARCULA].rules.push(
+    { token: 'constant', foreground: 'cf8e6d' }, { token: 'constant.php', foreground: 'cf8e6d' }, { token: 'metatag.php', foreground: 'cf8e6d' }, { token: 'variable.php', foreground: 'bcbec4' },
+    { token: 'class', foreground: 'f75464' }, { token: 'function', foreground: '56a8f5' }, { token: 'selfVar', foreground: 'df4c53' }, { token: 'property', foreground: 'c77dbb' });
+
+  const PHP_LEGEND = { tokenTypes: ['class', 'function', 'selfVar', 'property'], tokenModifiers: [] };
+  const PHP_KW = new Set(['if', 'else', 'elseif', 'while', 'for', 'foreach', 'switch', 'match', 'catch', 'return', 'echo', 'print', 'array', 'list', 'isset', 'unset', 'empty', 'exit', 'die', 'fn', 'function', 'and', 'or', 'xor', 'use', 'new', 'static', 'self', 'parent', 'null', 'true', 'false', 'int', 'string', 'bool', 'float', 'array', 'mixed', 'void', 'object', 'callable', 'iterable', 'never']);
+  const phpSemantic = (text) => {
+    const data = []; let pl = 0, pc = 0, inBlock = false;
+    const push = (line, col, len, type) => { data.push(line - pl, line === pl ? col - pc : col, len, type, 0); pl = line; pc = col; };
+    text.split(/\r?\n/).forEach((src, line) => {
+      let i = 0; const n = src.length;
+      while (i < n) {
+        if (inBlock) { const e = src.indexOf('*/', i); if (e < 0) return; inBlock = false; i = e + 2; continue; }
+        const c = src[i], two = src.substr(i, 2);
+        if (two === '/*') { inBlock = true; i += 2; continue; }
+        if (two === '//' || c === '#') return;
+        if (c === "'" || c === '"') { let j = i + 1; while (j < n && src[j] !== c) j += src[j] === '\\' ? 2 : 1; i = j + 1; continue; }
+        if (c === '$') { const m = /^\$[A-Za-z_]\w*/.exec(src.slice(i)); if (m) { if (m[0] === '$this') push(line, i, 5, 2); i += m[0].length; continue; } }
+        const m = /^[A-Za-z_\\][\w\\]*/.exec(src.slice(i));
+        if (!m) { i++; continue; }
+        const word = m[0], start = i; i += word.length;
+        const before = src.slice(0, start).trimEnd(), after = src.slice(i).trimStart();
+        const last = word.split('\\').pop();
+        const afterNew = /(?:\bnew|\bextends|\bimplements|\binstanceof|\buse|\bcatch\s*\(|\btrait|\bclass\s+\w+\s+extends)$/.test(before);
+        if (/(?:->|\?->)$/.test(before)) { push(line, start, word.length, after[0] === '(' ? 1 : 3); continue; }
+        if (/::$/.test(before)) { if (after[0] === '(') push(line, start, word.length, 1); continue; }
+        if (/\bfunction$/.test(before)) { push(line, start, word.length, 1); continue; }
+        if (PHP_KW.has(word.toLowerCase())) continue;
+        if (/^\s*::/.test(after) || afterNew || (/^[A-Z]/.test(last) && !/^[A-Z0-9_]+$/.test(last) && after[0] !== '(')) { push(line, start, word.length, 0); continue; }
+        if (after[0] === '(') push(line, start, word.length, 1);
+      }
+    });
+    return new Uint32Array(data);
+  };
+  let fireSem = () => {};
+  const registerPhpSemantic = () => {
+    if (!window.monaco || registerPhpSemantic.done) return; registerPhpSemantic.done = true;
+    const em = new monaco.Emitter(); fireSem = () => em.fire();
+    monaco.languages.registerDocumentSemanticTokensProvider('php', {
+      onDidChange: em.event,
+      getLegend: () => PHP_LEGEND,
+      provideDocumentSemanticTokens: (model) => ({ data: S.settings.theme === DARCULA ? phpSemantic(model.getValue()) : new Uint32Array(0) }),
+      releaseDocumentSemanticTokens: () => {},
+    });
+  };
+  const initBase = CF.initMonaco;
+  CF.initMonaco = async (...a) => { const r = await initBase(...a); registerPhpSemantic(); return r; };
+  const applyBase = CF.applyTheme;
+  CF.applyTheme = (id) => { applyBase(id); fireSem(); };
+
   // ---- live-preview picker (Ctrl+K Ctrl+T) ---------------------------------------------------
   CF.themePicker = () => {
     const ids = Object.keys(CF.THEMES); const original = S.settings.theme;

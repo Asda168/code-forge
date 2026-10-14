@@ -1,7 +1,7 @@
 // Asta main process: the secure local bridge.
 // Everything local (fs, terminal, git, processes) lives here and is reachable ONLY through
 // contextBridge -> ipcMain from our own window. No local HTTP/WebSocket server is opened.
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, session, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -46,7 +46,7 @@ function createWindow(query = {}) {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   if (process.env.CODEFORGE_DEBUG) win.webContents.on('console-message', (_e, level, msg, line, src) => { if (level >= 2) console.log(`[renderer:${level}] ${msg} (${path.basename(src)}:${line})`); });
-  wins.add(win); currentWin = win;
+  wins.add(win); currentWin = win; if (process.env.CODEFORGE_DEBUG) console.log('[windows]', wins.size, JSON.stringify(query));
   win.on('focus', () => { currentWin = win; });
   win.on('closed', () => { wins.delete(win); if (currentWin === win) currentWin = [...wins].pop() || null; });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query });
@@ -60,7 +60,7 @@ function createWindow(query = {}) {
     app.quit();
   }, 5000));
   if (process.env.CODEFORGE_DEBUG) setTimeout(() => win.webContents.executeJavaScript(
-    `JSON.stringify({monaco:!!window.monaco,groups:document.querySelectorAll('.group').length,welcome:!document.getElementById('welcome').hidden,shells:CF.S.shells.map(s=>s.name),font:getComputedStyle(document.body).fontFamily})`
+    `JSON.stringify({root:CF.S.root,tabs:[...CF.S.models.keys()],monaco:!!window.monaco,groups:document.querySelectorAll('.group').length,welcome:!document.getElementById('welcome').hidden,shells:CF.S.shells.map(s=>s.name),font:getComputedStyle(document.body).fontFamily})`
   ).then((r) => console.log('[selftest]', r)).catch((e) => console.log('[selftest-error]', e.message)), 8000);
   let forceClose = false;
   // Closing asks the renderer (unsaved-files prompt) unless the app is already quitting (installer/OS shutdown/app.quit) or the renderer is gone.
@@ -74,6 +74,9 @@ function createWindow(query = {}) {
   return win;
 }
 const forceCloses = new Map();
+// System clipboard through the main process: the renderer's navigator.clipboard.readText() is blocked by the permission handler below.
+ipcMain.handle('clip:read', () => clipboard.readText());
+ipcMain.handle('clip:write', (_e, t) => { clipboard.writeText(String(t == null ? '' : t).slice(0, 5 * 1024 * 1024)); return true; });
 ipcMain.handle('app:forceClose', (e) => forceCloses.get(e.sender.id)?.());
 let currentWin = null;
 function send(ch, ...a) { const w = BrowserWindow.getFocusedWindow() || currentWin; if (w && !w.isDestroyed()) w.webContents.send(ch, ...a); }
@@ -106,6 +109,7 @@ const DEFAULT_KEYS = {
   'font-inc': 'mod+=', 'font-dec': 'mod+-', 'font-reset': 'mod+0', 'goto-line': 'mod+g', 'goto-def': 'f12', run: 'f5', stop: 'shift+f5', restart: 'mod+shift+f5', settings: 'mod+,',
   'new-terminal': 'ctrl+shift+`', 'split-terminal': 'mod+shift+5', 'term-split-down': 'mod+shift+6', 'term-close-pane': 'mod+shift+w', 'clear-terminal': 'mod+shift+k', 'term-font-inc': 'mod+=', 'term-font-dec': 'mod+-', 'term-font-reset': 'mod+0',
   'toggle-panel': 'mod+j', 'show-problems': 'mod+shift+m', 'show-debug': 'mod+shift+y', 'find-project': 'mod+r', 'toggle-preview': 'mod+shift+v',
+  'search-replace': 'mod+shift+h', 'search-toggle-details': 'mod+shift+j', 'search-toggle-case': 'alt+c', 'search-toggle-word': 'alt+w', 'search-toggle-regex': 'alt+r',
   'keyboard-shortcuts': 'mod+k mod+s', 'color-theme': 'mod+k mod+t', 'blame-line': 'alt+b', 'blame-file': 'alt+shift+b', 'file-history': 'alt+h', 'line-history': 'alt+shift+h',
 };
 const keyFile = () => storeFile('keyboard.json');
@@ -120,7 +124,7 @@ const KEY_META = {
   palette: ['General', 'Command Palette'], 'quick-open': ['General', 'Go to File'], 'find-project': ['General', 'Find Project'], settings: ['General', 'Open Settings'], 'keyboard-shortcuts': ['General', 'Open Keyboard Shortcuts'], 'color-theme': ['General', 'Color Theme'], 'toggle-preview': ['General', 'Toggle File Preview'],
   'open-folder': ['File', 'Open Folder'], 'new-window': ['File', 'New Window'], 'open-folder-new-window': ['File', 'Open Folder in New Window'], 'new-file': ['File', 'New File'], save: ['File', 'Save'], 'save-all': ['File', 'Save All'],
   'close-tab': ['Editor', 'Close Editor'], 'next-tab': ['Editor', 'Next Editor'], 'prev-tab': ['Editor', 'Previous Editor'], split: ['Editor', 'Split Editor Right'], 'goto-line': ['Editor', 'Go to Line'], 'goto-def': ['Editor', 'Go to Definition'],
-  'view-explorer': ['View', 'Show Explorer'], search: ['View', 'Find in Files'], 'view-git': ['View', 'Show Source Control'], 'view-gitlens': ['View', 'Show GitLens'], 'view-run': ['View', 'Show Run and Debug'], 'view-extensions': ['View', 'Show Extensions'],
+  'view-explorer': ['View', 'Show Explorer'], search: ['View', 'Find in Files'], 'search-replace': ['View', 'Replace in Files'], 'search-toggle-details': ['View', 'Search: Toggle Search Details'], 'search-toggle-case': ['View', 'Search: Match Case (search focused)'], 'search-toggle-word': ['View', 'Search: Match Whole Word (search focused)'], 'search-toggle-regex': ['View', 'Search: Use Regular Expression (search focused)'], 'search-new-editor': ['View', 'Search: Open New Search Editor'], 'view-git': ['View', 'Show Source Control'], 'view-gitlens': ['View', 'Show GitLens'], 'view-run': ['View', 'Show Run and Debug'], 'view-extensions': ['View', 'Show Extensions'],
   'toggle-sidebar': ['View', 'Toggle Sidebar'], 'toggle-panel': ['View', 'Toggle Panel'], 'toggle-terminal': ['View', 'Toggle Terminal'], 'show-problems': ['View', 'Show Problems'], 'show-debug': ['View', 'Show Debug Console'],
   'font-inc': ['View', 'Increase Editor Font Size'], 'font-dec': ['View', 'Decrease Editor Font Size'], 'font-reset': ['View', 'Reset Editor Font Size'],
   'new-terminal': ['Terminal', 'New Terminal'], 'split-terminal': ['Terminal', 'Split Terminal Right'], 'term-split-down': ['Terminal', 'Split Terminal Down'], 'term-close-pane': ['Terminal', 'Close Terminal Pane (terminal focused)'], 'clear-terminal': ['Terminal', 'Clear Terminal (terminal focused)'],
@@ -315,36 +319,47 @@ ipcMain.handle('fs:delete', async (_e, p) => {
 ipcMain.handle('fs:reveal', (_e, p) => { shell.showItemInFolder(assertInRoot(p)); });
 ipcMain.handle('fs:exists', (_e, p) => fs.existsSync(assertInRoot(p)));
 
-// project-wide text search (streams results in batches, skips heavy dirs, bounded)
+// project-wide text search (bounded, skips heavy dirs). opts: case, word, regex, include, exclude ("a, b" glob lists, relative to the folder).
+function searchRegex(query, opts) {
+  let src = opts.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (opts.word) src = `\\b(?:${src})\\b`;
+  try { return new RegExp(src, opts.case ? 'g' : 'gi'); } catch { throw new Error('Invalid regular expression'); }
+}
+function globList(list) {
+  const pats = String(list || '').split(',').map((x) => x.trim().replace(/\\/g, '/').replace(/^\.?\//, '').replace(/\/+$/, '')).filter(Boolean).slice(0, 50);
+  const tests = pats.map((p) => {
+    const esc = p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*\//g, '\u0000').replace(/\*\*/g, '\u0001').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]')
+      .replace(/\u0000/g, '(?:.*/)?').replace(/\u0001/g, '.*');
+    const re = new RegExp('^' + esc + '(?:/.*)?$', 'i');
+    return p.includes('/') ? (rel) => re.test(rel) : (rel) => rel.split('/').some((seg) => re.test(seg));   // "*.js" / "node_modules" match any path segment
+  });
+  return tests.length ? (rel) => tests.some((t) => t(rel)) : null;
+}
 ipcMain.handle('fs:search', async (_e, root, query, opts = {}) => {
   root = assertInRoot(root);
   if (!query) return [];
-  let re;
-  try {
-    let src = opts.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (opts.word) src = `\\b${src}\\b`;
-    re = new RegExp(src, opts.case ? 'g' : 'gi');
-  } catch (err) { throw new Error('Invalid regex'); }
-  const results = []; let files = 0;
-  const MAX = 2000;
+  const re = searchRegex(query, opts), inc = globList(opts.include), exc = globList(opts.exclude);
+  const results = []; const MAX = 2000;
   async function walk(dir) {
     if (results.length >= MAX) return;
     let ents; try { ents = await fsp.readdir(dir, { withFileTypes: true }); } catch { return; }
     for (const d of ents) {
       if (results.length >= MAX) return;
-      const full = path.join(dir, d.name);
+      const full = path.join(dir, d.name), rel = path.relative(root, full).split(path.sep).join('/');
+      if (exc && exc(rel)) continue;
       if (d.isDirectory()) { if (!IGNORE_SEARCH.has(d.name) && !d.isSymbolicLink()) await walk(full); continue; }
-      if (!d.isFile()) continue;
+      if (!d.isFile() || (inc && !inc(rel))) continue;
       let st; try { st = await fsp.stat(full); } catch { continue; }
       if (st.size > 2 * 1024 * 1024) continue;
       let buf; try { buf = await fsp.readFile(full); } catch { continue; }
       if (buf.subarray(0, 4000).includes(0)) continue;
-      files++;
       const lines = buf.toString('utf8').split(/\r?\n/);
       for (let i = 0; i < lines.length && results.length < MAX; i++) {
-        re.lastIndex = 0;
-        const m = re.exec(lines[i]);
-        if (m) results.push({ path: full, rel: path.relative(root, full), line: i + 1, col: m.index + 1, text: lines[i].slice(0, 300) });
+        re.lastIndex = 0; let m, n = 0;
+        while ((m = re.exec(lines[i])) && n++ < 20 && results.length < MAX) {
+          if (m[0] === '') { re.lastIndex++; continue; }
+          results.push({ path: full, rel, line: i + 1, col: m.index + 1, len: m[0].length, text: lines[i].slice(0, 300) });
+        }
       }
     }
   }
@@ -353,11 +368,14 @@ ipcMain.handle('fs:search', async (_e, root, query, opts = {}) => {
 });
 ipcMain.handle('fs:replaceInFile', async (_e, p, query, repl, opts = {}) => {
   p = assertInRoot(p);
-  let src = opts.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (opts.word) src = `\\b${src}\\b`;
-  const re = new RegExp(src, opts.case ? 'g' : 'gi');
+  const re = searchRegex(query, opts), sub = opts.regex ? String(repl) : () => String(repl);   // plain mode: "$1" is literal text
   const text = await fsp.readFile(p, 'utf8');
-  const out = text.replace(re, repl);
+  let out;
+  if (opts.line > 0) {                                                                         // replace only the matches on one line
+    const eol = text.includes('\r\n') ? '\r\n' : '\n', lines = text.split(/\r?\n/);
+    if (lines[opts.line - 1] !== undefined) lines[opts.line - 1] = lines[opts.line - 1].replace(re, sub);
+    out = lines.join(eol);
+  } else out = text.replace(re, sub);
   if (out !== text) await fsp.writeFile(p, out, 'utf8');
   return out !== text;
 });
@@ -714,27 +732,24 @@ process.on('exit', () => { try { killTerminals(); } catch { /* ignore */ } });
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
 else {
-  app.on('second-instance', (_e, argv) => {
-    if (currentWin) { if (currentWin.isMinimized()) currentWin.restore(); currentWin.focus(); }
-    openArgvPath(argv, true);
+  app.on('second-instance', (_e, argv, cwd) => {
+    const w = createWindow(argvTarget(argv, cwd) || { fresh: '1' });   // launched again: its own window (empty when no path given)
+    w.show(); w.focus();
   });
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
-    const w = createWindow();
-    w.webContents.once('did-finish-load', () => openArgvPath(process.argv, false));
+    createWindow(argvTarget(process.argv) || {});
   });
   app.on('window-all-closed', () => { shutdown('window-all-closed'); app.quit(); });
 }
-function openArgvPath(argv, newWin) {
-  // "Open with Asta": the user explicitly chose this path in the OS shell.
-  const p = argv.slice(app.isPackaged ? 1 : 2).find((a) => !a.startsWith('-') && fs.existsSync(a));
-  if (!p) return;
+function argvTarget(argv, cwd) {
+  // "Open with Asta": the user explicitly chose this path in the OS shell. Returns window query { root, file? } or null.
+  const p = argv.slice(app.isPackaged ? 1 : 2).filter((a) => !a.startsWith('-')).map((a) => path.resolve(cwd || process.cwd(), a))
+    .find((a) => a !== path.resolve(app.getAppPath()) && fs.existsSync(a));
+  if (!p) return null;
   try {
     const st = fs.statSync(p);
     const root = registerRoot(st.isDirectory() ? p : path.dirname(p));
-    if (newWin && currentWin && !currentWin.isDestroyed()) {      // already running: a second project gets its own window
-      const w = createWindow({ root });
-      if (st.isFile()) w.webContents.once('did-finish-load', () => sendTo(w.webContents, 'open-path', { root, file: path.resolve(p) }));
-    } else send('open-path', { root, file: st.isFile() ? path.resolve(p) : null });
-  } catch (e) { /* protected folder */ }
+    return st.isFile() ? { root, file: p } : { root };
+  } catch (e) { return null; /* protected folder */ }
 }

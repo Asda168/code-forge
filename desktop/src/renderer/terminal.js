@@ -67,12 +67,12 @@
     document.fonts && document.fonts.ready.then(() => setTimeout(fit, 50));   // re-measure once the font is really loaded
     xterm.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
-      const paste = () => navigator.clipboard.readText().then((x) => x && xterm.paste(x));
-      if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') { navigator.clipboard.writeText(xterm.getSelection()); return false; }
+      const paste = () => cf.clip.read().then((x) => x && xterm.paste(x));
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') { cf.clip.write(xterm.getSelection()); return false; }
       if ((e.ctrlKey && e.shiftKey && e.code === 'KeyV') || (e.shiftKey && !e.ctrlKey && e.code === 'Insert')) { e.preventDefault(); paste(); return false; }
-      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'Insert') { navigator.clipboard.writeText(xterm.getSelection()); return false; }
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'Insert') { cf.clip.write(xterm.getSelection()); return false; }
       // Ctrl+C copies when text is selected (otherwise it is SIGINT); Ctrl+V pastes
-      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyC' && xterm.hasSelection()) { navigator.clipboard.writeText(xterm.getSelection()); xterm.clearSelection(); return false; }
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyC' && xterm.hasSelection()) { cf.clip.write(xterm.getSelection()); xterm.clearSelection(); return false; }
       if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyV') { e.preventDefault(); paste(); return false; }
       if (e.altKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && t.grp.terms.length > 1) { CF.focusPane(e.code === 'ArrowLeft' ? -1 : 1); return false; }
       if (e.ctrlKey && (e.code === 'PageUp' || e.code === 'PageDown')) { CF.cycleTerminal(e.code === 'PageUp' ? -1 : 1); return false; }
