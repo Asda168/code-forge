@@ -5,16 +5,17 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.3.5"
-RELEASED = "2026-10-09"
+VERSION = "1.3.6"
+RELEASED = "2026-10-14"
 # Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
-VERSIONS = ["1.3.5", "1.3.4", "1.3.3", "1.3.2"]
+VERSIONS = ["1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
-    "Renamed to Asta IDE",
-    "New Settings and Keyboard Shortcuts pages",
-    "Arch Linux package (.pacman)",
-    "New logo and icons",
-    "Website SEO improvements",
+    "Find in Files: replace, search details, match case / whole word / regex, tree view and Search Editor",
+    "Symbols icon theme (Miguel Solorio) and a JetBrains icon theme",
+    "JetBrains Darcula (PhpStorm) colour theme",
+    "Terminal copy / paste with Ctrl+C and Ctrl+V",
+    "Opening a second window or project works reliably",
+    "Layout fixes for the terminal panel, maximize and notifications",
 ]
 _REL = f"{REPO}/releases/latest/download"
 
