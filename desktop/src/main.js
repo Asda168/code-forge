@@ -1,17 +1,13 @@
 // Asta main process: the secure local bridge.
 // Everything local (fs, terminal, git, processes) lives here and is reachable ONLY through
-// contextBridge -> ipcMain from our own window. No local HTTP/WebSocket server is kept open; the only listener is the
-// short-lived 127.0.0.1 redirect receiver used during "Sign in with Google" (random port, one request, closed right after).
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, session, clipboard } = require('electron');
+// contextBridge -> ipcMain from our own window. No local HTTP/WebSocket server is opened.
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, session, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
 const os = require('os');
-const http = require('http');
-const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
 const sec = require('./security');
-const ga = require('./google-auth');
 
 let pty = null;
 try { pty = require('node-pty'); } catch { /* falls back to piped child_process */ }
@@ -80,7 +76,7 @@ function createWindow(query = {}) {
   win.webContents.setWindowOpenHandler(({ url }) => { openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) e.preventDefault(); });
   ensureKeyFile();
-  if (!Menu.getApplicationMenu()) buildMenu();
+  if (!menuBuilt) buildMenu();     // NOT `if (!Menu.getApplicationMenu())`: Electron's default menu (File -> Exit) is always present
   applyHeaderSetting(win);
   return win;
 }
@@ -116,7 +112,7 @@ ipcMain.handle('win:newPick', async () => {                // pick a folder and 
 // The renderer (keybindings.js) dispatches every shortcut; menu accelerators are only shown, never registered.
 const DEFAULT_KEYS = {
   'open-folder': 'mod+o', 'new-window': 'mod+shift+n', 'new-file': 'mod+n', 'quick-open': 'mod+p', save: 'mod+s', 'close-tab': 'mod+w', 'next-tab': 'ctrl+tab', 'prev-tab': 'ctrl+shift+tab', split: 'mod+\\', 'save-all': 'mod+alt+s',
-  search: 'mod+shift+f', palette: 'mod+shift+p', 'toggle-sidebar': 'mod+b', 'toggle-header': 'mod+alt+h', 'toggle-terminal': 'mod+`', 'view-explorer': 'mod+shift+e', 'view-git': 'ctrl+shift+g', 'view-extensions': 'mod+shift+x', 'view-gitlens': 'alt+g', 'view-run': 'mod+shift+d',
+  search: 'mod+shift+f', palette: 'mod+shift+p', 'toggle-sidebar': 'mod+b', 'open-file': 'mod+alt+o', 'save-as': 'mod+shift+s', 'toggle-header': 'mod+alt+h', 'toggle-terminal': 'mod+`', 'view-explorer': 'mod+shift+e', 'view-git': 'ctrl+shift+g', 'view-extensions': 'mod+shift+x', 'view-gitlens': 'alt+g', 'view-run': 'mod+shift+d',
   'font-inc': 'mod+=', 'font-dec': 'mod+-', 'font-reset': 'mod+0', 'goto-line': 'mod+g', 'goto-def': 'f12', run: 'f5', stop: 'shift+f5', restart: 'mod+shift+f5', settings: 'mod+,',
   'new-terminal': 'ctrl+shift+`', 'split-terminal': 'mod+shift+5', 'term-split-down': 'mod+shift+6', 'term-close-pane': 'mod+shift+w', 'clear-terminal': 'mod+shift+k', 'term-font-inc': 'mod+=', 'term-font-dec': 'mod+-', 'term-font-reset': 'mod+0',
   'toggle-panel': 'mod+j', 'show-problems': 'mod+shift+m', 'show-debug': 'mod+shift+y', 'find-project': 'mod+r', 'toggle-preview': 'mod+shift+v',
@@ -133,7 +129,7 @@ function cleanKeys(o) {
 // Group and title of every command, in the order they are listed in keyboard.json (commands without a default key are listed too).
 const KEY_META = {
   palette: ['General', 'Command Palette'], 'quick-open': ['General', 'Go to File'], 'find-project': ['General', 'Find Project'], settings: ['General', 'Open Settings'], 'keyboard-shortcuts': ['General', 'Open Keyboard Shortcuts'], 'color-theme': ['General', 'Color Theme'], 'toggle-preview': ['General', 'Toggle File Preview'],
-  'open-folder': ['File', 'Open Folder'], 'new-window': ['File', 'New Window'], 'open-folder-new-window': ['File', 'Open Folder in New Window'], 'new-file': ['File', 'New File'], save: ['File', 'Save'], 'save-all': ['File', 'Save All'],
+  'open-folder': ['File', 'Open Folder'], 'open-file': ['File', 'Open File'], 'save-as': ['File', 'Save As'], 'revert-file': ['File', 'Revert File'], 'toggle-autosave': ['File', 'Toggle Auto Save'], 'new-window': ['File', 'New Window'], 'open-folder-new-window': ['File', 'Open Folder in New Window'], 'new-file': ['File', 'New File'], save: ['File', 'Save'], 'save-all': ['File', 'Save All'],
   'close-tab': ['Editor', 'Close Editor'], 'next-tab': ['Editor', 'Next Editor'], 'prev-tab': ['Editor', 'Previous Editor'], split: ['Editor', 'Split Editor Right'], 'goto-line': ['Editor', 'Go to Line'], 'goto-def': ['Editor', 'Go to Definition'],
   'view-explorer': ['View', 'Show Explorer'], search: ['View', 'Find in Files'], 'search-replace': ['View', 'Replace in Files'], 'search-toggle-details': ['View', 'Search: Toggle Search Details'], 'search-toggle-case': ['View', 'Search: Match Case (search focused)'], 'search-toggle-word': ['View', 'Search: Match Whole Word (search focused)'], 'search-toggle-regex': ['View', 'Search: Use Regular Expression (search focused)'], 'search-new-editor': ['View', 'Search: Open New Search Editor'], 'view-git': ['View', 'Show Source Control'], 'view-gitlens': ['View', 'Show GitLens'], 'view-run': ['View', 'Show Run and Debug'], 'view-extensions': ['View', 'Show Extensions'],
   'toggle-sidebar': ['View', 'Toggle Sidebar'], 'toggle-header': ['View', 'Toggle Layout Header'], 'toggle-panel': ['View', 'Toggle Panel'], 'toggle-terminal': ['View', 'Toggle Terminal'], 'show-problems': ['View', 'Show Problems'], 'show-debug': ['View', 'Show Debug Console'],
@@ -190,21 +186,37 @@ function toAccel(seq) {
   return out.includes(null) ? undefined : out.join('+');
 }
 
+function recentItems() {
+  const list = readJson('recents.json', []).filter((r) => r && r.path && fs.existsSync(r.path)).slice(0, 10);
+  const items = list.map((r) => ({ label: `${r.name || path.basename(r.path)}    ${r.path}`, click: () => send('menu', 'open-recent', r.path) }));
+  if (!items.length) return [{ label: 'No recent folders', enabled: false }];
+  return [...items, { type: 'separator' }, { label: 'Clear Recently Opened', click: () => { writeJson('recents.json', []); buildMenu(); } }];
+}
+let menuBuilt = false;
 function buildMenu() {
+  menuBuilt = true;
   const user = readKeys().map;
   const cmd = (label, id) => { const k = id in user ? user[id] : DEFAULT_KEYS[id]; return { label, id: 'cf-' + id, accelerator: toAccel(k), registerAccelerator: false, click: () => send('menu', id) }; };
   const mac = process.platform === 'darwin';
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(mac ? [{ role: 'appMenu' }] : []),
-    { label: 'File', submenu: [cmd('New Window', 'new-window'), cmd('Open Folder…', 'open-folder'), cmd('Open Folder in New Window…', 'open-folder-new-window'), cmd('New File', 'new-file'), cmd('New Folder', 'new-folder'),
-      cmd('Quick Open…', 'quick-open'), cmd('Save', 'save'), cmd('Close Editor', 'close-tab'), cmd('Next Editor', 'next-tab'), cmd('Previous Editor', 'prev-tab'), cmd('Split Editor', 'split'), cmd('Save All', 'save-all'), { type: 'separator' }, cmd('Save Workspace', 'save-workspace'), cmd('Open Workspace', 'open-workspace'), cmd('Close Workspace', 'close-workspace'), { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
+    { label: 'File', submenu: [
+      cmd('New File', 'new-file'), cmd('New Folder', 'new-folder'), cmd('New Window', 'new-window'), { type: 'separator' },
+      cmd('Open File…', 'open-file'), cmd('Open Folder…', 'open-folder'), cmd('Open Folder in New Window…', 'open-folder-new-window'), cmd('Open Workspace…', 'open-workspace'),
+      { label: 'Open Recent', submenu: recentItems() }, { type: 'separator' },
+      cmd('Save Workspace…', 'save-workspace'), { type: 'separator' },
+      cmd('Save', 'save'), cmd('Save As…', 'save-as'), cmd('Save All', 'save-all'), { type: 'separator' },
+      { label: 'Auto Save', type: 'checkbox', checked: ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }).autoSave !== 'off', click: () => send('menu', 'toggle-autosave') },
+      cmd('Revert File', 'revert-file'), { type: 'separator' },
+      cmd('Close Editor', 'close-tab'), cmd('Close Folder', 'close-workspace'), mac ? { role: 'close', label: 'Close Window' } : { role: 'close', label: 'Close Window', accelerator: 'Alt+F4', registerAccelerator: false },
+      { type: 'separator' }, mac ? { role: 'quit' } : { label: 'Exit', role: 'quit' }] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }, { type: 'separator' }, cmd('Find in Files', 'search')] },
     { label: 'Selection', submenu: [cmd('Select All', 'select-all')] },
-    { label: 'View', submenu: [cmd('Command Palette…', 'palette'), cmd('Toggle Sidebar', 'toggle-sidebar'), cmd('Toggle Terminal', 'toggle-terminal'), cmd('Explorer', 'view-explorer'), cmd('Source Control', 'view-git'), cmd('GitLens', 'view-gitlens'), cmd('Extensions', 'view-extensions'),
+    { label: 'View', submenu: [cmd('Command Palette…', 'palette'), cmd('Toggle Sidebar', 'toggle-sidebar'), cmd('Toggle Terminal', 'toggle-terminal'), cmd('Split Editor', 'split'), cmd('Explorer', 'view-explorer'), cmd('Source Control', 'view-git'), cmd('GitLens', 'view-gitlens'), cmd('Extensions', 'view-extensions'),
       { label: 'Hide Layout Header', type: 'checkbox', checked: !!({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }).hideHeader, click: () => send('menu', 'toggle-header') },
       { label: 'Tab Bar: Close Saved / Close All Buttons', type: 'checkbox', checked: ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }).tabActions !== false, click: () => send('menu', 'toggle-tab-actions') },
       { type: 'separator' }, cmd('Increase Font Size', 'font-inc'), cmd('Decrease Font Size', 'font-dec'), cmd('Reset Font Size', 'font-reset'), { type: 'separator' }, { role: 'toggleDevTools' }, { role: 'togglefullscreen' }] },
-    { label: 'Go', submenu: [cmd('Go to Line…', 'goto-line'), cmd('Go to Definition', 'goto-def')] },
+    { label: 'Go', submenu: [cmd('Go to File…', 'quick-open'), cmd('Go to Line…', 'goto-line'), cmd('Go to Definition', 'goto-def'), { type: 'separator' }, cmd('Next Editor', 'next-tab'), cmd('Previous Editor', 'prev-tab')] },
     { label: 'Run', submenu: [cmd('Run Project', 'run'), cmd('Stop', 'stop'), cmd('Restart', 'restart')] },
     { label: 'Terminal', submenu: [cmd('New Terminal', 'new-terminal'), cmd('Split Terminal', 'split-terminal'), cmd('Split Terminal Down', 'term-split-down'), cmd('Clear Terminal', 'clear-terminal'), cmd('New Git Bash', 'new-gitbash')] },
     { label: 'Git', submenu: [cmd('Clone Repository…', 'git-clone'), cmd('Initialize Repository', 'git-init'), cmd('Commit', 'git-commit'), cmd('Push', 'git-push'), cmd('Pull', 'git-pull'), cmd('Fetch', 'git-fetch')] },
@@ -234,6 +246,7 @@ function registerRoot(p) {
   const recents = readJson('recents.json', []).filter((x) => x.path !== r);
   recents.unshift({ path: r, name: path.basename(r), at: Date.now() });
   writeJson('recents.json', recents.slice(0, 15));
+  if (menuBuilt) { try { buildMenu(); } catch { /* menu refresh is cosmetic */ } }
   return r;
 }
 
@@ -243,6 +256,20 @@ const IGNORE_SEARCH = new Set(['node_modules', '.git', 'vendor', '__pycache__', 
 ipcMain.handle('ws:openDialog', async () => {
   const r = await dialog.showOpenDialog(currentWin, { properties: ['openDirectory', 'createDirectory'] });
   return r.canceled ? null : registerRoot(r.filePaths[0]);
+});
+ipcMain.handle('ws:openFileDialog', async () => {      // File > Open File…: the chosen file's folder becomes an allowed root
+  const r = await dialog.showOpenDialog(currentWin, { properties: ['openFile'] });
+  if (r.canceled || !r.filePaths[0]) return null;
+  const p = path.resolve(r.filePaths[0]);
+  if (!sec.insideAnyRoot(p, [...roots])) registerRoot(path.dirname(p));
+  return p;
+});
+ipcMain.handle('ws:saveAsDialog', async (_e, suggested) => {
+  const r = await dialog.showSaveDialog(currentWin, { defaultPath: typeof suggested === 'string' ? suggested : undefined });
+  if (r.canceled || !r.filePath) return null;
+  const p = path.resolve(r.filePath);
+  if (!sec.insideAnyRoot(p, [...roots])) registerRoot(path.dirname(p));
+  return p;
 });
 ipcMain.handle('ws:recents', () => readJson('recents.json', []).filter((r) => fs.existsSync(r.path)));
 ipcMain.handle('ws:openRecent', (_e, p) => {
@@ -581,7 +608,7 @@ const DEFAULT_SETTINGS = {
   termFontFamily: '', termFontSize: 13, termLineHeight: 1.4, termCursorStyle: 'block', termCursorBlink: true,
   minimap: true, wordWrap: false, tabSize: 4, insertSpaces: true, autoSave: 'afterDelay', autoSaveDelay: 1000,
   theme: 'monokai-dimmed', iconTheme: 'symbols', gitBashPath: '', powershellPath: '', cmdPath: '', gitPath: '', gitUser: '', gitDefaultBranch: 'main',
-  defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true, hideHeader: false, tabActions: true, autoSync: true,
+  defaultShell: '', autoUpdate: true, sidebar: true, statusBar: true, activityBar: true, hideHeader: false, tabActions: true,
   trimWhitespace: false, finalNewline: false, bracketColors: true, stickyScroll: true,
   tokenColors: {}, // syntax colour overrides: { comment: '#rrggbb', class: ..., ... }
   // Extensions: https URLs to download, and local manifest files/folders. Both are declarative JSON only.
@@ -597,7 +624,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
   const clean = {};
   for (const k of Object.keys(DEFAULT_SETTINGS)) if (k in patch) clean[k] = patch[k];
   const cur = { ...DEFAULT_SETTINGS, ...readJson('settings.json', {}), ...clean };
-  writeJson('settings.json', cur); buildMenu(); if ('hideHeader' in clean) wins.forEach((w) => { applyHeaderSetting(w); sendTo(w.webContents, 'header-hidden', !!cur.hideHeader); }); scheduleSyncPush(); return cur;
+  writeJson('settings.json', cur); buildMenu(); if ('hideHeader' in clean) wins.forEach((w) => { applyHeaderSetting(w); sendTo(w.webContents, 'header-hidden', !!cur.hideHeader); }); return cur;
 });
 
 // ---------------------------------------------------------------- extensions
@@ -662,7 +689,7 @@ ipcMain.handle('ext:installBundled', (_e, id) => {
   if (!EXT_ID.test(String(id))) throw new Error('Bad id');
   const f = path.join(catalogDir, id + '.json'); if (!fs.existsSync(f)) throw new Error('Unknown extension');
   const m = cleanManifest(JSON.parse(fs.readFileSync(f, 'utf8')), 'bundled');
-  fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), m.id + '.json'), JSON.stringify(m, null, 2)); scheduleSyncPush(); return m;
+  fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), m.id + '.json'), JSON.stringify(m, null, 2)); return m;
 });
 ipcMain.handle('ext:pickThemeFile', async () => {       // user explicitly picks a VS Code theme .json
   const r = await dialog.showOpenDialog(currentWin, { title: 'Import VS Code theme', properties: ['openFile'], filters: [{ name: 'Theme JSON', extensions: ['json', 'jsonc'] }] });
@@ -672,36 +699,23 @@ ipcMain.handle('ext:pickThemeFile', async () => {       // user explicitly picks
 });
 ipcMain.handle('ext:saveManifest', (_e, m) => {          // used for imported themes; same sanitizer as downloads
   const clean = cleanManifest(m, 'imported');
-  fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), clean.id + '.json'), JSON.stringify(clean, null, 2)); scheduleSyncPush(); return clean;
+  fs.mkdirSync(extDir(), { recursive: true }); fs.writeFileSync(path.join(extDir(), clean.id + '.json'), JSON.stringify(clean, null, 2)); return clean;
 });
 ipcMain.handle('ext:list', () => listExtensions());
-ipcMain.handle('ext:install', async (_e, url) => { const m = await installFromUrl(String(url)); scheduleSyncPush(); return m; });
-ipcMain.handle('ext:uninstall', (_e, id) => { if (!EXT_ID.test(String(id))) throw new Error('Bad id'); try { fs.unlinkSync(path.join(extDir(), id + '.json')); } catch { /* not installed */ } scheduleSyncPush(); return true; });
+ipcMain.handle('ext:install', async (_e, url) => { const m = await installFromUrl(String(url)); return m; });
+ipcMain.handle('ext:uninstall', (_e, id) => { if (!EXT_ID.test(String(id))) throw new Error('Bad id'); try { fs.unlinkSync(path.join(extDir(), id + '.json')); } catch { /* not installed */ } return true; });
 ipcMain.handle('ext:sync', async () => {          // download everything listed under "extensions" in settings.json
   const s = readJson('settings.json', {}); const errors = [];
   for (const url of s.extensions || []) { try { await installFromUrl(String(url)); } catch (e) { errors.push(`${url}: ${e.message}`); } }
   return { errors, list: listExtensions() };
 });
 ipcMain.handle('keys:get', () => { const r = readKeys(); return { defaults: DEFAULT_KEYS, user: r.map, error: r.error || null, file: keyFile() }; });
-ipcMain.handle('keys:set', (_e, map) => { const clean = cleanKeys(map); writeKeys(clean); buildMenu(); scheduleSyncPush(); return clean; });
+ipcMain.handle('keys:set', (_e, map) => { const clean = cleanKeys(map); writeKeys(clean); buildMenu(); return clean; });
 ipcMain.handle('keys:file', () => { ensureKeyFile(); return keyFile(); });
 ipcMain.handle('settings:file', () => { const p = storeFile('settings.json'); if (!fs.existsSync(p)) writeJson('settings.json', { ...DEFAULT_SETTINGS }); return p; });
 
-function getToken() {
-  try {
-    const raw = fs.readFileSync(storeFile('token.bin'));
-    return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(raw) : null;   // never fall back to plaintext
-  } catch { return null; }
-}
-function setToken(t) {
-  if (!t) { try { fs.unlinkSync(storeFile('token.bin')); } catch { /* none */ } return; }
-  if (!safeStorage.isEncryptionAvailable()) throw new Error('OS credential storage unavailable; not saving login.');
-  fs.mkdirSync(userData(), { recursive: true });
-  fs.writeFileSync(storeFile('token.bin'), safeStorage.encryptString(t), { mode: 0o600 });
-}
 async function api(method, p, body) {
   const headers = { 'Content-Type': 'application/json' };
-  const t = getToken(); if (t) headers.Authorization = `Token ${t}`;
   const res = await fetch(API_BASE + p, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const txt = await res.text(); let data; try { data = JSON.parse(txt); } catch { data = txt; }
   if (!res.ok) {
@@ -711,266 +725,6 @@ async function api(method, p, body) {
   }
   return data;
 }
-// After any sign-in: an account that already has saved settings restores them (reinstall), otherwise this machine seeds the account.
-async function afterSignIn(email) {
-  writeJson('sync.json', { version: 0, email: email || '' });
-  const res = await syncPull(true);
-  if (!res.restored) await syncPush().catch(() => { /* offline: next change retries */ });
-  return !!res.restored;
-}
-ipcMain.handle('api:login', async (_e, username, password) => {
-  if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || username.length > 150 || password.length > 256) throw new Error('Enter a username and password.');
-  const r = await api('POST', '/auth/login/', { username, password }); setToken(r.token);
-  const p = await api('GET', '/profile/').catch(() => ({}));
-  writeJson('account.json', { email: p.email || '', name: p.display_name || p.username || username, picture: '' });
-  return { email: p.email || p.username || username, name: p.display_name || p.username || username, restored: await afterSignIn(p.email || p.username || username) };
-});
-ipcMain.handle('api:register', async (_e, username, email, password) => {
-  if ([username, email, password].some((v) => v != null && typeof v !== 'string') || !String(username || '').trim() || String(username).length > 150 || String(email || '').length > 254 || String(password || '').length > 256) throw new Error('Check the username, email and password.');
-  await api('POST', '/auth/register/', { username: String(username || '').trim(), email: String(email || '').trim(), password: String(password || '') });
-  const r = await api('POST', '/auth/login/', { username: String(username || '').trim(), password: String(password || '') }); setToken(r.token);
-  writeJson('account.json', { email: String(email || '').trim(), name: String(username).trim(), picture: '' });
-  return { email: String(email || '').trim() || String(username).trim(), name: String(username).trim(), restored: await afterSignIn(String(email || username).trim()) };
-});
-ipcMain.handle('api:logout', async () => { if (getToken()) { try { await api('POST', '/auth/logout/'); } catch { /* offline */ } } setToken(null); setGoogleRefresh(null); gAccess = { token: '', exp: 0 }; for (const f of ['sync.json', 'account.json']) { try { fs.unlinkSync(storeFile(f)); } catch { /* none */ } } return true; });
-ipcMain.handle('api:loggedIn', () => signedIn());
-
-// ---------------------------------------------------------------- Google sign-in + settings sync
-// Sign-in: system browser -> Google (PKCE) -> redirect to a one-shot listener on 127.0.0.1 -> the authorization code goes to
-// our backend, which holds the client secret, verifies the ID token and returns an Asta token (stored in OS credential storage).
-// Sync: settings.json, keyboard overrides and installed declarative extensions. Never source code, paths or tokens.
-function focusIde() {
-  const w = currentWin && !currentWin.isDestroyed() ? currentWin : [...wins][0];
-  if (!w) return;
-  if (w.isMinimized()) w.restore();
-  w.show(); w.focus();
-  if (process.platform === 'win32') { w.setAlwaysOnTop(true); w.setAlwaysOnTop(false); }   // Windows otherwise only flashes the taskbar
-}
-// The Google picture is fetched here (not by the page) and kept as a small data: URL, so the renderer never contacts Google.
-async function fetchAvatar(url) {
-  try {
-    const u = new URL(String(url));
-    if (u.protocol !== 'https:' || !/(^|\.)googleusercontent\.com$/.test(u.hostname)) return '';
-    const res = await fetch(u, { redirect: 'follow' });
-    const type = String(res.headers.get('content-type') || '');
-    if (!res.ok || !/^image\/(png|jpe?g|webp|gif)$/.test(type)) return '';
-    const buf = Buffer.from(await res.arrayBuffer());
-    return buf.length > 0 && buf.length < 300 * 1024 ? `data:${type};base64,${buf.toString('base64')}` : '';
-  } catch { return ''; }
-}
-const b64u = (b) => b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-let activeAuth = null;            // at most one Google sign-in at a time
-function googleAuthorize(cfg) {
-  const rq = ga.newAuthRequest();
-  return new Promise((resolve, reject) => {
-    let done = false, timer = null, redirect = '';
-    const finish = (fn, v) => { if (done) return; done = true; clearTimeout(timer); activeAuth = null; try { srv.close(); } catch { /* closed */ } fn(v); };
-    const page = (title, msg) => `<!doctype html><meta charset="utf-8"><title>Asta IDE</title><body style="font:16px system-ui;background:#0b0d10;color:#f5f7fa;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h2>${title}</h2><p style="color:#9aa3ad">${msg}</p></div>`;
-    const srv = http.createServer((req, res) => {
-      const u = new URL(req.url, 'http://127.0.0.1');
-      if (req.method !== 'GET' || u.pathname !== '/cb') { res.writeHead(404).end(); return; }
-      if (done) { res.writeHead(410).end(); return; }                 // a code is only ever processed once
-      const r = ga.parseCallback(u.searchParams, rq.state);
-      res.writeHead(r.ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
-        .end(page(r.ok ? 'Signed in to Asta IDE' : 'Sign-in did not complete', r.ok ? 'You can close this tab and return to Asta IDE.' : r.message));
-      if (r.ok) { focusIde(); finish(resolve, { code: r.code, verifier: rq.verifier, nonce: rq.nonce, redirect }); }
-      else finish(reject, new ga.GoogleAuthError(r.code, r.message));
-    });
-    srv.on('error', (e) => finish(reject, new ga.GoogleAuthError('listen', 'Could not start the local sign-in listener: ' + e.message)));
-    srv.listen(0, '127.0.0.1', () => {
-      redirect = `http://127.0.0.1:${srv.address().port}/cb`;
-      if (!ga.isLoopbackRedirect(redirect)) return finish(reject, new ga.GoogleAuthError('listen', 'Unexpected redirect address.'));
-      const url = ga.buildAuthUrl(G.auth, { clientId: cfg.clientId, redirect, challenge: rq.challenge, state: rq.state, nonce: rq.nonce });
-      if (process.env.CODEFORGE_GOOGLE_TEST_BASE) fetch(url).catch(() => {});   // test mock: no browser
-      else openExternal(url);
-      timer = setTimeout(() => finish(reject, new ga.GoogleAuthError('timeout', 'Sign-in timed out.')), 180000);
-    });
-    activeAuth = { cancel: () => finish(reject, new ga.GoogleAuthError('cancelled', 'Google sign-in was cancelled.')) };
-  });
-}
-// ---- Google account, straight from the app: no Asta server, no database --------------------------------------------------
-// The OAuth client (a Google "Desktop app" client) comes from CODEFORGE_GOOGLE_CLIENT_ID / _SECRET or google-oauth.json.
-// A desktop client's secret is not confidential (Google's own guidance), but it is still kept out of git.
-// Tests only: point every Google endpoint at a local mock (CODEFORGE_GOOGLE_TEST_BASE=http://127.0.0.1:PORT).
-const GTEST = process.env.CODEFORGE_GOOGLE_TEST_BASE || '';
-const G = { auth: GTEST ? GTEST + '/auth' : 'https://accounts.google.com/o/oauth2/v2/auth', token: GTEST ? GTEST + '/token' : 'https://oauth2.googleapis.com/token',
-  certs: GTEST ? GTEST + '/certs' : 'https://www.googleapis.com/oauth2/v3/certs',
-  drive: GTEST ? GTEST + '/drive/v3/files' : 'https://www.googleapis.com/drive/v3/files', upload: GTEST ? GTEST + '/upload/drive/v3/files' : 'https://www.googleapis.com/upload/drive/v3/files' };
-function googleCfg() {
-  const file = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
-  const r = ga.resolveConfig([
-    { clientId: process.env.CODEFORGE_GOOGLE_CLIENT_ID, clientSecret: process.env.CODEFORGE_GOOGLE_CLIENT_SECRET },   // 1. environment (CI, dev)
-    file(path.join(userData(), 'google-oauth.json')),                                                                   // 2. per-user override
-    file(path.join(__dirname, 'google-oauth.json')),                                                                    // 3. bundled with the build
-  ]);
-  if (!r.ok) throw new ga.GoogleAuthError(r.code, r.message);
-  return r;
-}
-async function googleFetch(url, opts) {
-  try { return await fetch(url, opts); } catch { throw new ga.GoogleAuthError('network', 'Cannot reach Google.'); }
-}
-async function googleToken(form) {
-  const c = googleCfg();
-  const body = new URLSearchParams({ client_id: c.clientId, ...form });
-  if (c.clientSecret) body.set('client_secret', c.clientSecret);       // Google "Desktop app" clients still ask for it; it is not confidential and never leaves this process
-  const res = await googleFetch(G.token, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ga.GoogleAuthError(j.error === 'invalid_grant' ? 'expired' : 'token', j.error === 'invalid_grant' ? 'Google sign-in expired. Please sign in again.' : `Google sign-in failed (${String(j.error || res.status).slice(0, 60)}).`);
-  return j;
-}
-let jwksCache = { at: 0, jwks: null };
-async function googleJwks() {
-  if (jwksCache.jwks && Date.now() - jwksCache.at < 3600000) return jwksCache.jwks;
-  const res = await googleFetch(G.certs);
-  if (!res.ok) throw new ga.GoogleAuthError('network', 'Could not load Google signing keys.');
-  jwksCache = { at: Date.now(), jwks: await res.json() };
-  return jwksCache.jwks;
-}
-const gRefreshFile = () => storeFile('google.bin');
-function getGoogleRefresh() {
-  try { const raw = fs.readFileSync(gRefreshFile()); return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(raw) : null; } catch { return null; }
-}
-function setGoogleRefresh(t) {
-  if (!t) { try { fs.unlinkSync(gRefreshFile()); } catch { /* none */ } return; }
-  if (!safeStorage.isEncryptionAvailable()) throw new Error('OS credential storage unavailable; not saving login.');
-  fs.mkdirSync(userData(), { recursive: true });
-  fs.writeFileSync(gRefreshFile(), safeStorage.encryptString(t), { mode: 0o600 });
-}
-let gAccess = { token: '', exp: 0 };
-async function googleAccess() {
-  if (gAccess.token && Date.now() < gAccess.exp - 60000) return gAccess.token;
-  const rt = getGoogleRefresh(); if (!rt) throw new Error('Not signed in to Google.');
-  const j = await googleToken({ grant_type: 'refresh_token', refresh_token: rt });
-  gAccess = { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 };
-  return gAccess.token;
-}
-const signedIn = () => !!getGoogleRefresh() || !!getToken();
-// settings snapshot lives in the user's own Google Drive app-data folder (file "asta-sync.json")
-async function driveFile() {
-  const t = await googleAccess();
-  const q = new URLSearchParams({ spaces: 'appDataFolder', q: "name='asta-sync.json'", fields: 'files(id)' });
-  const res = await googleFetch(G.drive + '?' + q, { headers: { Authorization: 'Bearer ' + t } });
-  if (!res.ok) throw new Error(res.status === 403 ? 'Google Drive access was not granted. Sign in again and allow Asta to store its settings.' : `Google Drive error (${res.status}).`);
-  return ((await res.json()).files || [])[0] || null;
-}
-async function drivePull() {
-  const f = await driveFile(); if (!f) return { version: 0, data: null };
-  const t = await googleAccess();
-  const res = await googleFetch(`${G.drive}/${f.id}?alt=media`, { headers: { Authorization: 'Bearer ' + t } });
-  if (!res.ok) throw new Error(`Google Drive error (${res.status}).`);
-  const j = await res.json().catch(() => null);
-  return j && typeof j === 'object' ? { version: Number(j.version) || 0, data: j.data || null } : { version: 0, data: null };
-}
-async function drivePush(data) {
-  const t = await googleAccess(), f = await driveFile(), cur = f ? await drivePull().catch(() => ({ version: 0 })) : { version: 0 };
-  const version = (cur.version || 0) + 1, body = JSON.stringify({ version, data });
-  let res;
-  if (f) res = await googleFetch(`${G.upload}/${f.id}?uploadType=media`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body });
-  else {
-    const b = 'asta' + crypto.randomBytes(8).toString('hex');
-    const multi = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: 'asta-sync.json', parents: ['appDataFolder'] })}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
-    res = await googleFetch(`${G.upload}?uploadType=multipart`, { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': `multipart/related; boundary=${b}` }, body: multi });
-  }
-  if (!res.ok) throw new Error(`Google Drive error (${res.status}).`);
-  return version;
-}
-const googleFail = (e) => {
-  const f = ga.friendlyError(e);
-  return new Error(`${f.code}::${f.message}`);           // IPC keeps only the message: the renderer splits "code::text"
-};
-ipcMain.handle('google:status', () => {
-  try { googleCfg(); return { configured: true }; } catch (e) { const f = ga.friendlyError(e); return { configured: false, code: f.code, message: f.message }; }
-});
-ipcMain.handle('google:saveConfig', (_e, clientId, clientSecret) => {      // setup dialog: stored per user, never sent back to the renderer
-  if (typeof clientId !== 'string' || (clientSecret != null && typeof clientSecret !== 'string') || clientId.length > 200 || String(clientSecret || '').length > 200) throw googleFail(new ga.GoogleAuthError('config_invalid', 'Check the client ID and secret.'));
-  const r = ga.resolveConfig([{ clientId, clientSecret: clientSecret || '' }]);
-  if (!r.ok) throw googleFail(new ga.GoogleAuthError(r.code, r.message));
-  fs.mkdirSync(userData(), { recursive: true });
-  fs.writeFileSync(path.join(userData(), 'google-oauth.json'), JSON.stringify({ clientId: r.clientId, clientSecret: r.clientSecret }, null, 2), { mode: 0o600 });
-  return { configured: true };
-});
-ipcMain.handle('google:cancel', () => { if (activeAuth) activeAuth.cancel(); return true; });
-ipcMain.handle('api:google', async () => {
-  if (activeAuth) throw googleFail(new ga.GoogleAuthError('busy', 'A Google sign-in is already in progress. Finish it in your browser or cancel it.'));
-  try {
-    const cfg = googleCfg();
-    const g = await googleAuthorize(cfg);
-    const tok = await googleToken({ grant_type: 'authorization_code', code: g.code, code_verifier: g.verifier, redirect_uri: g.redirect });
-    const id = ga.verifyIdToken(tok.id_token, { clientId: cfg.clientId, nonce: g.nonce, jwks: await googleJwks() });
-    if (!tok.refresh_token) throw new ga.GoogleAuthError('no_refresh', 'Google did not return an offline session. Remove Asta from your Google account permissions (myaccount.google.com/permissions) and sign in again.');
-    if (!String(tok.scope || '').includes('drive.appdata')) throw new ga.GoogleAuthError('scope', 'Asta needs permission to store its settings in your Google Drive app data. Sign in again and allow it.');
-    setGoogleRefresh(tok.refresh_token); gAccess = { token: tok.access_token, exp: Date.now() + (tok.expires_in || 3600) * 1000 };
-    const picture = await fetchAvatar(id.picture);
-    writeJson('account.json', { sub: id.sub, email: id.email, name: id.name, picture });
-    focusIde();
-    return { email: id.email, name: id.name, picture, restored: await afterSignIn(id.email) };   // reinstall: restore first; first device: seed the Drive file
-  } catch (e) { throw googleFail(e); }
-});
-
-const SYNC_SKIP = new Set(['gitBashPath', 'powershellPath', 'cmdPath', 'gitPath', 'customExtensions', 'gitlensSeeded', 'autoSync']);   // machine-specific or per-device
-const syncOn = () => signedIn() && ({ ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) }).autoSync !== false;
-function buildSnapshot() {
-  const s = { ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) };
-  const settings = Object.fromEntries(Object.entries(s).filter(([k]) => k in DEFAULT_SETTINGS && !SYNC_SKIP.has(k)));
-  const extensions = [];
-  try { for (const f of fs.readdirSync(extDir()).filter((n) => n.endsWith('.json'))) { const m = readJson(path.join('extensions', f), null); if (m) try { extensions.push(cleanManifest(m, String(m.source || 'synced'))); } catch { /* skip invalid */ } } } catch { /* none */ }
-  return { settings, keys: cleanKeys(readKeys().map), extensions };
-}
-function applySnapshot(d) {
-  const cur = { ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) };
-  for (const [k, v] of Object.entries((d && d.settings) || {})) {
-    if (!(k in DEFAULT_SETTINGS) || SYNC_SKIP.has(k)) continue;
-    const def = DEFAULT_SETTINGS[k];
-    if (typeof v === typeof def && Array.isArray(v) === Array.isArray(def)) cur[k] = v;
-  }
-  writeJson('settings.json', cur);
-  writeKeys(cleanKeys(d && d.keys));
-  const keep = new Set();
-  fs.mkdirSync(extDir(), { recursive: true });
-  for (const raw of Array.isArray(d && d.extensions) ? d.extensions.slice(0, 200) : []) {
-    try { const m = cleanManifest(raw, String((raw && raw.source) || 'synced')); fs.writeFileSync(path.join(extDir(), m.id + '.json'), JSON.stringify(m, null, 2)); keep.add(m.id + '.json'); } catch { /* skip invalid */ }
-  }
-  for (const f of fs.readdirSync(extDir())) if (f.endsWith('.json') && !keep.has(f)) { try { fs.unlinkSync(path.join(extDir(), f)); } catch { /* ignore */ } }
-  buildMenu(); wins.forEach((w) => { applyHeaderSetting(w); });
-}
-let syncBusy = false, syncTimer = null;
-async function syncPush() {
-  if (!signedIn()) return { ok: false };
-  if (getGoogleRefresh()) {
-    const version = await drivePush(buildSnapshot());
-    writeJson('sync.json', { ...readJson('sync.json', {}), version });
-    return { ok: true, version };
-  }
-  const r = await api('PUT', '/sync/', { data: buildSnapshot() });
-  writeJson('sync.json', { ...readJson('sync.json', {}), version: r.version });
-  return { ok: true, version: r.version };
-}
-async function syncPull(force) {
-  if (!signedIn()) return { restored: false };
-  const local = readJson('sync.json', {}), r = getGoogleRefresh() ? await drivePull() : await api('GET', '/sync/');
-  if (!r.data || (!force && r.version <= (local.version || 0))) return { restored: false };
-  syncBusy = true;
-  try { applySnapshot(r.data); writeJson('sync.json', { ...local, version: r.version }); } finally { syncBusy = false; }
-  wins.forEach((w) => sendTo(w.webContents, 'sync-applied'));
-  return { restored: true, version: r.version };
-}
-function scheduleSyncPush() {                      // debounced; silent when signed out, offline, or auto-sync is off
-  if (syncBusy || !syncOn()) return;
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => { syncPush().catch(() => { /* offline: the next change retries */ }); }, 4000);
-}
-ipcMain.handle('sync:push', async () => syncPush());
-ipcMain.handle('sync:pull', async () => syncPull(true));
-ipcMain.handle('sync:status', async () => {
-  const a = readJson('account.json', {}), s = readJson('sync.json', {});
-  return { signedIn: signedIn(), email: a.email || s.email || '', name: a.name || '', picture: a.picture || '', version: s.version || 0 };
-});
-// Only fixed, whitelisted API paths; sync of settings is opt-in and contains no source code.
-const API_ALLOW = [/^\/profile\/$/, /^\/settings\/$/, /^\/workspaces\/$/, /^\/projects\/$/, /^\/extensions\/$/, /^\/releases\/$/];
-ipcMain.handle('api:request', (_e, method, p, body) => {
-  if (!API_ALLOW.some((r) => r.test(p)) || !['GET', 'PUT', 'POST'].includes(method)) throw new Error('API path not allowed');
-  return api(method, p, body);
-});
 ipcMain.handle('app:checkUpdates', async () => {
   const r = await api('GET', `/releases/latest/?current=${app.getVersion()}`);
   return r;
@@ -1006,7 +760,6 @@ else {
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
     createWindow(argvTarget(process.argv) || {});
-    if (syncOn()) setTimeout(() => syncPull(false).catch(() => { /* offline */ }), 2500);
   });
   app.on('window-all-closed', () => { shutdown('window-all-closed'); app.quit(); });
 }

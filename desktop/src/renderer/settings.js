@@ -5,7 +5,7 @@
   const ST = { q: '', cat: 'editor' };
 
   const render = async (g) => {
-    const s = S.settings, loggedIn = await cf.api.loggedIn().catch(() => false), acct = loggedIn ? await cf.sync.status().catch(() => ({})) : {};
+    const s = S.settings;
     const prev = h('div', { class: 'st-preview mono', 'aria-label': 'Font preview' }, 'const message = "Hello World";\n\nconsole.log(message);   // => != === <= >= ->');
     const syncPreview = () => { const t = S.settings; Object.assign(prev.style, { fontFamily: `"${t.fontFamily}"`, fontSize: t.fontSize + 'px', lineHeight: String(t.lineHeight), fontWeight: t.fontWeight, letterSpacing: t.letterSpacing + 'px', fontVariantLigatures: t.ligatures ? 'normal' : 'none' }); };
     const upd = async (k, v) => { await CF.setSetting({ [k]: v }); syncPreview(); };
@@ -51,18 +51,8 @@
           item('File icon theme', sel('iconTheme', Object.entries(CF.ICON_THEMES)))),
         card('Layout', item('Sidebar', sw('sidebar')), item('Activity bar', sw('activityBar')), item('Hide Layout Header', sw('hideHeader'), 'Hide the application header to maximize your workspace.'), item('Status bar', sw('statusBar')), item('Tab bar buttons', sw('tabActions'), 'Show “Close Saved” and “Close All” in the tab bar.'))]],
       ['keyboard', 'Keyboard', [card('Shortcuts', item('Keyboard shortcuts', btn('Open', () => CF.shortcutsDialog()), 'See every command and click a shortcut to change it.'), item('keyboard.json', btn('Open file', () => CF.openKeyboardJson()), 'Edit the same bindings by hand. Changes apply when you save.'))]],
-      ['account', 'Updates & account', [
-        card('Updates', item('Automatic updates', sw('autoUpdate'), 'Check for new Asta versions automatically.'), item('Check now', btn('Check for updates', () => CF.checkUpdates(true)))),
-        card('Account (optional)', ...(loggedIn
-          ? [item('Signed in' + (acct.name || acct.email ? ' as ' + (acct.name || acct.email) + (acct.name && acct.email ? ' (' + acct.email + ')' : '') : ''), h('div', { class: 'st-multi' },
-              btn('Sync now', CF.guard(async () => { await cf.sync.push(); CF.toast('Settings synced to your account'); })),
-              btn('Restore from account', CF.guard(async () => { if (!(await CF.confirm('Replace this machine\u2019s settings, shortcuts and extensions with the ones saved in your account?', 'Restore'))) return; await CF.restoreFromAccount(); })),
-              btn('Sign out', async () => { await cf.api.logout(); CF.toast('Signed out'); CF.refreshAccount && CF.refreshAccount(); CF.renderPage(g); })),
-              'Your settings, keyboard shortcuts and extensions are saved to your account. Reinstall Asta and sign in again to get them back. Source code is never sent.'),
-            item('Sync automatically', sw('autoSync'), 'Upload changes a few seconds after you make them, and pick up changes made on another computer when Asta starts.')]
-          : [item('Sign in with Google', h('div', { class: 'st-multi' }, btn('Sign in with Google', CF.guard(async () => { await CF.googleSignIn(); CF.renderPage(g); })), btn('Sign in / Sign up', () => CF.startSignIn('signin'))),
-              'Sign in once and your settings, theme, shortcuts and extensions follow you, even after deleting and reinstalling Asta.')]))]],
-
+      ['account', 'Updates', [
+        card('Updates', item('Automatic updates', sw('autoUpdate'), 'Check for new Asta versions automatically.'), item('Check now', btn('Check for updates', () => CF.checkUpdates(true))))]],
     ];
 
     // ---- shell: header, nav (one tab per category), search + content ----

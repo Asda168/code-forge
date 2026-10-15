@@ -249,117 +249,6 @@
     return h('div', { class: 'xdlg xdpage' }, ...kids);
   }
 
-  // The settings UI lives in settings.js (an editor tab); it calls CF.loginDialog for the optional account sign-in.
-  const loginDialog = CF.guard(async () => {
-    const v = await CF.ask('Sign in to Asta IDE', [{ id: 'u', label: 'Username' }, { id: 'p', label: 'Password', type: 'password' }], 'Sign in'); if (!v) return;
-    await cf.api.login(v.u, v.p); CF.toast('Signed in (token stored in OS credential storage)');
-  });
-  CF.loginDialog = loginDialog;
-  CF.googleSignIn = CF.guard(async () => {
-    CF.toast('Continue signing in with Google in your browser…');
-    const r = await cf.api.google();
-    CF.toast(r.restored ? `Welcome ${r.name || r.email}. Your settings and extensions were restored.` : `Welcome ${r.name || r.email}. Your settings now sync to your account.`);
-    CF.refreshAccount && CF.refreshAccount();
-    return r;
-  });
-  // Sign in / Sign up dialog (username + password, or Google). Same account either way keeps settings in sync.
-  CF.refreshAccount = async () => {
-    const st = await cf.sync.status().catch(() => ({ signedIn: false }));
-    $('#btn-signin').hidden = $('#btn-signup').hidden = !!st.signedIn;
-    const who = st.name || st.email || 'Account';
-    const avatar = (size) => st.picture
-      ? h('img', { class: 'avatar', src: st.picture, alt: '', width: size, height: size })
-      : h('span', { class: 'avatar ini', style: `width:${size}px;height:${size}px;line-height:${size}px` }, (who[0] || '?').toUpperCase());
-    const b = $('#btn-account'); b.hidden = !st.signedIn; b.replaceChildren();
-    if (st.signedIn) b.append(avatar(22), h('span', { class: 'who' }, who));
-    b.title = st.signedIn ? `${who}${st.email && st.email !== who ? ' (' + st.email + ')' : ''}` : '';
-    const ab = $('#act-account'); ab.title = st.signedIn ? `Account: ${who}` : 'Sign in / Sign up';
-    ab.replaceChildren(st.signedIn ? avatar(24) : h('i', { 'data-ic': 'user', html: CF.iconHtml('user', 24) }));
-    S.account = st;
-    return st;
-  };
-  CF.authDialog = (mode = 'signin') => {
-    const up = mode === 'signup';
-    const field = (id, label, type = 'text', ac = 'off') => h('div', {}, h('label', {}, label), h('input', { id: 'f-' + id, type, autocomplete: ac }));
-    const done = (r) => { CF.closeOverlay(); CF.refreshAccount(); CF.toast(r.restored ? `Signed in as ${r.name || r.email}. Your settings and extensions were restored.` : `Signed in as ${r.email}. Your settings now sync to your account.`); };
-    CF.modal(up ? 'Create your Asta account' : 'Sign in to Asta IDE', [
-      h('button', { class: 'btn', onclick: () => { CF.closeOverlay(); CF.googleSignIn().then(() => CF.refreshAccount()); } }, 'Continue with Google'),
-      h('div', { class: 'or' }, 'or use a username'),
-      field('u', 'Username', 'text', 'username'),
-      ...(up ? [field('e', 'Email (optional)', 'email', 'email')] : []),
-      field('p', up ? 'Password (8+ characters)' : 'Password', 'password', up ? 'new-password' : 'current-password'),
-      h('button', { class: 'btn sec sm swap', onclick: () => CF.authDialog(up ? 'signin' : 'signup') }, up ? 'Already have an account? Sign in' : 'New here? Create an account'),
-    ], [
-      { label: 'Cancel', cls: 'sec' },
-      { label: up ? 'Create account' : 'Sign in', run: CF.guard(async (d) => {
-        const v = (id) => { const e = $('#f-' + id, d); return e ? e.value : ''; };
-        if (!v('u').trim() || !v('p')) return CF.toast('Enter a username and password.', true);
-        if (up && v('p').length < 8) return CF.toast('Password must be at least 8 characters.', true);
-        done(up ? await cf.api.register(v('u'), v('e'), v('p')) : await cf.api.login(v('u'), v('p')));
-      }) },
-    ]);
-  };
-  const accountMenu = (ev) => {
-    const r = ev.currentTarget.getBoundingClientRect();
-    const a = S.account || {};
-    CF.menu({ clientX: Math.max(8, r.right - 200), clientY: r.bottom + 4 }, [
-      [(a.name || 'Signed in') + (a.email ? '  ·  ' + a.email : ''), () => {}],
-      ['Sync now', CF.guard(async () => { await cf.sync.push(); CF.toast('Settings synced to your account'); })],
-      ['Restore from account', CF.guard(async () => { if (await CF.confirm('Replace this machine\u2019s settings, shortcuts and extensions with the ones saved in your account?', 'Restore')) await CF.restoreFromAccount(); })],
-      ['Account settings…', () => CF.settingsDialog()],
-      ['Sign out', CF.guard(async () => { await cf.api.logout(); CF.toast('Signed out'); CF.refreshAccount(); })],
-    ]);
-  };
-  // Sign in / Sign up go straight to Google's account chooser in the browser (no Asta server involved).
-  // One attempt at a time; a progress dialog with Cancel; clear messages for setup problems and failures, each with a way forward.
-  const GUIDE = 'https://github.com/Asda168/code-forge/blob/main/docs/GOOGLE_SIGNIN.md';
-  const setBusy = (on) => { ['btn-signin', 'btn-signup', 'act-account'].forEach((id) => { const b = $('#' + id); if (b) b.disabled = on; }); };
-  const parseErr = (e) => { const m = String((e && e.message) || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''), k = m.indexOf('::'); return k > 0 ? { code: m.slice(0, k), message: m.slice(k + 2) } : { code: 'unknown', message: 'Unable to sign in with Google. Please try again.' }; };
-  const SETUP = new Set(['config_missing', 'config_placeholder', 'config_invalid']);
-  CF.startSignIn = async (mode = 'signin') => {
-    if (CF.signingIn) return;                                   // ignore repeated clicks while a sign-in is running
-    CF.signingIn = true; setBusy(true);
-    const showSetup = (message) => {
-      const field = (id, label, type, ph) => h('div', {}, h('label', {}, label), h('input', { id: 'f-' + id, type, placeholder: ph, autocomplete: 'off', spellcheck: false }));
-      CF.modal('Set up Google sign-in', [
-        h('p', {}, 'Google authentication is not configured. Create a "Desktop app" OAuth client in Google Cloud Console (with the Drive API enabled), then paste its details here once:'),
-        field('gid', 'Client ID', 'text', '123456789012-abc….apps.googleusercontent.com'),
-        field('gsec', 'Client secret (optional)', 'password', 'GOCSPX-…'),
-        h('p', { class: 'muted' }, message)], [
-        { label: 'Close', cls: 'sec' },
-        { label: 'Open setup guide', cls: 'sec', run: () => cf.app.openExternal(GUIDE) },
-        { label: 'Save & sign in', run: async (d) => {
-          try { await cf.api.googleSaveConfig($('#f-gid', d).value.trim(), $('#f-gsec', d).value.trim()); }
-          catch (e) { return CF.toast(parseErr(e).message, true); }
-          CF.closeOverlay(); setTimeout(() => CF.startSignIn(mode), 0);
-        } }]);
-    };
-    try {
-      const st = await cf.api.googleStatus();
-      if (!st.configured) return showSetup(st.message);
-      CF.modal('Connecting to Google…', [
-        h('div', { class: 'gprog' }, h('span', { class: 'spin', 'aria-hidden': 'true' }), h('span', {}, 'Choose your Google account in the browser.')),
-        h('p', { class: 'muted' }, 'Asta will come back to the front when you are done.')],
-      [{ label: 'Cancel', cls: 'sec', run: () => { cf.api.googleCancel(); } }]);
-      const r = await cf.api.google();
-      CF.closeOverlay();
-      CF.toast(r.restored ? `Welcome back! Your settings and extensions were restored.` : 'Google sign-up completed successfully. Your settings now sync to your account.');
-      CF.refreshAccount();
-    } catch (e) {
-      const f = parseErr(e); CF.closeOverlay();
-      if (f.code === 'cancelled') CF.toast('Google sign-in was cancelled.');
-      else if (SETUP.has(f.code)) showSetup(f.message);
-      else CF.modal('Google sign-in failed', [h('p', {}, f.message || 'Unable to authenticate with Google. Please try again.')], [{ label: 'Close', cls: 'sec' }, { label: 'Retry', run: () => { CF.closeOverlay(); setTimeout(() => CF.startSignIn(mode), 0); } }]);
-    } finally { CF.signingIn = false; setBusy(false); }
-  };
-  CF.googleSignIn = () => CF.startSignIn('signin');
-  $('#btn-signin').onclick = () => CF.startSignIn('signin');
-  $('#btn-signup').onclick = () => CF.startSignIn('signup');
-  $('#btn-account').onclick = accountMenu;
-  $('#act-account').onclick = async (ev) => { const st = await CF.refreshAccount(); if (st.signedIn) accountMenu(ev); else CF.startSignIn('signin'); };
-  CF.refreshAccount();
-  CF.restoreFromAccount = CF.guard(async () => { const r = await cf.sync.pull(); if (!r.restored) CF.toast('Nothing to restore yet. Use Sync now first.'); });
-
   // ---- updates -------------------------------------------------------------------------------------
   CF.checkUpdates = CF.guard(async (manual) => {
     let r;
@@ -391,7 +280,7 @@
     ['Git Clone', () => CF.cloneDialog()], ['Git Commit', () => { CF.showView('git'); setTimeout(() => $('#commit-msg') && $('#commit-msg').focus(), 300); }], ['Git Push', () => CF.gitCmd('Push', ['push'])], ['Git Pull', () => CF.gitCmd('Pull', ['pull'])],
     ['Run Project', () => CF.runProject(), 'F5'], ['Stop', CF.stopRun], ['Restart', CF.restartRun], ['Format Document', () => CF.activeGroup().editor.getAction('editor.action.formatDocument').run()],
     ['Change Font Size: Increase', () => CF.fontStep(1)], ['Change Font Size: Decrease', () => CF.fontStep(-1)], ['Change Font Size: Reset', () => CF.fontStep(0)],
-    ['Toggle Sidebar', CF.toggleSidebar, 'Ctrl+B'], ['Account: Sign in', () => CF.startSignIn('signin'), ''], ['Account: Sign up', () => CF.startSignIn('signup'), ''], ['Account: Sign in with username and password', () => CF.authDialog('signin'), ''], ['Account: Sync settings now', CF.guard(async () => { await cf.sync.push(); CF.toast('Settings synced to your account'); }), ''], ['View: Toggle Layout Header', () => CF.setSetting({ hideHeader: !CF.S.settings.hideHeader }), 'Ctrl+Alt+H'], ['Toggle Terminal', CF.togglePanel, 'Ctrl+`'], ['Open Settings', () => CF.settingsDialog(), 'Ctrl+,'],
+    ['Toggle Sidebar', CF.toggleSidebar, 'Ctrl+B'], ['View: Toggle Layout Header', () => CF.setSetting({ hideHeader: !CF.S.settings.hideHeader }), 'Ctrl+Alt+H'], ['Toggle Terminal', CF.togglePanel, 'Ctrl+`'], ['Open Settings', () => CF.settingsDialog(), 'Ctrl+,'],
     ['New Project…', () => CF.newProjectWizard()], ['Split Editor Right', () => CF.split(false)], ['Split Editor Down', () => CF.split(true)], ['Save All', CF.saveAll],
     ['Find in Files', () => CF.findInFiles(), 'Ctrl+Shift+F'], ['Replace in Files', () => CF.findInFiles({ replace: true }), 'Ctrl+Shift+H'], ['Search: Open New Search Editor', () => CF.newSearchEditor()], ['Go to Line…', () => CF.activeGroup().editor.getAction('editor.action.gotoLine').run()],
     ['Save Workspace', saveWorkspace], ['Open Workspace', openWorkspace], ['Close Workspace', closeWorkspace], ['Check for Updates', () => CF.checkUpdates(true)],
@@ -424,6 +313,23 @@
     'view-explorer': () => CF.showView('explorer'), 'view-git': () => CF.showView('git'), 'view-gitlens': () => CF.showView('gitlens'), 'split-terminal': () => CF.splitTerminal(), 'clear-terminal': () => CF.clearTerminal(), 'view-extensions': () => CF.showView('extensions'),
     'toggle-header': () => CF.setSetting({ hideHeader: !CF.S.settings.hideHeader }), 'toggle-tab-actions': () => CF.setSetting({ tabActions: CF.S.settings.tabActions === false }), 'check-updates': () => CF.checkUpdates(true), settings: () => CF.settingsDialog(),
   };
+  Object.assign(MENU, {
+    'open-file': async () => { const p = await cf.ws.openFile(); if (p) await CF.openFile(p); },
+    'open-recent': async (p) => { if (p) await CF.setRoot(await cf.ws.openRecent(p)); },
+    'save-as': async () => {
+      const p = CF.activeGroup().active, m = p && S.models.get(p);
+      if (!m) return CF.toast('Open a file to save it under a new name', true);
+      const np = await cf.ws.saveAs(p); if (!np) return;
+      await cf.fs.write(np, m.model.getValue()); await CF.openFile(np); CF.toast('Saved as ' + base(np));
+    },
+    'revert-file': async () => {
+      const p = CF.activeGroup().active, m = p && S.models.get(p);
+      if (!m || CF.isPage(p)) return CF.toast('Open a file to revert it', true);
+      if (m.dirty && !(await CF.confirm(`Discard unsaved changes to ${base(p)}?`, 'Revert'))) return;
+      const r = await cf.fs.read(p); m.saved = r.text; m.model.setValue(r.text); CF.toast('Reverted ' + base(p));
+    },
+    'toggle-autosave': () => CF.setSetting({ autoSave: S.settings.autoSave === 'off' ? 'afterDelay' : 'off' }),
+  });
   CF.menuCommands = MENU;
-  CF.bindMenu = () => cf.onMenu((id) => (MENU[id] ? CF.guard(MENU[id])() : CF.runCommand && CF.runCommand(id)));
+  CF.bindMenu = () => cf.onMenu((id, arg) => (MENU[id] ? CF.guard(MENU[id])(arg) : CF.runCommand && CF.runCommand(id)));
 })();

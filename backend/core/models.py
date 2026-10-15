@@ -14,7 +14,6 @@ User = settings.AUTH_USER_MODEL
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     display_name = models.CharField(max_length=120, blank=True)
-    avatar_url = models.URLField(max_length=500, blank=True)
     telemetry_enabled = models.BooleanField(default=False)
     sync_enabled = models.BooleanField(default=False, help_text="Settings/workspace sync")
     ai_consent = models.BooleanField(default=False, help_text="Allow sending code to AI services")
@@ -165,31 +164,6 @@ class Download(models.Model):
     url = models.URLField()
     size_bytes = models.BigIntegerField(default=0)
     sha256 = models.CharField(max_length=64, blank=True)
-
-
-class SocialIdentity(models.Model):
-    """An external identity (e.g. Google) bound to exactly one user. (provider, subject) is globally unique, so a
-    Google account can never create two Asta users, and linking is never inferred from an email address."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="social_identities")
-    provider = models.CharField(max_length=20)
-    subject = models.CharField(max_length=255)      # Google's stable `sub`
-    email = models.EmailField(blank=True)           # informational only; never used to find or link accounts
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["provider", "subject"], name="uniq_provider_subject")]
-
-
-class SyncSnapshot(models.Model):
-    """One per user: the editor customisation that follows them across reinstalls.
-
-    Holds settings.json, keyboard overrides and installed (declarative) extension manifests.
-    Never source code or absolute machine paths.
-    """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="sync_snapshot")
-    data = models.JSONField(default=dict)
-    version = models.PositiveIntegerField(default=0)
-    updated_at = models.DateTimeField(auto_now=True)
 
 
 class UserPreference(models.Model):

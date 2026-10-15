@@ -36,46 +36,201 @@
     if (f.x === '?' ) await must(['clean', '-f', '--', f.path]); else await must(['restore', '--', f.path]);
     await CF.gitRefresh(); CF.reloadOpenFiles(); CF.refreshTree();
   });
-  const commit = CF.guard(async () => {
-    const msg = $('#commit-msg').value.trim(); if (!msg) return CF.toast('Enter a commit message', true);
-    if (!G.files.some((f) => f.x !== ' ' && f.x !== '?')) { if (!(await CF.confirm('Nothing staged. Stage all changes and commit?', 'Stage all & commit'))) return; await must(['add', '-A']); }
-    await must(['commit', '-m', msg]); G.msg = ''; CF.toast('Committed'); CF.gitRefresh();
-  });
+  // Returns true when a commit was made. `amend` rewrites the last commit with the message in the box.
+  const doCommit = async (amend) => {
+    const box = $('#commit-msg'), msg = (box ? box.value : G.msg).trim();
+    if (!msg) { CF.toast('Enter a commit message', true); return false; }
+    if (amend) { if (!(await CF.confirm('Replace the last commit with the staged changes and this message? Do not do this to commits you already pushed.', 'Amend'))) return false; }
+    else if (!G.files.some((f) => f.x !== ' ' && f.x !== '?')) { if (!(await CF.confirm('Nothing staged. Stage all changes and commit?', 'Stage all & commit'))) return false; await must(['add', '-A']); }
+    await must(amend ? ['commit', '--amend', '-m', msg] : ['commit', '-m', msg]); G.msg = ''; await CF.gitRefresh();
+    CF.toast((amend ? 'Commit amended' : 'Committed') + (G.hasUp || G.ahead ? '. Click Sync Changes to push.' : ''));
+    return true;
+  };
+  const commit = CF.guard(() => doCommit(false));
+  const commitPush = CF.guard(async () => { if (await doCommit(false)) await pushIt(); });
+  const amendIt = CF.guard(() => doCommit(true));
+  const stageMany = (paths) => run('Stage', ['add', '--', ...paths])();
+  const unstageMany = (paths) => run('Unstage', ['restore', '--staged', '--', ...paths])();
 
-  function fileRow(f, staged) {
+  // "Generate": a conventional-commit style message built locally from the file list. Nothing leaves the machine.
+  const suggest = () => {
+    const stg = G.files.filter((f) => f.x !== ' ' && f.x !== '?'), list = stg.length ? stg : G.files;
+    if (!list.length) return '';
+    const code = (f) => (f.x === '?' ? 'A' : stg.length ? f.x : (f.y === ' ' ? f.x : f.y));
+    const names = [...new Set(list.map((f) => base(f.path)))];
+    const kinds = new Set(list.map(code)), only = (re) => list.every((f) => re.test(f.path));
+    let type = '';
+    if (only(/\.(md|mdx|txt|rst)$|(^|\/)docs?\//i)) type = 'docs: ';
+    else if (only(/(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\./i)) type = 'test: ';
+    else if (only(/\.(css|scss|less|sass)$/i)) type = 'style: ';
+    else if (only(/(^|\/)(package(-lock)?\.json|composer\.(json|lock)|requirements\.txt|\.github\/|\.gitignore|Dockerfile)/i)) type = 'chore: ';
+    else if (kinds.size === 1 && kinds.has('A')) type = 'feat: ';
+    const verb = kinds.size === 1 ? ({ A: 'Add', D: 'Remove', R: 'Rename', M: 'Update' }[[...kinds][0]] || 'Update') : 'Update';
+    const shown = names.slice(0, 3).join(', '), more = names.length - 3;
+    const dirs = [...new Set(list.map((f) => (f.path.includes('/') ? f.path.split('/')[0] : '')).filter(Boolean))];
+    const scope = dirs.length === 1 && names.length > 1 ? ` in ${dirs[0]}` : '';
+    return `${type}${verb} ${shown}${more > 0 ? ` and ${more} more file${more === 1 ? '' : 's'}` : ''}${scope}`;
+  };
+
+  function fileRow(f, staged, depth = 0) {
     const code = staged ? f.x : (f.y === ' ' ? f.x : f.y);
     const label = f.x === '?' ? 'U' : code;
-    const btn = (t, ti, fn) => h('button', { class: 'icon-btn', title: ti, onclick: (e) => { e.stopPropagation(); fn(); } }, t);
-    return h('div', { class: 'gi', onclick: () => CF.showDiff(f, staged) }, h('span', { class: 'ic', html: CF.fileIconHtml(base(f.path), false) }), h('span', { class: 'nm', title: f.path }, base(f.path), h('small', { class: 'muted', style: 'margin-left:6px' }, f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '')), h('span', { class: 'st ' + label }, label),
-      h('span', { class: 'acts' }, btn(CF.icon('open', 13), 'Open File', () => CF.openFile(abs(f.path))), staged ? btn(CF.icon('minus', 13), 'Unstage', () => unstage(f.path)) : [btn(CF.icon('undo', 13), 'Discard', () => discard(f)), btn(CF.icon('plus', 13), 'Stage', () => stage(f.path))]));
+    const btn = (t, ti, fn) => h('button', { class: 'icon-btn', title: ti, 'aria-label': ti, onclick: (e) => { e.stopPropagation(); fn(); } }, t);
+    const gone = label === 'D';                                              // a deleted file cannot be opened or revealed
+    const menu = (e) => CF.menu(e, [
+      ['Open Changes', () => CF.showDiff(f, staged)],
+      ...(gone ? [] : [['Open File', () => CF.openFile(abs(f.path))]]),
+      '-',
+      staged ? ['Unstage Changes', () => unstage(f.path)] : ['Stage Changes', () => stage(f.path)],
+      ...(staged ? [] : [['Discard Changes', () => discard(f)]]),
+      '-',
+      ['Copy Path', CF.guard(async () => { await cf.clip.write(abs(f.path)); CF.toast('Path copied'); })],
+      ['Copy Relative Path', CF.guard(async () => { await cf.clip.write(f.path); CF.toast('Relative path copied'); })],
+      ...(gone ? [] : [['Reveal in Explorer', () => CF.revealInTree && CF.revealInTree(abs(f.path))], ['Reveal in File Manager', () => cf.fs.reveal(abs(f.path))]]),
+    ]);
+    const more = (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: Math.max(8, r.right - 180), clientY: r.bottom + 4, preventDefault() {}, stopPropagation() {} }); };
+    return h('div', { class: 'gi scm-file', style: `padding-left:${10 + depth * 12 + 16}px`, tabindex: 0, role: 'button', 'aria-haspopup': 'menu', onclick: () => CF.showDiff(f, staged),
+      oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); menu(e); },
+      onkeydown: (e) => { if (e.key === 'Enter') CF.showDiff(f, staged); else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: r.left + 40, clientY: r.bottom, preventDefault() {}, stopPropagation() {} }); } } },
+      h('span', { class: 'ic', html: CF.fileIconHtml(base(f.path), false) }), h('span', { class: 'nm', title: f.path }, base(f.path)),
+      h('span', { class: 'acts' }, gone ? null : btn(CF.icon('open', 13), 'Open File', () => CF.openFile(abs(f.path))), staged ? btn(CF.icon('minus', 13), 'Unstage', () => unstage(f.path)) : [btn(CF.icon('undo', 13), 'Discard', () => discard(f)), btn(CF.icon('plus', 13), 'Stage', () => stage(f.path))],
+        h('button', { class: 'icon-btn', title: 'More options', 'aria-label': 'More options', 'aria-haspopup': 'menu', onclick: more }, CF.icon('more', 13))),
+      h('span', { class: 'st ' + label, title: ({ M: 'Modified', A: 'Added', D: 'Deleted', R: 'Renamed', U: 'Untracked', C: 'Copied' })[label] || label }, label));
   }
+
+  // Files grouped by folder (single-child folder chains are shown as one row, like VS Code's compact folders).
+  const buildTree = (files) => {
+    const root = { dirs: new Map(), files: [] };
+    for (const f of files) { let n = root; for (const p of f.path.split('/').slice(0, -1)) { if (!n.dirs.has(p)) n.dirs.set(p, { dirs: new Map(), files: [] }); n = n.dirs.get(p); } n.files.push(f); }
+    return root;
+  };
+  const allFiles = (n) => [...n.files, ...[...n.dirs.values()].flatMap(allFiles)];
+  const renderTree = (node, depth, key, staged, prefix = '') => {
+    const out = [];
+    [...node.dirs.entries()].sort(([a], [b]) => a.localeCompare(b)).forEach(([name, child]) => {
+      let label = name, cur = child, path = prefix + name;
+      while (!cur.files.length && cur.dirs.size === 1) { const [n2, c2] = [...cur.dirs.entries()][0]; label += '/' + n2; cur = c2; path += '/' + n2; }
+      const fk = `dir:${key}:${path}`, list = allFiles(cur), kids = h('div', {}), arrow = h('span', { class: 'arr' });
+      renderTree(cur, depth + 1, key, staged, path + '/').forEach((k) => kids.append(k));
+      const set = () => { const c = !!G.fold[fk]; arrow.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); kids.hidden = c; };
+      const act = (e) => { e.stopPropagation(); (staged ? unstageMany : stageMany)(list.map((f) => f.path)); };
+      const dmenu = (e) => CF.menu(e, [
+        [staged ? 'Unstage Folder' : 'Stage Folder', () => (staged ? unstageMany : stageMany)(list.map((f) => f.path))],
+        [G.fold[fk] ? 'Expand' : 'Collapse', () => { G.fold[fk] = !G.fold[fk]; set(); }], '-',
+        ['Copy Relative Path', CF.guard(async () => { await cf.clip.write(path); CF.toast('Relative path copied'); })],
+        ['Reveal in File Manager', () => cf.fs.reveal(abs(path))]]);
+      out.push(h('div', { class: 'scm-dir', style: `padding-left:${10 + depth * 12}px`, tabindex: 0, oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); dmenu(e); },
+        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); G.fold[fk] = !G.fold[fk]; set(); } },
+        onclick: () => { G.fold[fk] = !G.fold[fk]; set(); } },
+        arrow, h('span', { class: 'ic', html: CF.fileIconHtml(name, true) }), h('span', { class: 'nm', title: path }, label), h('span', { class: 'cnt' }, list.length),
+        h('span', { class: 'acts' }, h('button', { class: 'icon-btn', title: staged ? 'Unstage folder' : 'Stage folder', 'aria-label': staged ? 'Unstage folder' : 'Stage folder', onclick: act }, CF.icon(staged ? 'minus' : 'plus', 13)))), kids);
+      set();
+    });
+    node.files.slice().sort((a, b) => base(a.path).localeCompare(base(b.path))).forEach((f) => out.push(fileRow(f, staged, depth)));
+    return out;
+  };
 
   // Collapsible section: header toggles a box; state survives refreshes.
   const fold = (body, key, title, count, extra, items) => {
     const box = h('div', {}); const arrow = h('span', { class: 'arr' });
     const set = () => { const c = !!G.fold[key]; arrow.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); box.hidden = c; };
-    body.append(h('div', { class: 'sec-head clickable', onclick: () => { G.fold[key] = !G.fold[key]; set(); } }, arrow, title, count != null ? h('span', { class: 'badge' }, count) : null, h('span', { class: 'grow' }), extra ? h('span', { onclick: (e) => e.stopPropagation(), style: 'display:flex' }, extra) : null), box);
+    body.append(h('div', { class: 'sec-head clickable', 'data-fold': key, onclick: () => { G.fold[key] = !G.fold[key]; set(); } }, arrow, title, count != null ? h('span', { class: 'badge' }, count) : null, h('span', { class: 'grow' }), extra ? h('span', { onclick: (e) => e.stopPropagation(), style: 'display:flex' }, extra) : null), box);
     items.forEach((i) => box.append(i)); set(); return box;
   };
 
-  CF.renderGit = async (body) => {
+  CF.renderGit = async (parent) => {
+    let body = parent;
     if (!S.root) return body.append(h('div', { class: 'pad muted' }, 'Open a folder first.'));
     if (!G.repo) return body.append(h('div', { class: 'pad' }, h('p', { class: 'muted' }, 'This folder is not a Git repository.'),
       h('button', { class: 'btn', onclick: run('Init', ['init']) }, 'Initialize Repository'), ' ', h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone…')));
     const staged = G.files.filter((f) => f.x !== ' ' && f.x !== '?'), changes = G.files.filter((f) => f.y !== ' ' && f.x !== '?'), untracked = G.files.filter((f) => f.x === '?');
-    const msg = h('input', { id: 'commit-msg', placeholder: 'Commit message (e.g. Fix user authentication)', value: G.msg, oninput: (e) => (G.msg = e.target.value) });
-    body.append(h('div', { class: 'pad' }, msg, h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: commit }, CF.icon('check', 13), ' Commit'),
-      h('button', { class: 'btn sec sm', title: 'Pull', onclick: run('Pull', ['pull']) }, CF.icon('down', 13)), h('button', { class: 'btn sec sm', title: 'Push', onclick: pushIt }, CF.icon('up', 13)), h('button', { class: 'btn sec sm', title: 'Fetch', onclick: run('Fetch', ['fetch', '--all']) }, CF.icon('refresh', 13)),
-      h('button', { class: 'btn sec sm', title: 'Stash', onclick: run('Stash', ['stash', 'push', '-u']) }, 'Stash'), h('button', { class: 'btn sec sm', title: 'Pop stash', onclick: run('Stash pop', ['stash', 'pop']) }, 'Pop'))));
+    const wrap = h('div', { class: 'scm' }); parent.append(wrap); body = wrap;
+    const lum = (() => { const m = (getComputedStyle(document.body).backgroundColor || '').match(/\d+/g); return m ? (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) : 0; })();
+    if (lum > 150) wrap.classList.add('scm-light');                        // light themes keep their own surface colours
     const total = new Set(G.files.map((f) => f.path)).size;
-    if (total) { const t = $('#side-title'); if (t.dataset.view === 'git') t.append(h('span', { class: 'grow' }), h('span', { class: 'badge' }, total)); }
-    const chip = (n, label, cls) => n ? h('span', { class: 'chip ' + cls, title: `${n} ${label}` }, `${n} ${label}`) : null;
-    body.append(h('div', { class: 'pad git-summary' }, h('span', { class: 'sum-ic', html: CF.iconHtml('git', 14) }), h('b', {}, `${total} pending change${total === 1 ? '' : 's'}`), chip(staged.length, 'staged', 'S'), chip(changes.length, 'modified', 'M'), chip(untracked.length, 'untracked', 'U')));
-    const section = (title, list, stagedSec, extra) => { if (!list.length && !stagedSec) return; fold(body, title, title, list.length, extra, list.map((f) => fileRow(f, stagedSec))); };
-    section('Staged Changes', staged, true, h('button', { class: 'icon-btn', title: 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 14)));
-    section('Changes', changes, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-u']) }, CF.icon('plus', 14)));
-    section('Untracked Files', untracked, false, h('button', { class: 'icon-btn', title: 'Stage all', onclick: run('Stage all', ['add', '-A']) }, CF.icon('plus', 14)));
-    if (!G.files.length) fold(body, 'Clean', 'Changes', 0, null, [h('div', { class: 'pad muted' }, 'Working tree clean.')]);
+    const unstaged = G.files.filter((f) => f.y !== ' ' || f.x === '?');
+
+    // header actions (next to the "Source Control" title)
+    const moreMenu = (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4 }, [
+      ['Pull', run('Pull', ['pull'])], ['Push', pushIt], ['Fetch', run('Fetch', ['fetch', '--all'])], ['Sync Changes', syncIt], '-',
+      ['Stash changes', run('Stash', ['stash', 'push', '-u'])], ['Pop stash', run('Stash pop', ['stash', 'pop'])], '-', ['Checkout new branch…', newBranch]]); };
+    const tt = $('#side-title');
+    if (tt.dataset.view === 'git') {
+      tt.querySelectorAll('.scm-acts, .badge, .grow').forEach((n) => n.remove());
+      tt.append(h('span', { class: 'grow' }), h('span', { class: 'scm-acts' },
+        h('button', { class: 'scm-ic', title: 'Refresh', 'aria-label': 'Refresh', onclick: CF.guard(async () => { await CF.gitRefresh(); }) }, CF.icon('refresh', 14)),
+        h('button', { class: 'scm-ic', title: 'More actions', 'aria-label': 'More actions', 'aria-haspopup': 'menu', onclick: moreMenu }, CF.icon('more', 14))));
+    }
+
+    // branch + sync state
+    body.append(h('div', { class: 'scm-meta' }, h('span', { class: 'scm-branch', title: 'Current branch' }, CF.icon('git', 12), G.branch || 'HEAD'),
+      G.ahead ? h('span', { class: 'scm-chip', title: `${G.ahead} commit(s) to push` }, '↑' + G.ahead) : null, G.behind ? h('span', { class: 'scm-chip', title: `${G.behind} commit(s) to pull` }, '↓' + G.behind) : null,
+      h('span', { class: 'grow' }),
+      h('button', { class: 'scm-newbranch', type: 'button', title: 'Create a new branch and check it out (git checkout -b)', 'aria-label': 'Checkout new branch', onclick: newBranch }, CF.icon('plus', 12), 'New Branch')));
+
+    // commit message: auto-growing field with an embedded Generate pill
+    const ta = h('textarea', { id: 'commit-msg', rows: 1, placeholder: 'Message (Ctrl+Enter to commit…)', spellcheck: 'false', 'aria-label': 'Commit message' });
+    ta.value = G.msg;
+    const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 220) + 'px'; };
+    ta.addEventListener('input', () => { G.msg = ta.value; fit(); });
+    let primaryAct = commit;                                                    // set below once the button mode is known
+    ta.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); primaryAct(); } });
+    const gen = h('button', { class: 'scm-gen', type: 'button', title: 'Generate a message from your changes (built locally, nothing is sent anywhere)', 'aria-label': 'Generate commit message',
+      onclick: () => { const s = suggest(); if (!s) return CF.toast('No changes to describe', true); ta.value = G.msg = s; fit(); ta.focus(); } }, CF.icon('sparkle', 12), 'Generate');
+    const stagedCount = G.files.filter((f) => f.x !== ' ' && f.x !== '?').length;
+    // After a commit the primary button becomes "Sync Changes" (what `git push` / `git pull` do), like VS Code.
+    let mode = 'commit';
+    if (!G.files.length) {
+      if (G.ahead || G.behind) mode = 'sync';
+      else if (!G.hasUp) {
+        const [rem0, head0] = await Promise.all([git(['remote']), git(['rev-parse', '--verify', 'HEAD'])]);
+        if (rem0.stdout.trim() && head0.code === 0) mode = 'publish';
+      }
+    }
+    primaryAct = { commit, sync: syncIt, publish: pushIt }[mode];
+    const arrows = (G.ahead ? '↑' + G.ahead : '') + (G.ahead && G.behind ? ' ' : '') + (G.behind ? '↓' + G.behind : '');
+    const primary = mode === 'commit'
+      ? h('button', { class: 'scm-commit', type: 'button', onclick: commit, title: 'Commit (Ctrl+Enter)' }, CF.icon('check', 14), 'Commit', stagedCount ? h('span', { class: 'n' }, stagedCount) : null)
+      : mode === 'sync'
+        ? h('button', { class: 'scm-commit sync', type: 'button', onclick: syncIt, title: `${G.ahead ? `Push ${G.ahead} commit${G.ahead === 1 ? '' : 's'}` : ''}${G.ahead && G.behind ? ' and ' : ''}${G.behind ? `pull ${G.behind}` : ''} (Ctrl+Enter)` },
+          CF.icon('refresh', 14), 'Sync Changes', arrows ? h('span', { class: 'n' }, arrows) : null)
+        : h('button', { class: 'scm-commit sync', type: 'button', onclick: pushIt, title: 'Publish this branch to the remote (Ctrl+Enter)' }, CF.icon('up', 14), 'Publish Branch');
+    const chev = h('button', { class: 'scm-chev', type: 'button', 'aria-label': 'More commit actions', 'aria-haspopup': 'menu', title: 'More commit actions',
+      onclick: (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4 }, mode === 'commit' ? [['Commit', commit], ['Commit & Push', commitPush], '-', ['Commit (Amend)', amendIt]] : [['Sync Changes', syncIt], ['Push', pushIt], ['Pull', run('Pull', ['pull'])], ['Fetch', run('Fetch', ['fetch', '--all'])], '-', ['Commit (Amend)', amendIt]]); } }, CF.icon('chevronDown', 14));
+    body.append(h('div', { class: 'scm-commitbox' },
+      h('div', { class: 'scm-field' }, ta, gen),
+      h('div', { class: 'scm-actions' }, h('div', { class: 'scm-split' }, primary, chev), h('span', { class: 'scm-kbd' }, 'Ctrl', h('i', {}, '+'), 'Enter'))));
+    setTimeout(fit, 0);
+
+    // Changes: one collapsible section with a compact toolbar; staged and unstaged trees inside
+    const tool = (icon, title, fn) => h('button', { class: 'scm-ic', type: 'button', title, 'aria-label': title, onclick: (e) => { e.stopPropagation(); fn(e); } }, CF.icon(icon, 14));
+    const tools = h('span', { class: 'scm-tools' },
+      tool('sparkle', 'Generate commit message', () => gen.click()),
+      tool('refresh', 'Sync changes (pull & push)', () => syncIt()),
+      tool('git', 'Branch view', () => { G.fold.Branches = false; const hd = body.querySelector('[data-fold="Branches"]'); if (hd) { hd.nextSibling && (hd.nextSibling.hidden = false); hd.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }),
+      tool('plus', 'Stage all changes', () => run('Stage all', ['add', '-A'])()),
+      tool('undo', 'Discard all changes', async () => {
+        if (!G.files.length) return CF.toast('Nothing to discard');
+        if (!(await CF.confirm(`Discard all ${total} change${total === 1 ? '' : 's'}? Untracked files are deleted. This cannot be undone.`, 'Discard all'))) return;
+        for (const f of G.files) { try { if (f.x === '?') await must(['clean', '-f', '--', f.path]); else { if (f.x !== ' ') await git(['restore', '--staged', '--', f.path]); await must(['restore', '--', f.path]); } } catch (e) { /* keep going: report once below */ } }
+        await CF.gitRefresh(); CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); CF.toast('Changes discarded');
+      }));
+    const secBody = h('div', { class: 'scm-secbody' }), arr = h('span', { class: 'arr' });
+    const setSec = () => { const c = !!G.fold.__changes; arr.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); secBody.hidden = c; };
+    body.append(h('div', { class: 'scm-sec', role: 'button', tabindex: 0, 'aria-expanded': String(!G.fold.__changes), onclick: () => { G.fold.__changes = !G.fold.__changes; setSec(); },
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); G.fold.__changes = !G.fold.__changes; setSec(); } } },
+      arr, h('span', { class: 'ttl' }, 'Changes'), total ? h('span', { class: 'scm-count' }, total) : null, h('span', { class: 'grow' }), tools), secBody);
+    const group = (label, list, isStaged, bulk) => {
+      if (!list.length) return;
+      secBody.append(h('div', { class: 'scm-group' }, h('span', {}, label), h('span', { class: 'scm-count' }, list.length), h('span', { class: 'grow' }), bulk));
+      renderTree(buildTree(list), 0, label, isStaged).forEach((n) => secBody.append(n));
+    };
+    group('Staged', G.files.filter((f) => f.x !== ' ' && f.x !== '?'), true,
+      h('button', { class: 'icon-btn', title: 'Unstage all', 'aria-label': 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 13)));
+    group('Unstaged', unstaged, false,
+      h('button', { class: 'icon-btn', title: 'Stage all', 'aria-label': 'Stage all', onclick: run('Stage all', ['add', '-A']) }, CF.icon('plus', 13)));
+    if (!G.files.length) secBody.append(h('div', { class: 'scm-empty' }, h('span', { html: CF.iconHtml('check', 18) }), h('b', {}, 'Working tree clean'), h('small', {}, 'No changes to commit.')));
+    setSec();
 
     const [br, log, rem] = await Promise.all([git(['branch', '-a', '--format=%(HEAD)|%(refname:short)']), git(['log', '--all', '--date=short', '--pretty=format:%h|%an|%ad|%s|%D', '-n', '100']), git(['remote', '-v'])]);
     G.branches = br.stdout.split('\n').filter(Boolean).map((l) => ({ cur: l[0] === '*', name: l.slice(2) }));
@@ -114,7 +269,7 @@
   const autoFetch = async () => { if (!S.root || !G.repo || !G.hasUp || document.hidden) return; await git(['fetch', '--quiet'], { timeout: 30000 }); CF.gitRefresh(); };
   setInterval(autoFetch, 180000);
   window.addEventListener('focus', () => { if (S.root) { CF.gitRefresh(); setTimeout(autoFetch, 500); } });
-  const newBranch = CF.guard(async () => { const v = await CF.ask('Create Branch', [{ id: 'n', label: 'Branch name', placeholder: 'feature/login' }]); if (v && /^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Create branch', ['checkout', '-b', v.n])(); else if (v) CF.toast('Invalid branch name', true); });
+  const newBranch = CF.guard(async () => { const v = await CF.ask('Checkout New Branch', [{ id: 'n', label: 'New branch name (created from the current branch)', placeholder: 'feature/login' }], 'Create & checkout'); if (v && /^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Checked out new branch ' + v.n + ' -', ['checkout', '-b', v.n])(); else if (v) CF.toast('Invalid branch name', true); });
   const addRemote = CF.guard(async () => { const v = await CF.ask('Add Remote', [{ id: 'n', label: 'Name', value: 'origin' }, { id: 'u', label: 'URL (https or ssh)' }]); if (v && v.u) run('Add remote', ['remote', 'add', v.n, v.u])(); });
 
   // ---- diff viewer --------------------------------------------------------------------------------

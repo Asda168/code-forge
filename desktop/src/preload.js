@@ -5,7 +5,7 @@ const on = (ch, fn) => { const h = (_e, ...a) => fn(...a); ipcRenderer.on(ch, h)
 
 contextBridge.exposeInMainWorld('cf', {
   pathFor: (file) => webUtils.getPathForFile(file),
-  ws: { openDialog: inv('ws:openDialog'), recents: inv('ws:recents'), openRecent: inv('ws:openRecent'), pickDir: inv('ws:pickDir'),
+  ws: { openFile: inv('ws:openFileDialog'), saveAs: inv('ws:saveAsDialog'), openDialog: inv('ws:openDialog'), recents: inv('ws:recents'), openRecent: inv('ws:openRecent'), pickDir: inv('ws:pickDir'),
         save: inv('ws:saveWorkspace'), list: inv('ws:listWorkspaces'), load: inv('ws:loadWorkspace') },
   fs: { list: inv('fs:list'), read: inv('fs:read'), write: inv('fs:write'), createFile: inv('fs:createFile'), mkdir: inv('fs:mkdir'),
         rename: inv('fs:rename'), move: inv('fs:move'), copy: inv('fs:copy'), delete: inv('fs:delete'), reveal: inv('fs:reveal'),
@@ -19,8 +19,6 @@ contextBridge.exposeInMainWorld('cf', {
   settings: { get: inv('settings:get'), set: inv('settings:set'), file: inv('settings:file') },
   keys: { get: inv('keys:get'), set: inv('keys:set'), file: inv('keys:file') },
   ext: { pickThemeFile: inv('ext:pickThemeFile'), saveManifest: inv('ext:saveManifest'), catalog: inv('ext:catalog'), installBundled: inv('ext:installBundled'), list: inv('ext:list'), install: inv('ext:install'), uninstall: inv('ext:uninstall'), sync: inv('ext:sync') },
-  api: { login: inv('api:login'), register: inv('api:register'), google: inv('api:google'), googleCancel: inv('google:cancel'), googleSaveConfig: inv('google:saveConfig'), googleStatus: inv('google:status'), logout: inv('api:logout'), loggedIn: inv('api:loggedIn'), request: inv('api:request') },
-  sync: { push: inv('sync:push'), pull: inv('sync:pull'), status: inv('sync:status') },
   app: { checkUpdates: inv('app:checkUpdates'), openExternal: inv('app:openExternal'), platform: inv('app:platform') },
   app2: { forceClose: inv('app:forceClose') },
   clip: { read: inv('clip:read'), write: inv('clip:write') },
@@ -29,6 +27,5 @@ contextBridge.exposeInMainWorld('cf', {
   onAskClose: (fn) => on('ask-close', fn),
   onMenu: (fn) => on('menu', fn),
   onHeader: (fn) => on('header-hidden', fn),
-  onSynced: (fn) => on('sync-applied', fn),
   onOpenPath: (fn) => on('open-path', fn),
 });
