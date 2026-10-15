@@ -3475,3 +3475,29 @@ html, body { height: 100%; margin: 0; overflow: hidden; }
 /* Symbols icon pack: <img> icons must never take drag / click events from the row */
 img.sym { width: 16px; height: 16px; display: block; pointer-events: none; flex: none; }
 .ic img.sym, .tab .ic img.sym, #sb-lang img.sym { margin: 0 auto; }
+
+/* hide the top header (setting: topBar) */
+#app.no-topbar { grid-template-rows: 0 minmax(0, 1fr) 24px; }
+#app.no-topbar #topbar { display: none; }
+
+/* account buttons (header + activity bar) */
+#account-bar { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#account-bar [hidden] { display: none; }
+#account-bar .btn.sm { padding: 3px 12px; }
+#btn-account { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dlg .or { text-align: center; color: var(--mut); margin: 10px 0; font-size: 12px; }
+.dlg .swap { margin-top: 10px; }
+
+/* signed-in profile (Google picture or initial) */
+.avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; }
+.avatar.ini { background: var(--accent, #38bdf8); color: #fff; font-weight: 700; font-size: 12px; text-align: center; }
+#btn-account { display: inline-flex; align-items: center; gap: 8px; }
+#btn-account .who { overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+#act-account .avatar { width: 26px; height: 26px; line-height: 26px; }
+
+/* Google sign-in progress */
+.gprog { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--mut) 40%, transparent); border-top-color: var(--accent, #38bdf8); animation: gspin .8s linear infinite; flex: none; }
+@keyframes gspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+#account-bar button:disabled, #act-account:disabled { opacity: .55; cursor: progress; }

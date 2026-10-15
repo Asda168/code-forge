@@ -88,11 +88,16 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
 ]
 
+# Google sign-in (OAuth "Desktop app" client). The secret stays on the server: the desktop app sends only the
+# authorization code, and this backend exchanges it.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.TokenAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"login": "10/min", "feedback": "5/hour"},
+    "DEFAULT_THROTTLE_RATES": {"login": "10/min", "feedback": "5/hour", "sync": "120/hour"},
 }
 
 # The desktop app talks to the API from file:// / app:// origins; tokens are sent as headers,

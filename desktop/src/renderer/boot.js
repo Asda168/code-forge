@@ -9,6 +9,13 @@
   CF.loadExtensions(true);                           // downloads URLs listed in settings.json "extensions", loads custom ones
   await CF.initTerminal();
   CF.bindMenu();
+  cf.onSynced(async () => {          // settings / shortcuts / extensions came down from the account (reinstall or another computer)
+    S.settings = await cf.settings.get(); CF.applySettings();
+    await CF.loadExtensions(); await CF.loadKeys && CF.loadKeys();
+    CF.renderTabs && CF.renderTabs(); CF.refreshTree && CF.refreshTree();
+    CF.toast('Your settings and extensions were restored from your account');
+  });
+  cf.onHeader((hide) => { S.settings.hideHeader = hide; $('#app').classList.toggle('no-topbar', hide); });   // same setting changed from another window
 
   $$('#activitybar [data-view]').forEach((b) => (b.onclick = () => CF.showView(b.dataset.view)));
   $$('#panel-switch [data-panel]').forEach((b) => (b.onclick = () => CF.showPanel(b.dataset.panel)));

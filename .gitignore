@@ -10,3 +10,6 @@ staticfiles/
 
 .vercel
 .env*
+
+# Google OAuth client for sign-in (copy google-oauth.example.json)
+desktop/src/google-oauth.json

@@ -8,6 +8,8 @@ Lightweight IDE: Electron desktop app (`desktop/`) + Django backend (`backend/`)
 npm install && npm run icons && npm start      # run from source
 npm run dist:win | dist:mac | dist:linux       # installers (build on matching OS)
 node scripts/security-test.js                  # path/command safety tests
+node scripts/google-auth-test.js               # Google sign-in: config, PKCE, ID-token validation
+node scripts/e2e-google.js                     # Google sign-in end to end (mock Google, real Electron)
 node scripts/e2e*.js                           # Electron end-to-end scripts
 
 # backend (run in backend/)
@@ -15,7 +17,9 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
 python manage.py migrate && python manage.py seed && python manage.py runserver
 python manage.py test core
 ```
-`CODEFORGE_API` env var points the app at the backend (default `http://127.0.0.1:8000/api`).
+`CODEFORGE_API` env var points the app at the backend (default `http://127.0.0.1:8000/api`). A packaged app defaults to `https://astaide.vercel.app/api`.
+
+Google sign-in + settings sync is **backend-free**: `main.js` `api:google` (PKCE, one-shot 127.0.0.1 listener) talks to Google directly and stores the snapshot (`settings`, `keys`, `extensions`; machine paths excluded via `SYNC_SKIP`) in the user's Drive app-data folder. Needs `desktop/src/google-oauth.json` (see `docs/GOOGLE_SIGNIN.md`). The Django `/api/auth/google/` + `/api/sync/` routes remain for username accounts only.
 
 ## Layout
 - `desktop/src/main.js` – Electron main process: all `ipcMain.handle` channels (fs, git, term, project, settings, ext, api), `DEFAULT_SETTINGS`.

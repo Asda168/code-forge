@@ -8,9 +8,13 @@ router.register("projects", views.ProjectViewSet)
 router.register("workspaces", views.WorkspaceViewSet)
 
 urlpatterns = [
+    path("", views.ApiIndexView.as_view()),
     path("auth/login/", views.LoginView.as_view()),
     path("auth/logout/", views.LogoutView.as_view()),
     path("auth/register/", views.RegisterView.as_view()),
+    path("auth/google/", views.GoogleLoginView.as_view()),
+    path("auth/google/config/", views.GoogleConfigView.as_view()),
+    path("sync/", views.SyncView.as_view()),
     path("profile/", views.ProfileView.as_view()),
     path("settings/", views.SettingsView.as_view()),
     path("releases/", views.ReleaseList.as_view()),

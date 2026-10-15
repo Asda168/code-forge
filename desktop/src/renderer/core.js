@@ -513,6 +513,7 @@ CF.applySettings = () => {
   $("#app").classList.toggle("no-tabacts", s.tabActions === false);
   $("#app").classList.toggle("no-sidebar", !s.sidebar);
   $("#app").classList.toggle("no-activity", !s.activityBar);
+  $("#app").classList.toggle("no-topbar", !!s.hideHeader);
   $("#statusbar").hidden = !s.statusBar;
   $("#sb-font").textContent = s.fontFamily;
   $("#sb-indent").textContent =

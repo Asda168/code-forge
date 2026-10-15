@@ -10,7 +10,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.UserProfile
-        fields = ["username", "email", "display_name", "telemetry_enabled", "sync_enabled", "ai_consent"]
+        fields = ["username", "email", "display_name", "avatar_url", "telemetry_enabled", "sync_enabled", "ai_consent"]
+        read_only_fields = ["avatar_url"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
