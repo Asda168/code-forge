@@ -5,17 +5,16 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.3.6"
-RELEASED = "2026-10-14"
+VERSION = "1.3.7"
+RELEASED = "2026-10-15"
 # Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
-VERSIONS = ["1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
+VERSIONS = ["1.3.7", "1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
-    "Find in Files: replace, search details, match case / whole word / regex, tree view and Search Editor",
-    "Symbols icon theme (Miguel Solorio) and a JetBrains icon theme",
-    "JetBrains Darcula (PhpStorm) colour theme",
-    "Terminal copy / paste with Ctrl+C and Ctrl+V",
-    "Opening a second window or project works reliably",
-    "Layout fixes for the terminal panel, maximize and notifications",
+    "Merge conflict resolution: inline Accept Current / Incoming / Both / Compare actions, an Accept All bar and a Merge Changes group in Source Control",
+    "Redesigned Source Control: file tree, Generate commit message, Commit / Sync Changes / Publish Branch button and a one-click New Branch",
+    "Right-click options for files and folders in Source Control",
+    "File menu follows VS Code: Open File, Open Recent, Save As, Auto Save, Revert File, Close Folder",
+    "Hide Layout Header setting (Ctrl+Alt+H) to give the editor more room",
 ]
 _REL = f"{REPO}/releases/latest/download"
 
