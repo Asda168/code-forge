@@ -39,6 +39,8 @@
   // Returns true when a commit was made. `amend` rewrites the last commit with the message in the box.
   const doCommit = async (amend) => {
     const box = $('#commit-msg'), msg = (box ? box.value : G.msg).trim();
+    const unresolved = G.files.filter(isConflict).length;
+    if (unresolved) { CF.toast(`Resolve ${unresolved} conflicted file${unresolved === 1 ? '' : 's'} first (then stage them).`, true); return false; }
     if (!msg) { CF.toast('Enter a commit message', true); return false; }
     if (amend) { if (!(await CF.confirm('Replace the last commit with the staged changes and this message? Do not do this to commits you already pushed.', 'Amend'))) return false; }
     else if (!G.files.some((f) => f.x !== ' ' && f.x !== '?')) { if (!(await CF.confirm('Nothing staged. Stage all changes and commit?', 'Stage all & commit'))) return false; await must(['add', '-A']); }
@@ -98,6 +100,35 @@
       h('span', { class: 'st ' + label, title: ({ M: 'Modified', A: 'Added', D: 'Deleted', R: 'Renamed', U: 'Untracked', C: 'Copied' })[label] || label }, label));
   }
 
+  // Git porcelain codes for an unmerged path (both modified, both added, deleted by one side, ...).
+  const isConflict = (f) => ['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'].includes(f.x + f.y);
+  // Whole-file resolution: keep one side's version and stage it (the editor's inline actions resolve individual blocks).
+  const acceptSide = CF.guard(async (side, f) => {
+    await must(['checkout', side === 'ours' ? '--ours' : '--theirs', '--', f.path]);
+    await must(['add', '--', f.path]);
+    CF.toast(`Kept the ${side === 'ours' ? 'current' : 'incoming'} version of ${base(f.path)}`);
+    await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree();
+  });
+  const bothEdited = (f) => f.x + f.y === 'UU' || f.x + f.y === 'AA';          // "accept one side" only makes sense when both sides have the file
+  function conflictRow(f) {
+    const btn = (t, ti, fn) => h('button', { class: 'icon-btn', title: ti, 'aria-label': ti, onclick: (e) => { e.stopPropagation(); fn(); } }, t);
+    const open = () => CF.openFile(abs(f.path));
+    const kind = ({ UU: 'Both modified', AA: 'Both added', DD: 'Both deleted', AU: 'Added by us', UA: 'Added by them', DU: 'Deleted by us', UD: 'Deleted by them' })[f.x + f.y] || 'Conflict';
+    const menu = (e) => CF.menu(e, [['Open File', open], '-',
+      ...(bothEdited(f) ? [['Accept Current Version', () => acceptSide('ours', f)], ['Accept Incoming Version', () => acceptSide('theirs', f)], '-'] : []),
+      ['Mark as Resolved', () => CF.markResolved(abs(f.path))], '-',
+      ['Copy Relative Path', CF.guard(async () => { await cf.clip.write(f.path); CF.toast('Relative path copied'); })], ['Reveal in File Manager', () => cf.fs.reveal(abs(f.path))]]);
+    const more = (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4, preventDefault() {}, stopPropagation() {} }); };
+    return h('div', { class: 'gi scm-file scm-conflict', style: 'padding-left:10px', tabindex: 0, role: 'button', 'aria-haspopup': 'menu', title: `${f.path} — ${kind}`, onclick: open,
+      oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); menu(e); },
+      onkeydown: (e) => { if (e.key === 'Enter') open(); else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: r.left + 40, clientY: r.bottom, preventDefault() {}, stopPropagation() {} }); } } },
+      h('span', { class: 'ic', html: CF.fileIconHtml(base(f.path), false) }), h('span', { class: 'nm' }, base(f.path), h('small', {}, f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '')),
+      h('span', { class: 'acts' }, btn(CF.icon('open', 13), 'Open File', open),
+        ...(bothEdited(f) ? [btn(CF.icon('up', 13), 'Accept Current Version', () => acceptSide('ours', f)), btn(CF.icon('down', 13), 'Accept Incoming Version', () => acceptSide('theirs', f))] : []),
+        btn(CF.icon('check', 13), 'Mark as Resolved (stage)', () => CF.markResolved(abs(f.path))), h('button', { class: 'icon-btn', title: 'More options', 'aria-label': 'More options', 'aria-haspopup': 'menu', onclick: more }, CF.icon('more', 13))),
+      h('span', { class: 'st X', title: kind }, '!'));
+  }
+
   // Files grouped by folder (single-child folder chains are shown as one row, like VS Code's compact folders).
   const buildTree = (files) => {
     const root = { dirs: new Map(), files: [] };
@@ -140,6 +171,7 @@
 
   CF.renderGit = async (parent) => {
     let body = parent;
+    for (const k of ['Branches', 'Commits', 'Remotes']) if (!(k in G.fold)) G.fold[k] = true;     // 4 open panels is too much vertical space: secondary ones start collapsed
     if (!S.root) return body.append(h('div', { class: 'pad muted' }, 'Open a folder first.'));
     if (!G.repo) return body.append(h('div', { class: 'pad' }, h('p', { class: 'muted' }, 'This folder is not a Git repository.'),
       h('button', { class: 'btn', onclick: run('Init', ['init']) }, 'Initialize Repository'), ' ', h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone…')));
@@ -148,7 +180,9 @@
     const lum = (() => { const m = (getComputedStyle(document.body).backgroundColor || '').match(/\d+/g); return m ? (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) : 0; })();
     if (lum > 150) wrap.classList.add('scm-light');                        // light themes keep their own surface colours
     const total = new Set(G.files.map((f) => f.path)).size;
-    const unstaged = G.files.filter((f) => f.y !== ' ' || f.x === '?');
+    const conflicts = G.files.filter(isConflict), normal = G.files.filter((f) => !isConflict(f));
+    const unstaged = normal.filter((f) => f.y !== ' ' || f.x === '?');
+    const openFirst = () => { const c = conflicts[0]; if (c) CF.openFile(abs(c.path)); };
 
     // header actions (next to the "Source Control" title)
     const moreMenu = (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4 }, [
@@ -168,6 +202,14 @@
       h('span', { class: 'grow' }),
       h('button', { class: 'scm-newbranch', type: 'button', title: 'Create a new branch and check it out (git checkout -b)', 'aria-label': 'Checkout new branch', onclick: newBranch }, CF.icon('plus', 12), 'New Branch')));
 
+    // conflicts: ONE banner that carries the explanation and the action (no second warning, no orange commit button)
+    if (conflicts.length) {
+      const n = conflicts.length;
+      body.append(h('div', { class: 'scm-banner', role: 'status' }, h('span', { class: 'ico', html: CF.iconHtml('bug', 16) }),
+        h('div', { class: 'tx' }, h('b', {}, `${n} merge conflict${n === 1 ? '' : 's'}`), h('small', {}, 'Resolve and stage each file, then commit.')),
+        h('button', { class: 'scm-btn', type: 'button', onclick: openFirst, title: 'Open the first conflicted file' }, 'Resolve')));
+    }
+
     // commit message: auto-growing field with an embedded Generate pill
     const ta = h('textarea', { id: 'commit-msg', rows: 1, placeholder: 'Message (Ctrl+Enter to commit…)', spellcheck: 'false', 'aria-label': 'Commit message' });
     ta.value = G.msg;
@@ -177,30 +219,36 @@
     ta.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); primaryAct(); } });
     const gen = h('button', { class: 'scm-gen', type: 'button', title: 'Generate a message from your changes (built locally, nothing is sent anywhere)', 'aria-label': 'Generate commit message',
       onclick: () => { const s = suggest(); if (!s) return CF.toast('No changes to describe', true); ta.value = G.msg = s; fit(); ta.focus(); } }, CF.icon('sparkle', 12), 'Generate');
-    const stagedCount = G.files.filter((f) => f.x !== ' ' && f.x !== '?').length;
+    const stagedCount = normal.filter((f) => f.x !== ' ' && f.x !== '?').length;
     // After a commit the primary button becomes "Sync Changes" (what `git push` / `git pull` do), like VS Code.
     let mode = 'commit';
-    if (!G.files.length) {
+    if (conflicts.length) mode = 'merge';
+    else if (!G.files.length) {
       if (G.ahead || G.behind) mode = 'sync';
       else if (!G.hasUp) {
         const [rem0, head0] = await Promise.all([git(['remote']), git(['rev-parse', '--verify', 'HEAD'])]);
         if (rem0.stdout.trim() && head0.code === 0) mode = 'publish';
       }
     }
-    primaryAct = { commit, sync: syncIt, publish: pushIt }[mode];
+    primaryAct = { commit, sync: syncIt, publish: pushIt, merge: openFirst }[mode];
     const arrows = (G.ahead ? '↑' + G.ahead : '') + (G.ahead && G.behind ? ' ' : '') + (G.behind ? '↓' + G.behind : '');
-    const primary = mode === 'commit'
-      ? h('button', { class: 'scm-commit', type: 'button', onclick: commit, title: 'Commit (Ctrl+Enter)' }, CF.icon('check', 14), 'Commit', stagedCount ? h('span', { class: 'n' }, stagedCount) : null)
+    const MAC = !!(S.platform && S.platform.platform === 'darwin'), KB = MAC ? '⌘↵' : 'Ctrl ↵';     // the shortcut lives inside the button, so it can never be clipped
+    const kb = () => h('span', { class: 'k', 'aria-hidden': 'true' }, KB);
+    const primary = mode === 'merge'
+      ? h('button', { class: 'scm-commit', type: 'button', disabled: true, title: `Resolve ${conflicts.length} conflicted file${conflicts.length === 1 ? '' : 's'} and stage them to enable commit` }, CF.icon('check', 14), 'Commit')
+      : mode === 'commit'
+      ? h('button', { class: 'scm-commit', type: 'button', onclick: commit, title: `Commit (${MAC ? 'Cmd' : 'Ctrl'}+Enter)` }, CF.icon('check', 14), 'Commit', stagedCount ? h('span', { class: 'n' }, stagedCount) : null, kb())
       : mode === 'sync'
         ? h('button', { class: 'scm-commit sync', type: 'button', onclick: syncIt, title: `${G.ahead ? `Push ${G.ahead} commit${G.ahead === 1 ? '' : 's'}` : ''}${G.ahead && G.behind ? ' and ' : ''}${G.behind ? `pull ${G.behind}` : ''} (Ctrl+Enter)` },
-          CF.icon('refresh', 14), 'Sync Changes', arrows ? h('span', { class: 'n' }, arrows) : null)
-        : h('button', { class: 'scm-commit sync', type: 'button', onclick: pushIt, title: 'Publish this branch to the remote (Ctrl+Enter)' }, CF.icon('up', 14), 'Publish Branch');
+          CF.icon('refresh', 14), 'Sync Changes', arrows ? h('span', { class: 'n' }, arrows) : null, kb())
+        : h('button', { class: 'scm-commit sync', type: 'button', onclick: pushIt, title: 'Publish this branch to the remote (Ctrl+Enter)' }, CF.icon('up', 14), 'Publish Branch', kb());
     const chev = h('button', { class: 'scm-chev', type: 'button', 'aria-label': 'More commit actions', 'aria-haspopup': 'menu', title: 'More commit actions',
-      onclick: (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4 }, mode === 'commit' ? [['Commit', commit], ['Commit & Push', commitPush], '-', ['Commit (Amend)', amendIt]] : [['Sync Changes', syncIt], ['Push', pushIt], ['Pull', run('Pull', ['pull'])], ['Fetch', run('Fetch', ['fetch', '--all'])], '-', ['Commit (Amend)', amendIt]]); } }, CF.icon('chevronDown', 14));
+      onclick: (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4 }, mode === 'merge' ? [['Open first conflict', openFirst], ['Abort merge', run('Abort merge', ['merge', '--abort'])]] : mode === 'commit' ? [['Commit', commit], ['Commit & Push', commitPush], '-', ['Commit (Amend)', amendIt]] : [['Sync Changes', syncIt], ['Push', pushIt], ['Pull', run('Pull', ['pull'])], ['Fetch', run('Fetch', ['fetch', '--all'])], '-', ['Commit (Amend)', amendIt]]); } }, CF.icon('chevronDown', 14));
     body.append(h('div', { class: 'scm-commitbox' },
       h('div', { class: 'scm-field' }, ta, gen),
-      h('div', { class: 'scm-actions' }, h('div', { class: 'scm-split' }, primary, chev), h('span', { class: 'scm-kbd' }, 'Ctrl', h('i', {}, '+'), 'Enter'))));
+      h('div', { class: 'scm-actions' }, h('div', { class: 'scm-split' + (mode === 'merge' ? ' off' : '') }, primary, chev))));
     setTimeout(fit, 0);
+
 
     // Changes: one collapsible section with a compact toolbar; staged and unstaged trees inside
     const tool = (icon, title, fn) => h('button', { class: 'scm-ic', type: 'button', title, 'aria-label': title, onclick: (e) => { e.stopPropagation(); fn(e); } }, CF.icon(icon, 14));
@@ -225,11 +273,15 @@
       secBody.append(h('div', { class: 'scm-group' }, h('span', {}, label), h('span', { class: 'scm-count' }, list.length), h('span', { class: 'grow' }), bulk));
       renderTree(buildTree(list), 0, label, isStaged).forEach((n) => secBody.append(n));
     };
-    group('Staged', G.files.filter((f) => f.x !== ' ' && f.x !== '?'), true,
+    if (conflicts.length) {
+      secBody.append(h('div', { class: 'scm-group scm-group-conflict' }, h('span', {}, 'Merge Changes'), h('span', { class: 'scm-count' }, conflicts.length), h('span', { class: 'grow' })));
+      conflicts.forEach((f) => secBody.append(conflictRow(f)));
+    }
+    group('Staged', normal.filter((f) => f.x !== ' ' && f.x !== '?'), true,
       h('button', { class: 'icon-btn', title: 'Unstage all', 'aria-label': 'Unstage all', onclick: run('Unstage all', ['reset']) }, CF.icon('minus', 13)));
     group('Unstaged', unstaged, false,
       h('button', { class: 'icon-btn', title: 'Stage all', 'aria-label': 'Stage all', onclick: run('Stage all', ['add', '-A']) }, CF.icon('plus', 13)));
-    if (!G.files.length) secBody.append(h('div', { class: 'scm-empty' }, h('span', { html: CF.iconHtml('check', 18) }), h('b', {}, 'Working tree clean'), h('small', {}, 'No changes to commit.')));
+    if (!G.files.length && !conflicts.length) secBody.append(h('div', { class: 'scm-empty' }, h('span', { html: CF.iconHtml('check', 18) }), h('b', {}, 'Working tree clean'), h('small', {}, 'No changes to commit.')));
     setSec();
 
     const [br, log, rem] = await Promise.all([git(['branch', '-a', '--format=%(HEAD)|%(refname:short)']), git(['log', '--all', '--date=short', '--pretty=format:%h|%an|%ad|%s|%D', '-n', '100']), git(['remote', '-v'])]);
@@ -239,11 +291,14 @@
       ['Delete branch', CF.guard(async () => { if (await CF.confirm(`Delete branch ${b.name}?`, 'Delete')) run('Delete branch', ['branch', '-d', b.name])(); })]]); } },
     h('span', { class: 'st', style: 'color:var(--cyan)' }, b.cur ? '●' : ''), h('span', { class: 'nm' }, b.name))));
     const commitRows = log.stdout.split('\n').filter(Boolean).map((l) => { const [hash, an, ad, subj, refs] = l.split('|');
-      return h('div', { class: 'commit', onclick: () => CF.showCommit(hash) }, h('span', { class: 'dot' }, '●'), h('div', {}, h('div', {}, subj, refs ? h('span', { class: 'badge', style: 'margin-left:6px' }, refs.split(', ')[0]) : null), h('div', { class: 'meta' }, `${hash} · ${an} · ${ad}`))); });
+      return h('div', { class: 'commit scm-cm', tabindex: 0, onclick: () => CF.showCommit(hash), onkeydown: (e) => { if (e.key === 'Enter') CF.showCommit(hash); } }, h('span', { class: 'dot' }),
+        h('div', { class: 'cm-body' }, h('div', { class: 'cm-subj' }, h('span', { class: 'cm-t', title: subj }, subj), refs ? h('span', { class: 'cm-ref' }, refs.split(', ')[0].replace('HEAD -> ', '')) : null),
+          h('div', { class: 'cm-meta' }, h('span', { class: 'cm-hash' }, hash), `${an} · ${ad}`))); });
     fold(body, 'Commits', 'Commits', commitRows.length, null, commitRows);
     const seen = new Set(), remRows = [];
-    rem.stdout.split('\n').filter(Boolean).forEach((l) => { if (!l.includes('(fetch)')) return; const k = l.split('\t')[0]; if (seen.has(k)) return; seen.add(k); remRows.push(h('div', { class: 'gi mono', style: 'font-size:11px' }, l.replace(' (fetch)', ''))); });
-    if (!remRows.length) remRows.push(h('div', { class: 'pad muted' }, 'No remotes. Pull requests & issues live on your Git host.'));
+    rem.stdout.split('\n').filter(Boolean).forEach((l) => { if (!l.includes('(fetch)')) return; const k = l.split('\t')[0]; if (seen.has(k)) return; seen.add(k); remRows.push(h('div', { class: 'gi scm-remote', title: l.replace(' (fetch)', '') }, h('span', { class: 'rn' }, k), h('span', { class: 'ru' }, l.split('\t')[1] ? l.split('\t')[1].replace(' (fetch)', '') : ''))); });
+    if (!remRows.length) remRows.push(h('div', { class: 'scm-emptycard' }, h('b', {}, 'No remote yet'), h('small', {}, 'Add one to push, pull and collaborate on a Git host.'),
+      h('button', { class: 'scm-btn', type: 'button', onclick: addRemote }, CF.icon('plus', 12), 'Add remote')));
     fold(body, 'Remotes', 'Remotes', seen.size, h('button', { class: 'icon-btn', title: 'Add remote', onclick: addRemote }, '＋'), remRows);
   };
   const pushIt = CF.guard(async () => {

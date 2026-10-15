@@ -3554,3 +3554,127 @@ img.sym { width: 16px; height: 16px; display: block; pointer-events: none; flex:
   border: 1px solid #6366f159; background: #6366f12b; color: var(--scm-accent2); font: 600 11.5px Inter, system-ui, sans-serif; transition: background .12s, box-shadow .12s; }
 .scm-newbranch:hover { background: #6366f142; box-shadow: 0 0 12px #6366f140; }
 .scm-newbranch:focus-visible { outline: 2px solid var(--scm-accent); outline-offset: 2px; }
+
+/* ===== merge conflicts ===== */
+.cf-c-cur { background: rgba(64, 200, 174, .16); }
+.cf-c-inc { background: rgba(64, 166, 255, .16); }
+.cf-c-base { background: rgba(160, 160, 160, .12); }
+.cf-c-mark { background: rgba(255, 255, 255, .06); }
+.cf-c-head.cf-c-cur { background: rgba(64, 200, 174, .34); }
+.cf-c-head.cf-c-inc { background: rgba(64, 166, 255, .34); }
+.cf-bar { display: flex; align-items: center; gap: 6px; margin: 0 22px 10px 0; padding: 5px 6px 5px 12px; border-radius: 8px; z-index: 30;
+  background: #1c1e24; border: 1px solid #fb923c66; box-shadow: 0 6px 20px #00000066; font: 12px Inter, "Segoe UI", system-ui, sans-serif; color: #e7e9ee; }
+.cf-bar[hidden] { display: none; }
+.cf-count { font-weight: 600; color: #fb923c; margin-right: 4px; }
+.cf-btn { height: 24px; padding: 0 9px; border: 1px solid #ffffff1f; border-radius: 6px; background: #ffffff0d; color: #e7e9ee; cursor: pointer; font: 600 11.5px Inter, system-ui, sans-serif; }
+.cf-btn:hover { background: #ffffff1c; }
+.cf-btn:last-child { background: #6366f1; border-color: #6366f1; color: #fff; }
+.cf-btn:focus-visible { outline: 2px solid #8b8ff8; outline-offset: 1px; }
+.scm-warn { display: flex; gap: 8px; align-items: flex-start; margin: 10px 12px 0; padding: 8px 10px; border: 1px solid #fb923c55; border-radius: 8px; background: #fb923c14; color: #fdba74; font-size: 11.5px; line-height: 1.45; }
+.scm-warn .svg { flex: none; margin-top: 1px; }
+.scm-group-conflict { color: #fb923c; }
+.scm-conflict .nm small { margin-left: 6px; color: var(--scm-mut); font-size: 11px; }
+.scm .st.X { background: #fb923c26; color: #fb923c; }
+.scm-commit.warn { background: linear-gradient(180deg, #f59e3b, #e07b13); }
+
+/* ===== Source Control: design tokens + refinements (zinc neutrals, one accent, restrained status colours) ===== */
+.scm {
+  --scm-bg: #121316; --scm-s1: #17181c; --scm-s2: #1d1f24;
+  --scm-line: #ffffff0f; --scm-line2: #ffffff1a; --scm-hover: #ffffff0a;
+  --scm-fg: #e6e8ec; --scm-mut: #9aa1ad; --scm-dim: #6b7280;
+  --scm-accent: #6d70f2; --scm-accent-hi: #7d80f5; --scm-accent-soft: #6d70f21f; --scm-accent-line: #6d70f259; --scm-accent-text: #a1a4f8; --scm-glow: #6d70f240;
+  --scm-warn: #e5b64e; --scm-warn-soft: #e5b64e14; --scm-warn-line: #e5b64e47;
+  --scm-ok: #5fd08a; --scm-bad: #f0716f;
+  --scm-r: 8px; --scm-r-sm: 6px; --scm-r-pill: 999px;
+  --scm-row: 28px; --scm-pad: 12px; --scm-gap: 8px;
+  --scm-surface: var(--scm-s1); --scm-accent2: var(--scm-accent-text);
+}
+.scm.scm-light { --scm-bg: var(--side); --scm-s1: var(--bg); --scm-s2: var(--bg); --scm-line: var(--border); --scm-line2: var(--border); --scm-hover: color-mix(in srgb, var(--fg) 6%, transparent);
+  --scm-fg: var(--fg); --scm-mut: var(--mut); --scm-dim: var(--mut); --scm-accent: var(--accent); --scm-accent-hi: var(--accent); --scm-accent-text: var(--accent);
+  --scm-accent-soft: color-mix(in srgb, var(--accent) 14%, transparent); --scm-accent-line: color-mix(in srgb, var(--accent) 40%, transparent); --scm-glow: color-mix(in srgb, var(--accent) 25%, transparent); }
+#side-body:has(> .scm:not(.scm-light)) { background: var(--scm-bg, #121316); }
+
+/* one accent family for every non-status control */
+.scm-gen, .scm-newbranch { border-color: var(--scm-accent-line); background: var(--scm-accent-soft); color: var(--scm-accent-text); }
+.scm-gen:hover, .scm-newbranch:hover { background: #6d70f236; box-shadow: none; }
+.scm-chip { background: var(--scm-s2); color: var(--scm-accent-text); border: 1px solid var(--scm-line); }
+.scm-branch { background: var(--scm-s1); border-color: var(--scm-line); color: var(--scm-fg); }
+.scm-branch .svg { color: var(--scm-accent-text); }
+.scm-field { background: var(--scm-s1); border-color: var(--scm-line2); border-radius: var(--scm-r); }
+.scm-field:focus-within { border-color: var(--scm-accent); box-shadow: 0 0 0 3px var(--scm-glow); }
+
+/* primary split button: flat accent, shortcut chip INSIDE the button (cannot be clipped) */
+.scm-actions { display: block; margin-top: 10px; }
+.scm-split { display: flex; width: 100%; border-radius: var(--scm-r); box-shadow: inset 0 1px 0 #ffffff1f; }
+.scm-commit, .scm-chev { background: var(--scm-accent); }
+.scm-commit:hover, .scm-chev:hover { background: var(--scm-accent-hi); filter: none; }
+.scm-commit { justify-content: flex-start; gap: 8px; padding: 0 10px 0 12px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.scm-commit .k { margin-left: auto; flex: none; font: 500 10.5px "JetBrains Mono", monospace; padding: 2px 6px; border-radius: 5px; background: #ffffff24; color: #ffffffd9; letter-spacing: 0; }
+.scm-commit .n { background: #ffffff2e; }
+.scm-chev { border-left: 1px solid #ffffff2e; }
+.scm-split.off .scm-commit { background: var(--scm-s2); color: var(--scm-dim); cursor: not-allowed; }
+.scm-split.off .scm-chev { background: var(--scm-s2); color: var(--scm-mut); border-left-color: var(--scm-line); }
+.scm-split.off .scm-commit:hover { filter: none; background: var(--scm-s2); }
+
+/* conflict banner: the single place that explains the state and hosts the action */
+.scm-banner { display: flex; align-items: center; gap: 10px; margin: 10px 12px 0; padding: 9px 10px 9px 12px; border: 1px solid var(--scm-warn-line); border-radius: var(--scm-r); background: var(--scm-warn-soft); }
+.scm-banner .ico { color: var(--scm-warn); display: inline-flex; flex: none; }
+.scm-banner .tx { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+.scm-banner b { font-size: 12.5px; font-weight: 600; color: var(--scm-fg); }
+.scm-banner small { font-size: 11.5px; color: var(--scm-mut); white-space: normal; }
+.scm-btn { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border: 0; border-radius: var(--scm-r-sm); cursor: pointer; flex: none;
+  background: var(--scm-accent); color: #fff; font: 600 12px Inter, system-ui, sans-serif; }
+.scm-btn:hover { background: var(--scm-accent-hi); }
+.scm-btn:focus-visible { outline: 2px solid var(--scm-accent-text); outline-offset: 2px; }
+.scm-group-conflict, .scm-group-conflict span:first-child { color: var(--scm-warn); }
+.scm-warn { display: none; }
+
+/* section headers: one style for Changes, Branches, Commits, Remotes */
+.scm-sec, .scm .sec-head { display: flex; align-items: center; gap: 8px; height: 34px; margin-top: 8px; padding: 0 8px 0 10px; border: 0; border-top: 1px solid var(--scm-line);
+  background: transparent; text-transform: uppercase; letter-spacing: .07em; font: 700 10.5px Inter, system-ui, sans-serif; color: var(--scm-mut); cursor: pointer; user-select: none; }
+.scm-sec:hover, .scm .sec-head:hover { background: var(--scm-hover); }
+.scm-sec .arr, .scm .sec-head .arr { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; color: var(--scm-dim); flex: none; }
+.scm-sec:hover .arr, .scm .sec-head:hover .arr { background: #ffffff10; color: var(--scm-fg); }
+.scm-sec .ttl { color: var(--scm-fg); }
+.scm-count, .scm .sec-head .badge { font: 600 10.5px "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; min-width: 20px; padding: 1px 7px; border-radius: var(--scm-r-pill);
+  background: var(--scm-s2); color: var(--scm-mut); border: 1px solid var(--scm-line); text-align: center; letter-spacing: 0; text-transform: none; }
+.scm .sec-head .grow { flex: 1; }
+
+/* rows: 12px outer padding, 8px gaps, 28px height, fixed 16px icon + 18px badge columns */
+.scm-dir, .scm-file, .scm .gi { height: var(--scm-row); gap: var(--scm-gap); padding-right: var(--scm-pad); }
+.scm-file, .scm-conflict { padding-left: 12px; }
+.scm .gi .ic, .scm-dir .ic, .scm-file .ic { width: 16px; height: 16px; display: inline-grid; place-items: center; flex: none; }
+.scm-conflict .nm { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.scm-conflict .nm small { color: var(--scm-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.scm .st { width: 18px; height: 18px; border-radius: 5px; font-size: 10.5px; }
+.scm .st.M { background: var(--scm-warn-soft); color: var(--scm-warn); }
+.scm .st.A, .scm .st.U { background: #5fd08a1f; color: var(--scm-ok); }
+.scm .st.D { background: #f0716f1f; color: var(--scm-bad); }
+.scm .st.R, .scm .st.C { background: var(--scm-accent-soft); color: var(--scm-accent-text); }
+.scm .st.X { background: var(--scm-warn); color: #1a1405; }          /* conflict: solid, so it reads as "needs attention" without a second hue */
+.scm-group { padding: 10px 12px 4px; }
+.scm-group > span:first-child { text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; font-weight: 700; }
+
+/* commits: quiet rows, a thin graph rail, mono hash */
+.scm-cm { position: relative; display: flex; gap: 10px; padding: 7px 12px 7px 14px; border-radius: 0; cursor: pointer; }
+.scm-cm::before { content: ""; position: absolute; left: 17px; top: 0; bottom: 0; width: 1px; background: var(--scm-line2); }
+.scm-cm:first-child::before { top: 14px; }
+.scm-cm .dot { position: relative; flex: none; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--scm-s1); border: 1.5px solid var(--scm-dim); z-index: 1; font-size: 0; }
+.scm-cm:first-child .dot { border-color: var(--scm-accent-text); background: var(--scm-accent-text); }
+.scm-cm:hover { background: var(--scm-hover); }
+.scm-cm:focus-visible { outline: 2px solid var(--scm-accent); outline-offset: -2px; }
+.scm-cm .cm-body { min-width: 0; flex: 1; }
+.scm-cm .cm-subj { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--scm-fg); }
+.scm-cm .cm-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scm-cm .cm-ref { flex: none; font: 600 10px "JetBrains Mono", monospace; color: var(--scm-accent-text); padding: 0 6px; border-radius: 4px; background: var(--scm-accent-soft); max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.scm-cm .cm-meta { margin-top: 1px; font-size: 11px; color: var(--scm-dim); display: flex; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scm-cm .cm-hash { font-family: "JetBrains Mono", monospace; color: var(--scm-mut); }
+
+/* remotes + empty states */
+.scm-remote { display: flex; gap: 10px; }
+.scm-remote .rn { font-weight: 600; flex: none; }
+.scm-remote .ru { color: var(--scm-dim); font: 11px "JetBrains Mono", monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scm-emptycard { display: grid; justify-items: start; gap: 6px; margin: 8px 12px 4px; padding: 12px; border: 1px dashed var(--scm-line2); border-radius: var(--scm-r); background: var(--scm-s1); }
+.scm-emptycard b { font-weight: 600; }
+.scm-emptycard small { color: var(--scm-mut); font-size: 11.5px; line-height: 1.4; }
+.scm-emptycard .scm-btn { margin-top: 4px; }
