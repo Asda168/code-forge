@@ -206,6 +206,15 @@ h3{margin:0;letter-spacing:-.01em;font-weight:600}
 @media (max-width:560px){.plat{padding:20px}.arch button{min-width:100%}}
 .dl-foot{display:flex;gap:var(--s2);justify-content:center;flex-wrap:wrap;margin-top:var(--s5)}
 
+/* download counts */
+.dlstats{margin-top:var(--s4);padding:20px var(--s4)}.dlstats[hidden]{display:none}
+.dlstats-h{display:flex;gap:var(--s2);align-items:baseline;justify-content:space-between;flex-wrap:wrap;margin-bottom:var(--s3)}.dlstats-h h3{font-size:1.0625rem}.dlstats-h b{color:var(--fg);font-weight:600}
+.dlstats ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.dlstats li{display:grid;grid-template-columns:96px minmax(0,1fr) 72px;gap:var(--s2);align-items:center;font:400 .84rem var(--mono)}
+.dlstats .bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;border:1px solid var(--line)}.dlstats .bar i{display:block;height:100%;background:var(--a);border-radius:99px}
+.dlstats .n{text-align:right;color:var(--fg)}
+@media (max-width:480px){.dlstats li{grid-template-columns:72px minmax(0,1fr) 56px;gap:var(--s1)}}
+
 /* install + notes */
 .steps3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin-top:var(--s7)}
 .steps3 h3{font-size:1rem;margin-bottom:var(--s2)}.steps3 ol{margin:0;padding-left:20px;color:var(--mut);font-size:.9rem}.steps3 li{margin:6px 0}.steps3 li::marker{color:var(--a);font-weight:600}
@@ -427,6 +436,7 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
       <select id="ver-select" aria-label="Choose which version to download">{% for v in versions %}<option value="{{ v }}">v{{ v }}{% if forloop.first %} (latest){% endif %}</option>{% endfor %}</select>
     </label>
     <span>Released <b id="rel-date" class="mono">{{ released }}</b></span>
+    <span id="rel-count" hidden><b class="mono"></b> downloads</span>
     <span class="pill"><i></i>Free &amp; Open Source</span>
     <a id="rel-link" href="{{ repo }}/releases" target="_blank" rel="noopener">View all releases ↗</a>
   </div>
@@ -468,6 +478,11 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
       <div class="facts" aria-label="Supported formats"><span>x64</span><span>.AppImage</span><span>.deb</span><span>.rpm</span><span>.pacman</span></div>
       <p class="note soft grow">{{ requirements.linux }}</p>
     </article>
+  </div>
+
+  <div class="card dlstats reveal" id="dl-stats" hidden>
+    <div class="dlstats-h"><h3>Downloads by version</h3><span class="note soft"><b id="dl-total" class="mono"></b> total · live from GitHub Releases</span></div>
+    <ul id="dl-by-version"></ul>
   </div>
 
   <details class="card notes reveal" id="notes">
@@ -713,6 +728,19 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
   /* live release data (GitHub Releases) -> version picker */
   const sel = $("#ver-select"), nl = $("#notes-list"), nb = $("#notes-body");
   const staticTitle = $("#notes-title").textContent, staticDate = $("#rel-date").textContent;
+  const count = rel => (rel.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
+  function renderCounts(rels) {
+    const nums = rels.map(count), total = nums.reduce((a, b) => a + b, 0), max = Math.max(...nums, 1);
+    $("#dl-total").textContent = total.toLocaleString();
+    const ul = $("#dl-by-version"); ul.textContent = "";
+    rels.forEach((r, i) => {
+      const li = document.createElement("li"), bar = document.createElement("span"), fill = document.createElement("i"), n = document.createElement("span"), name = document.createElement("span");
+      name.textContent = r.tag_name; bar.className = "bar"; fill.style.width = Math.max(nums[i] / max * 100, nums[i] ? 2 : 0) + "%"; bar.append(fill);
+      n.className = "n"; n.textContent = nums[i].toLocaleString();
+      li.append(name, bar, n); ul.append(li);
+    });
+    $("#dl-stats").hidden = false;
+  }
   function applyRelease(rel, latest) {
     const assets = Object.fromEntries((rel.assets || []).map(a => [a.name, a]));
     $$("[data-asset]").forEach(c => {
@@ -720,6 +748,7 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
       if (a) { c.dataset.ok = "1"; c.dataset.url = a.browser_download_url; c.dataset.size = a.size; } else { c.dataset.ok = "0"; delete c.dataset.url; delete c.dataset.size; }
     });
     const v = (rel.tag_name || "").replace(/^v/, "");
+    const rc = $("#rel-count"); $("b", rc).textContent = count(rel).toLocaleString(); rc.hidden = false;
     $("#rel-date").textContent = (rel.published_at || "").slice(0, 10) || staticDate;
     if (rel.html_url) $("#rel-link").href = rel.html_url;
     $("#notes-title").textContent = latest ? staticTitle : "Release notes for v" + v;
@@ -745,6 +774,7 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
       live = true;
       sel.innerHTML = rels.map((r, i) => '<option value="' + i + '">' + r.tag_name + (i === 0 ? " (latest)" : r.prerelease ? " (pre-release)" : "") + "</option>").join("");
       applyRelease(rels[0], true);
+      renderCounts(rels);
       sel.addEventListener("change", () => { const i = +sel.value; applyRelease(rels[i], i === 0); });
     }).catch(() => {});
 
