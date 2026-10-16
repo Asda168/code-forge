@@ -6,12 +6,14 @@ for it instead of a link that would 404. Flip it (and set `url`) when you publis
 """
 REPO = "https://github.com/Asda168/code-forge"
 VERSION = "1.3.7"
-RELEASED = "2026-10-15"
+RELEASED = "2026-10-16"
 # Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
 VERSIONS = ["1.3.7", "1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
+    "Hotfix: new terminals open instantly and no longer drop their first output",
+    "Hotfix: Source Control updates faster after file changes, with instant Sync / Commit feedback",
     "Merge conflict resolution: inline Accept Current / Incoming / Both / Compare actions, an Accept All bar and a Merge Changes group in Source Control",
-    "Redesigned Source Control: file tree, Generate commit message, Commit / Sync Changes / Publish Branch button and a one-click New Branch",
+    "Redesigned Source Control: file tree, Generate commit message, Commit / Sync Changes / Publish Branch button and a branch selector to switch, create, rename and delete branches",
     "Right-click options for files and folders in Source Control",
     "File menu follows VS Code: Open File, Open Recent, Save As, Auto Save, Revert File, Close Folder",
     "Hide Layout Header setting (Ctrl+Alt+H) to give the editor more room",
