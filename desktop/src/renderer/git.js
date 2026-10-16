@@ -6,7 +6,14 @@
   const must = async (args) => { const r = await git(args); if (r.code !== 0) throw new Error((r.stderr || r.stdout || 'git failed').trim()); return r.stdout; };
   const abs = (p) => join(S.root, p.replace(/\//g, S.platform.platform === 'win32' ? '\\' : '/'));
 
-  CF.gitRefresh = async () => {
+  // Only one status pass runs at a time; calls that arrive meanwhile collapse into a single follow-up pass, so a slow older result can never overwrite newer state.
+  let rfInflight = null, rfDirty = false;
+  CF.gitRefresh = () => {
+    if (rfInflight) { rfDirty = true; return rfInflight; }
+    rfInflight = (async () => { try { do { rfDirty = false; await refreshCore(); } while (rfDirty); } finally { rfInflight = null; } })();
+    return rfInflight;
+  };
+  const refreshCore = async () => {
     if (!S.root) return;
     G.repo = await cf.git.detect(S.root).catch(() => false);
     const setBadge = (n) => { const b = $('#activitybar [data-view="git"]'); if (!b) return; let el = b.querySelector('.act-badge'); if (!n) return el && el.remove(); if (!el) { el = h('span', { class: 'act-badge' }); b.append(el); } el.textContent = n > 99 ? '99+' : n; b.title = `Source Control (${n} pending change${n === 1 ? '' : 's'})`; };
@@ -48,7 +55,13 @@
     CF.toast((amend ? 'Commit amended' : 'Committed') + (G.hasUp || G.ahead ? '. Click Sync Changes to push.' : ''));
     return true;
   };
-  const commit = CF.guard(() => doCommit(false));
+  const commit = CF.guard(async () => {
+    if (G.busy) return;
+    const b = document.querySelector('.scm-commit:not(.sync)'), html = b && b.innerHTML;
+    if (b) { b.disabled = true; b.textContent = 'Committing…'; }
+    G.busy = true;
+    try { await doCommit(false); } finally { G.busy = false; if (b && b.isConnected && html) { b.disabled = false; b.innerHTML = html; } }
+  });
   const commitPush = CF.guard(async () => { if (await doCommit(false)) await pushIt(); });
   const amendIt = CF.guard(() => doCommit(true));
   const stageMany = (paths) => run('Stage', ['add', '--', ...paths])();
@@ -197,10 +210,8 @@
     }
 
     // branch + sync state
-    body.append(h('div', { class: 'scm-meta' }, h('span', { class: 'scm-branch', title: 'Current branch' }, CF.icon('git', 12), G.branch || 'HEAD'),
-      G.ahead ? h('span', { class: 'scm-chip', title: `${G.ahead} commit(s) to push` }, '↑' + G.ahead) : null, G.behind ? h('span', { class: 'scm-chip', title: `${G.behind} commit(s) to pull` }, '↓' + G.behind) : null,
-      h('span', { class: 'grow' }),
-      h('button', { class: 'scm-newbranch', type: 'button', title: 'Create a new branch and check it out (git checkout -b)', 'aria-label': 'Checkout new branch', onclick: newBranch }, CF.icon('plus', 12), 'New Branch')));
+    body.append(h('div', { class: 'scm-meta' }, h('button', { class: 'scm-branch', type: 'button', title: 'Current branch - click to switch, create, rename or delete', 'aria-haspopup': 'menu', onclick: branchMenu }, CF.icon('git', 12), h('b', {}, G.branch || 'HEAD'), CF.icon('chevronDown', 11)),
+      G.ahead ? h('span', { class: 'scm-chip', title: `${G.ahead} commit(s) to push` }, '↑' + G.ahead) : null, G.behind ? h('span', { class: 'scm-chip', title: `${G.behind} commit(s) to pull` }, '↓' + G.behind) : null));
 
     // conflicts: ONE banner that carries the explanation and the action (no second warning, no orange commit button)
     if (conflicts.length) {
@@ -254,7 +265,7 @@
     const tool = (icon, title, fn) => h('button', { class: 'scm-ic', type: 'button', title, 'aria-label': title, onclick: (e) => { e.stopPropagation(); fn(e); } }, CF.icon(icon, 14));
     const tools = h('span', { class: 'scm-tools' },
       tool('sparkle', 'Generate commit message', () => gen.click()),
-      tool('refresh', 'Sync changes (pull & push)', () => syncIt()),
+      (() => { const b = tool('refresh', 'Sync changes (pull & push)', () => syncIt()); b.dataset.sync = '1'; return b; })(),
       tool('git', 'Branch view', () => { G.fold.Branches = false; const hd = body.querySelector('[data-fold="Branches"]'); if (hd) { hd.nextSibling && (hd.nextSibling.hidden = false); hd.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }),
       tool('plus', 'Stage all changes', () => run('Stage all', ['add', '-A'])()),
       tool('undo', 'Discard all changes', async () => {
@@ -301,29 +312,62 @@
       h('button', { class: 'scm-btn', type: 'button', onclick: addRemote }, CF.icon('plus', 12), 'Add remote')));
     fold(body, 'Remotes', 'Remotes', seen.size, h('button', { class: 'icon-btn', title: 'Add remote', onclick: addRemote }, '＋'), remRows);
   };
+  // Instant feedback: flip every Sync/Publish button to a disabled "Syncing…" state before any git process starts.
+  const setBusy = (on, label) => {
+    G.busy = on;
+    document.querySelectorAll('.scm-commit.sync, .scm-ic[data-sync]').forEach((b) => {
+      b.disabled = on; b.classList.toggle('busy', on);
+      if (b.classList.contains('scm-commit')) { if (on) { b.dataset.html = b.innerHTML; b.textContent = label; } else if (b.dataset.html) b.innerHTML = b.dataset.html; }
+    });
+  };
   const pushIt = CF.guard(async () => {
+    if (G.busy) return;
+    setBusy(true, 'Publishing…');
+    try { await pushCore(); } finally { setBusy(false); }
+  });
+  const pushCore = async () => {
     const r = await git(['push']);
     if (r.code !== 0 && /no upstream/.test(r.stderr)) { if (await CF.confirm(`No upstream for ${G.branch}. Publish branch to origin?`, 'Publish')) await must(['push', '-u', 'origin', G.branch]); }
     else if (r.code !== 0) {
-      if (/rejected|fetch first|non-fast-forward|behind/i.test(r.stderr)) { await CF.gitRefresh(); if (await CF.confirm('Remote has newer commits (not up to date). Pull then push?', 'Pull & push')) return syncIt(); return; }
+      if (/rejected|fetch first|non-fast-forward|behind/i.test(r.stderr)) { setBusy(false); await CF.gitRefresh(); if (await CF.confirm('Remote has newer commits (not up to date). Pull then push?', 'Pull & push')) return syncIt(); return; }
       throw new Error(r.stderr.trim());
     }
     CF.toast('Pushed'); await CF.gitRefresh();
-  });
-  // Sync = fetch, pull (rebase-free merge), push - like VS Code's "Sync Changes".
+  };
+  // Sync = pull (fetches + merges) then push, like VS Code's "Sync Changes". One status refresh, no separate fetch.
   const syncIt = CF.guard(async () => {
-    await must(['fetch', '--all']); await CF.gitRefresh();
-    if (G.behind) await must(['pull']);
-    await CF.gitRefresh();
-    if (G.ahead || !G.hasUp) await pushIt();
-    else CF.toast(G.behind ? 'Pulled, up to date' : 'Already up to date');
-    await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree();
+    if (G.busy) return;
+    setBusy(true, 'Syncing…');
+    try {
+      const wasBehind = G.behind;
+      if (G.hasUp) await must(['pull']);
+      await CF.gitRefresh();
+      if (G.ahead || !G.hasUp) await pushCore();
+      else CF.toast(wasBehind ? 'Pulled, up to date' : 'Already up to date');
+      if (wasBehind) { await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); }
+    } finally { setBusy(false); }
   });
   CF.gitSync = () => syncIt();
   // Keep ahead/behind current without restarting: refresh on window focus, auto-fetch every 3 minutes.
   const autoFetch = async () => { if (!S.root || !G.repo || !G.hasUp || document.hidden) return; await git(['fetch', '--quiet'], { timeout: 30000 }); CF.gitRefresh(); };
   setInterval(autoFetch, 180000);
   window.addEventListener('focus', () => { if (S.root) { CF.gitRefresh(); setTimeout(autoFetch, 500); } });
+  // Branch selector: local branches (switch), plus create / rename / delete.
+  const branchMenu = CF.guard(async (e) => {
+    const r = e.currentTarget.getBoundingClientRect(), at = { clientX: r.left, clientY: r.bottom + 4 };
+    const out = await git(['branch', '--format=%(HEAD)|%(refname:short)']);
+    if (out.code !== 0) throw new Error((out.stderr || 'git branch failed').trim());
+    const local = out.stdout.split('\n').filter(Boolean).map((l) => ({ cur: l[0] === '*', name: l.slice(2) })).filter((b) => b.name && !/^\(/.test(b.name));
+    const detached = !local.some((b) => b.cur);
+    const items = local.map((b) => [(b.cur ? '✓ ' : '   ') + b.name, () => { if (!b.cur) run('Switched to ' + b.name + ' -', ['checkout', b.name])(); }]);
+    if (detached) items.unshift(['✓ (detached HEAD) ' + (G.branch || ''), () => {}]);
+    items.push('-', ['＋ Create new branch…', newBranch]);
+    if (!detached) items.push(['Rename current branch…', renameBranch]);
+    const del = local.filter((b) => !b.cur);
+    if (del.length) items.push(['Delete branch…', () => CF.menu(at, del.map((b) => ['Delete ' + b.name, CF.guard(async () => { if (await CF.confirm(`Delete branch ${b.name}? (only works if it is fully merged)`, 'Delete')) run('Deleted ' + b.name + ' -', ['branch', '-d', b.name])(); })]))]);
+    CF.menu(at, items);
+  });
+  const renameBranch = CF.guard(async () => { const v = await CF.ask('Rename Branch', [{ id: 'n', label: 'New name for ' + G.branch, value: G.branch }], 'Rename'); if (v && v.n && v.n !== G.branch) { if (/^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Renamed to ' + v.n + ' -', ['branch', '-m', v.n])(); else CF.toast('Invalid branch name', true); } });
   const newBranch = CF.guard(async () => { const v = await CF.ask('Checkout New Branch', [{ id: 'n', label: 'New branch name (created from the current branch)', placeholder: 'feature/login' }], 'Create & checkout'); if (v && /^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Checked out new branch ' + v.n + ' -', ['checkout', '-b', v.n])(); else if (v) CF.toast('Invalid branch name', true); });
   const addRemote = CF.guard(async () => { const v = await CF.ask('Add Remote', [{ id: 'n', label: 'Name', value: 'origin' }, { id: 'u', label: 'URL (https or ssh)' }]); if (v && v.u) run('Add remote', ['remote', 'add', v.n, v.u])(); });
 

@@ -438,7 +438,7 @@ ipcMain.handle('fs:watch', (e, root) => {
   const wc = e.sender, st = watchers.get(wc.id) || {}; watchers.set(wc.id, st);
   if (st.watcher) { st.watcher.close(); st.watcher = null; }
   wc.once('destroyed', () => { try { st.watcher && st.watcher.close(); } catch { /* gone */ } watchers.delete(wc.id); });
-  const ping = () => { clearTimeout(st.timer); st.timer = setTimeout(() => sendTo(wc, 'fs:changed'), 400); };
+  const ping = () => { clearTimeout(st.timer); st.timer = setTimeout(() => sendTo(wc, 'fs:changed'), 120); };
   try {
     st.watcher = fs.watch(root, { recursive: true }, (_ev, name) => {
       if (!name) return;
@@ -492,12 +492,16 @@ function detectShells() {
   }
   return list;
 }
-ipcMain.handle('term:shells', () => detectShells());
+// Shell detection hits the disk (many existsSync probes); cache briefly so opening a terminal does not repeat it.
+let shellCache = null;
+const cachedShells = (fresh) => { if (fresh || !shellCache || Date.now() - shellCache.at > 30000) shellCache = { at: Date.now(), list: detectShells() }; return shellCache.list; };
+ipcMain.handle('term:shells', () => cachedShells(true));
 ipcMain.handle('term:detectGitBash', () => findGitBash());
 
 const terms = new Map(); let termSeq = 0;
 ipcMain.handle('term:create', (e, { shellId, cwd, cols = 80, rows = 24 }) => {
-  const sh = detectShells().find((x) => x.id === shellId) || detectShells()[0];
+  const shells = cachedShells();
+  const sh = shells.find((x) => x.id === shellId) || shells[0];
   if (!sh) throw new Error('No shell found');
   const dir = cwd && sec.insideAnyRoot(cwd, [...roots]) ? cwd : (roots.size ? [...roots][0] : os.homedir());
   const id = ++termSeq, wc = e.sender, send = (...a) => sendTo(wc, ...a);
@@ -505,7 +509,9 @@ ipcMain.handle('term:create', (e, { shellId, cwd, cols = 80, rows = 24 }) => {
   const env = { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' };
   if (pty) {
     const p = pty.spawn(sh.file, sh.args, { name: 'xterm-256color', cols, rows, cwd: dir, env });
-    p.onData((d) => send('term:data', id, d));
+    // coalesce bursts of output into one IPC message per tick (a fast `cat`/build log otherwise floods the renderer)
+    let buf = '', queued = false;
+    p.onData((d) => { buf += d; if (!queued) { queued = true; setImmediate(() => { queued = false; const o = buf; buf = ''; if (o) send('term:data', id, o); }); } });
     p.onExit(({ exitCode }) => { terms.delete(id); send('term:exit', id, exitCode); });
     terms.set(id, { write: (d) => p.write(d), resize: (c, r) => p.resize(c, r), kill: () => p.kill() });
   } else {

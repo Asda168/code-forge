@@ -1,13 +1,14 @@
 // Integrated terminals (xterm.js over the main-process PTY), project runner, Laravel/Django tools, project wizard.
 (() => {
   const { S, $, h, base, join } = CF;
+  const earlyData = new Map();   // pty output that arrived before its terminal object had an id
   S.terms = []; S.shells = []; let activeTerm = null; let runTerm = null; const runTerms = new Map();   // one terminal per run configuration so several tasks run at once
    S.project = { kinds: [], runs: [] };
 
   CF.initTerminal = CF.guard(async () => {
     S.shells = await cf.term.shells();
     $('#term-shell').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); CF.menu({ clientX: r.left, clientY: r.top - 4 - 26 * S.shells.length }, S.shells.map((s) => [(s.id === S.settings.defaultShell ? '✓ ' : '   ') + s.name, () => CF.newTerminal(s.id)])); };
-    cf.term.onData((id, d) => { const t = S.terms.find((x) => x.id === id); if (t) t.xterm.write(d); });
+    cf.term.onData((id, d) => { const t = S.terms.find((x) => x.id === id); if (t) t.xterm.write(d); else earlyData.set(id, (earlyData.get(id) || '') + d); });
     cf.term.onExit((id) => { const t = S.terms.find((x) => x.id === id); if (t) { t.xterm.write('\r\n[process exited]\r\n'); t.exited = true; } });
     $('#term-new').onclick = () => CF.newTerminal();
     $('#term-split').onclick = () => CF.splitTerminal('row'); $('#term-split-down').onclick = () => CF.splitTerminal('col'); $('#term-kill').onclick = CF.killTerminal;
@@ -59,10 +60,11 @@
     const fitAddon = new FitAddon.FitAddon(); xterm.loadAddon(fitAddon); xterm.open(host);
     const fit = () => { try { fitAddon.fit(); cf.term.resize(t.id, xterm.cols, xterm.rows); } catch { /* hidden */ } };
     const split = opts.split && activeTerm;
-    const sh = shellId || (split && activeTerm.shellId) || undefined;
-    const info = await cf.term.create({ shellId: sh || S.settings.defaultShell || undefined, cwd: cwd || (split && activeTerm.cwd) || S.root, cols: xterm.cols, rows: xterm.rows });
-    const t = { id: info.id, name: `${info.name} ${S.terms.filter((x) => x.name.startsWith(info.name)).length + 1}`, host, xterm, fit, cwd, shellId: sh, posix: /bash|zsh|wsl/i.test(info.name) || /(^|\s)sh$/i.test(info.name) };
-    xterm.onData((d) => cf.term.write(t.id, d));
+    try { fitAddon.fit(); } catch { /* hidden */ }          // size the pty correctly at spawn: no resize round-trip / reflow afterwards
+    const sh =shellId || (split && activeTerm.shellId) || undefined;
+    // Show the tab + pane immediately; the shell process spawns in the background (t.id is assigned when it is ready).
+    const t = { id: null, name: 'Terminal', host, xterm, fit, cwd, shellId: sh, posix: false, inq: '', starting: true };
+    xterm.onData((d) => { if (t.id == null) t.inq += d; else cf.term.write(t.id, d); });
     xterm.registerLinkProvider(linkProvider(xterm));       // click http(s) links -> default browser
     document.fonts && document.fonts.ready.then(() => setTimeout(fit, 50));   // re-measure once the font is really loaded
     xterm.attachCustomKeyEventHandler((e) => {
@@ -90,6 +92,17 @@
     if (split) { t.grp = activeTerm.grp; const nd = opts.split === 'col' ? 'col' : 'row'; if (t.grp.dir !== nd) { t.grp.dir = nd; t.grp.terms.forEach((x) => (x.host.style.flex = '')); } t.grp.zoom = null; t.grp.terms.splice(t.grp.terms.indexOf(activeTerm) + 1, 0, t); }
     else { t.grp = { terms: [t], dir: 'row' }; S.tgroups.push(t.grp); }
     S.terms.push(t); selectTerm(t);
+    xterm.write('\x1b[2mStarting shell…\x1b[0m');
+    let info;
+    try { info = await cf.term.create({ shellId: sh || S.settings.defaultShell || undefined, cwd: cwd || (split && activeTerm.cwd) || S.root, cols: xterm.cols, rows: xterm.rows }); }
+    catch (err) { if (S.terms.includes(t)) closeTerm(t); throw err; }
+    if (t.closed) { cf.term.kill(info.id); return t; }          // closed while the shell was still starting: do not orphan the process
+    t.id = info.id; t.name = `${info.name} ${S.terms.filter((x) => x !== t && x.name.startsWith(info.name)).length + 1}`;
+    t.posix = /bash|zsh|wsl/i.test(info.name) || /(^|\s)sh$/i.test(info.name);
+    xterm.write('\r\x1b[2K');
+    const early = earlyData.get(t.id); if (early) { earlyData.delete(t.id); xterm.write(early); }
+    if (t.inq) { cf.term.write(t.id, t.inq); t.inq = ''; }
+    t.starting = false; renderTermTabs(); fit();
     if (!info.pty) xterm.write('\x1b[33m[node-pty not installed: limited line-mode terminal. Run `npm i node-pty` for a full terminal.]\x1b[0m\r\n');
     return t;
   });
@@ -164,7 +177,7 @@
     });
   }
   function closeTerm(t) {
-    cf.term.kill(t.id); t.xterm.dispose(); t.host.remove();
+    t.closed = true; t.id != null && cf.term.kill(t.id); t.xterm.dispose(); t.host.remove();
     S.terms.splice(S.terms.indexOf(t), 1); const g = t.grp; g.terms.splice(g.terms.indexOf(t), 1);
     if (g.zoom === t) g.zoom = null; if (g.terms.length < 2) g.zoom = null;
     if (!g.terms.length) S.tgroups.splice(S.tgroups.indexOf(g), 1);

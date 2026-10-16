@@ -74,7 +74,7 @@
   // ---- file watching: tree, open files, git ----------------------------------------------------
   CF.watchRoot = () => { CF.invalidateIndex(); S.root && cf.fs.watch(S.root).catch(() => {}); };
   let wt;
-  cf.onFsChanged(() => { clearTimeout(wt); wt = setTimeout(() => { CF.invalidateIndex(); CF.refreshTree(); CF.reloadOpenFiles(); CF.gitRefresh(); }, 100); });
+  cf.onFsChanged(() => { CF.gitRefresh(); clearTimeout(wt); wt = setTimeout(() => { CF.invalidateIndex(); CF.refreshTree(); CF.reloadOpenFiles(); }, 60); });
 
   // ---- resizable sidebar & panel -----------------------------------------------------------------
   const drag = (el, onMove) => el.addEventListener('mousedown', (e) => {
