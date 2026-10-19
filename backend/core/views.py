@@ -192,6 +192,8 @@ class FeedbackView(APIView):
         contact = str(d.get("contact") or "").strip()[:120]
         if kind not in self.KINDS:
             return Response({"detail": "Unknown feedback type."}, status=status.HTTP_400_BAD_REQUEST)
+        if not contact:
+            return Response({"detail": "Please enter your email or Telegram username so we can notify you."}, status=status.HTTP_400_BAD_REQUEST)
         if not 10 <= len(message) <= 2000:
             return Response({"detail": "Please write between 10 and 2000 characters."}, status=status.HTTP_400_BAD_REQUEST)
         photos = []

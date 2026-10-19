@@ -64,24 +64,25 @@ class ApiTests(TestCase):
     def test_feedback_validation_honeypot_and_failure(self):
         from unittest import mock
         with mock.patch("core.telegram.send", return_value=True) as send:
-            self.assertEqual(self.c.post("/api/feedback/", {"message": "short"}, format="json").status_code, 400)
-            self.assertEqual(self.c.post("/api/feedback/", {"kind": "hack", "message": "x" * 20}, format="json").status_code, 400)
-            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20, "website": "spam"}, format="json").status_code, 200)
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "short", "contact": "me@x.com"}, format="json").status_code, 400)
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20}, format="json").status_code, 400)  # contact is required
+            self.assertEqual(self.c.post("/api/feedback/", {"kind": "hack", "message": "x" * 20, "contact": "me@x.com"}, format="json").status_code, 400)
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20, "contact": "me@x.com", "website": "spam"}, format="json").status_code, 200)
             send.assert_not_called()  # honeypot hits are dropped silently
         with mock.patch("core.telegram.send", return_value=False):
-            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20}, format="json").status_code, 503)
+            self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20, "contact": "me@x.com"}, format="json").status_code, 503)
 
     def test_feedback_images_pushed_to_telegram(self):
         from unittest import mock
         from django.core.files.uploadedfile import SimpleUploadedFile
         png = SimpleUploadedFile("a.png", b"\x89PNG\r\n\x1a\n" + b"0" * 50, content_type="image/png")
         with mock.patch("core.telegram.send", return_value=True), mock.patch("core.telegram.send_photos", return_value=True) as photos:
-            r = self.c.post("/api/feedback/", {"kind": "bug", "message": "Crash when opening a folder", "images": [png]}, format="multipart")
+            r = self.c.post("/api/feedback/", {"kind": "bug", "message": "Crash when opening a folder", "contact": "me@x.com", "images": [png]}, format="multipart")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(photos.call_args[0][0][0][1], "image/png")
         bad = SimpleUploadedFile("a.png", b"not an image at all", content_type="image/png")
         with mock.patch("core.telegram.send", return_value=True) as send:
-            r = self.c.post("/api/feedback/", {"message": "Crash when opening a folder", "images": [bad]}, format="multipart")
+            r = self.c.post("/api/feedback/", {"message": "Crash when opening a folder", "contact": "me@x.com", "images": [bad]}, format="multipart")
         self.assertEqual(r.status_code, 400)
         send.assert_not_called()
 

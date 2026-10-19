@@ -574,9 +574,9 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
       <div class="field"><label for="fb-msg">Your message</label>
         <textarea id="fb-msg" name="message" maxlength="2000" required aria-describedby="fb-count fb-msg-err" placeholder="Tell us what you think about AstaIDE..."></textarea>
         <div class="meta"><p class="ferr" id="fb-msg-err" role="alert"></p><span class="count" id="fb-count" aria-live="off">0 / 2000</span></div></div>
-      <div class="field"><label for="fb-contact">Email or Telegram (optional)</label>
-        <input type="text" id="fb-contact" name="contact" maxlength="120" autocomplete="email" placeholder="you@example.com or @username" aria-describedby="fb-contact-hint fb-contact-err">
-        <p class="hint" id="fb-contact-hint">Only needed if you'd like a reply.</p><p class="ferr" id="fb-contact-err" role="alert"></p></div>
+      <div class="field"><label for="fb-contact">Email or Telegram</label>
+        <input type="text" id="fb-contact" name="contact" maxlength="120" autocomplete="email" required placeholder="you@example.com or @username" aria-describedby="fb-contact-hint fb-contact-err">
+        <p class="hint" id="fb-contact-hint">Required so we can let you know once your feedback has been addressed.</p><p class="ferr" id="fb-contact-err" role="alert"></p></div>
       <div class="field"><span class="label" id="fb-att-l" style="font-weight:500;font-size:.9rem">Screenshots (optional)</span>
         <div class="dz" id="fb-dz" role="button" tabindex="0" aria-labelledby="fb-att-l fb-dz-t" aria-describedby="fb-dz-s">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>
@@ -846,7 +846,7 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
   /* contact: optional, validated only when filled */
   const contactErr = () => {
     const v = ctc.value.trim();
-    if (!v) return "";
+    if (!v) return "Please enter your email or Telegram @username so we can notify you.";
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) || /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/.test(v) ? "" : "Enter a valid email address or a Telegram @username.";
   };
   ctc.addEventListener("blur", () => setErr("#fb-contact-err", ctc, contactErr()));
