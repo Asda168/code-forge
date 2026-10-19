@@ -240,20 +240,48 @@ h3{margin:0;letter-spacing:-.01em;font-weight:600}
 @media (max-width:700px){.flow{grid-template-columns:1fr}.flow div,.flow div:first-child,.flow div:last-child{border-radius:0}.flow div:first-child{border-radius:var(--r) var(--r) 0 0}.flow div:last-child{border-radius:0 0 var(--r) var(--r)}.flow div+div{margin:-1px 0 0}.flow div+div::before{content:"↓";left:50%;top:-12px;transform:translateX(-50%)}}
 
 /* feedback */
-.fb{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:var(--s6);padding:var(--s5)}
-.fb form{display:grid;gap:var(--s3)}.fb label,.fb legend{font-weight:500;font-size:.9rem}.fb fieldset{border:0;margin:0;padding:0;min-width:0}
-.fb .kinds{display:flex;gap:var(--s1);flex-wrap:wrap;margin-top:var(--s1)}.fb .kinds label{position:relative;font-weight:500}.fb .kinds input{position:absolute;opacity:0;inset:0}
-.fb .kinds span{display:block;padding:7px 14px;border-radius:var(--r-sm);border:1px solid var(--line2);background:var(--surface2);color:var(--mut);cursor:pointer;transition:background var(--ease),border-color var(--ease),color var(--ease)}
-.fb .kinds span:hover{background:var(--surface-hover);color:var(--fg)}
-.fb .kinds input:checked+span{background:color-mix(in srgb,var(--a) 14%,var(--surface2));color:var(--fg);border-color:var(--a)}.fb .kinds input:focus-visible+span{outline:2px solid var(--a);outline-offset:2px}
-.fb textarea,.fb input[type=text]{width:100%;margin-top:6px;font:400 1rem var(--sans);color:var(--fg);background:var(--surface2);border:1px solid var(--line2);border-radius:var(--r-sm);padding:10px var(--s2)}
-.fb textarea{min-height:150px;resize:vertical}.fb textarea:focus,.fb input[type=text]:focus{outline:2px solid var(--a);outline-offset:0;border-color:var(--a)}
-.fb .att{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center;margin-top:6px}.fb .att .pick{padding:7px 14px;border-radius:var(--r-sm);border:1px dashed var(--line2);background:var(--surface2);color:var(--mut);cursor:pointer;font-size:.9rem}.fb .att .pick:hover,.fb .att .pick:focus-visible{color:var(--fg);border-color:var(--a);outline:none}
-.fb .att .th{position:relative;width:64px;height:64px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line2)}.fb .att .th img{width:100%;height:100%;object-fit:cover;display:block}.fb .att .th button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:0;background:#000b;color:#fff;cursor:pointer;line-height:1;font-size:13px;padding:0}
+.fb{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:var(--s6);padding:var(--s5);align-items:start}
+.fb-intro{position:sticky;top:calc(var(--nav) + var(--s4));display:grid;gap:var(--s3)}.fb-intro h2,.fb-intro p{margin:0}
+.fb-priv{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface2);color:var(--mut);font-size:.85rem;line-height:1.55}
+.fb-priv svg{flex:none;margin-top:2px;color:var(--dim)}.fb-priv a{color:var(--a)}
+.fb form{display:grid;gap:var(--s4);min-width:0}.fb label,.fb legend{font-weight:500;font-size:.9rem}.fb fieldset{border:0;margin:0;padding:0;min-width:0}
+.fb .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.fb .kinds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1);padding:4px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface2)}
+.fb .kinds label{position:relative;font-weight:500;min-width:0}.fb .kinds input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.fb .kinds span{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 10px;border-radius:6px;color:var(--mut);transition:background var(--ease),color var(--ease);white-space:nowrap;font-size:.9rem}
+.fb .kinds svg{flex:none}.fb .kinds label:hover span{color:var(--fg)}
+.fb .kinds input:checked+span{background:var(--surface);color:var(--fg);box-shadow:0 0 0 1px var(--line2),inset 0 -2px 0 var(--a)}
+.fb .kinds input:focus-visible+span{outline:2px solid var(--a);outline-offset:1px}
+.fb .field{display:grid;gap:6px}.fb .hint{margin:0;color:var(--dim);font-size:.8rem}
+.fb textarea,.fb input[type=text]{width:100%;font:400 1rem var(--sans);color:var(--fg);background:var(--surface2);border:1px solid var(--line2);border-radius:var(--r-sm);padding:10px var(--s2);transition:border-color var(--ease),box-shadow var(--ease)}
+.fb textarea{min-height:150px;max-height:420px;resize:none;line-height:1.55;overflow-y:auto}
+.fb textarea:focus,.fb input[type=text]:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 22%,transparent)}
+.fb [aria-invalid=true]{border-color:var(--err)!important}
+.fb .meta{display:flex;justify-content:space-between;gap:var(--s2);align-items:flex-start}.fb .count{font:400 .78rem var(--mono);color:var(--dim);white-space:nowrap}.fb .count.near{color:var(--warn)}
+.fb .ferr{margin:0;color:var(--err);font-size:.82rem;min-height:1.2em}.fb .ferr:empty{display:none}
+.fb .dz{display:grid;justify-items:center;gap:4px;text-align:center;padding:22px var(--s3);border:1.5px dashed var(--line2);border-radius:var(--r-sm);background:var(--surface2);cursor:pointer;transition:border-color var(--ease),background var(--ease)}
+.fb .dz svg{color:var(--mut);margin-bottom:4px}.fb .dz strong{font-weight:600}.fb .dz p{margin:0;color:var(--mut);font-size:.85rem}.fb .dz .sub{color:var(--dim);font-size:.78rem}.fb .dz u{text-decoration-color:var(--a);text-underline-offset:3px;color:var(--fg)}
+.fb .dz:hover,.fb .dz.over{border-color:var(--a);background:color-mix(in srgb,var(--a) 8%,var(--surface2))}.fb .dz:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.fb .dz[aria-disabled=true]{cursor:not-allowed;opacity:.65;border-style:solid}.fb .dz[aria-disabled=true]:hover{border-color:var(--line2);background:var(--surface2)}
+.fb .ahead{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);font-size:.85rem;color:var(--mut)}
+.fb .linkbtn{background:none;border:0;color:var(--a);cursor:pointer;font:inherit;padding:2px 4px;border-radius:4px}.fb .linkbtn:hover{text-decoration:underline}.fb .linkbtn:focus-visible{outline:2px solid var(--a)}
+.fb .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:var(--s2);margin:0;padding:0;list-style:none}
+.fb .grid li{position:relative;border:1px solid var(--line2);border-radius:var(--r-sm);background:var(--surface2);overflow:hidden;min-width:0}
+.fb .grid .pv{display:block;width:100%;aspect-ratio:4/3;padding:0;border:0;background:#0003;cursor:zoom-in}.fb .grid .pv img{width:100%;height:100%;object-fit:contain;display:block}
+.fb .grid .pv:focus-visible{outline:2px solid var(--a);outline-offset:-2px}
+.fb .grid .cap{padding:6px 8px;font-size:.75rem;line-height:1.35;min-width:0}.fb .grid .cap b{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fb .grid .cap span{color:var(--dim)}
+.fb .grid .rm{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:0;background:#000b;color:#fff;cursor:pointer;display:grid;place-items:center;padding:0;font-size:15px;line-height:1}.fb .grid .rm:hover{background:var(--err)}.fb .grid .rm:focus-visible{outline:2px solid var(--a);outline-offset:1px}
+.fb .grid .busy{position:absolute;inset:0 0 auto 0;aspect-ratio:4/3;display:grid;place-items:center;background:#000a;color:#fff;font-size:.75rem}
+.fb .actions{display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap}
+.fb .btn[disabled]{opacity:.7;cursor:progress}.fb .spin{display:none;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:fbspin .7s linear infinite;margin-right:8px;vertical-align:-2px}.fb .sending .spin{display:inline-block}
+@keyframes fbspin{to{transform:rotate(360deg)}}
+.fb .msg{margin:0;font-size:.9rem;min-height:1.4em;flex:1;min-width:200px}.fb .msg.ok{color:var(--ok)}.fb .msg.err{color:var(--err)}.fb .msg.warn{color:var(--warn)}
 .fb .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.fb .row{display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap}.fb .count{margin-left:auto;font:400 .78rem var(--mono);color:var(--dim)}
-.fb .msg{margin:0;font-size:.9rem;min-height:1.4em}.fb .msg.ok{color:var(--ok)}.fb .msg.err{color:var(--err)}.fb small{color:var(--dim);font-size:.8rem}
-@media (max-width:900px){.fb{grid-template-columns:minmax(0,1fr);padding:var(--s4);gap:var(--s4)}}
+.fb small{color:var(--dim);font-size:.8rem}
+dialog.fbview{border:1px solid var(--line2);border-radius:var(--r);background:var(--surface);color:var(--fg);padding:var(--s2);max-width:min(92vw,1100px);max-height:92vh}dialog.fbview::backdrop{background:#000c}
+dialog.fbview img{display:block;max-width:100%;max-height:80vh;margin:0 auto;border-radius:var(--r-sm)}dialog.fbview .bar{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);margin-bottom:var(--s2);font-size:.85rem;color:var(--mut)}
+@media (max-width:900px){.fb{grid-template-columns:minmax(0,1fr);padding:var(--s4);gap:var(--s4)}.fb-intro{position:static}}
+@media (max-width:480px){.fb .kinds span{padding:8px 4px;font-size:.82rem;gap:5px}.fb .kinds svg{display:none}.fb .actions .btn{width:100%;justify-content:center}}
 
 /* faq */
 .faq{max-width:800px;margin-inline:auto;display:grid;gap:var(--s1)}
@@ -534,24 +562,35 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
 <!-- FEEDBACK -->
 <section id="feedback" class="tight" aria-labelledby="h-fb"><div class="wrap">
   <div class="card fb reveal">
-    <div><p class="eyebrow">Feedback</p><h2 id="h-fb">Help shape Asta.</h2><p class="lead">Found a bug, want a feature, or have an idea to make the editor better? Tell us — every message goes straight to the team.</p>
-      <p class="note soft" style="margin-top:18px">Please don't include passwords, tokens or private code. For public discussion, you can also <a href="{{ repo }}/issues" target="_blank" rel="noopener">open a GitHub issue</a>.</p></div>
+    <div class="fb-intro"><p class="eyebrow">Feedback</p><h2 id="h-fb">Help shape Asta.</h2><p class="lead">Found a bug, want a feature, or have an idea to make the editor better? Tell us — every message goes straight to the team.</p>
+      <p class="fb-priv"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Please don't include passwords, access tokens, private keys, or confidential source code. Screenshots should not contain sensitive information. For public discussion, you can also <a href="{{ repo }}/issues" target="_blank" rel="noopener">open a GitHub issue</a>.</span></p></div>
     <form id="fb-form" novalidate>
-      <fieldset><legend>What is it about?</legend>
+      <fieldset><legend class="sr">What is it about?</legend>
         <div class="kinds">
-          <label><input type="radio" name="kind" value="feedback" checked><span>Feedback</span></label>
-          <label><input type="radio" name="kind" value="improvement"><span>Improvement</span></label>
-          <label><input type="radio" name="kind" value="bug"><span>Bug report</span></label>
+          <label><input type="radio" name="kind" value="feedback" checked><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Feedback</span></label>
+          <label><input type="radio" name="kind" value="improvement"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Improvement</span></label>
+          <label><input type="radio" name="kind" value="bug"><span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="8" height="12" rx="4"/><path d="M9 8a3 3 0 0 1 6 0M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 20l3-2M19 20l-3-2"/></svg>Bug report</span></label>
         </div></fieldset>
-      <div><label for="fb-msg">Your message</label><textarea id="fb-msg" name="message" maxlength="2000" required aria-describedby="fb-count" placeholder="What would make Asta better for you?"></textarea></div>
-      <div><label for="fb-contact">Email or Telegram <small>(optional, only if you want a reply)</small></label><input type="text" id="fb-contact" name="contact" maxlength="120" autocomplete="email" placeholder="you@example.com or @username"></div>
-      <div><label for="fb-img">Screenshots <small>(optional, up to 4 images — you can also paste them)</small></label>
-        <div class="att" id="fb-att"><input type="file" id="fb-img" accept="image/png,image/jpeg,image/webp" multiple hidden><button type="button" class="pick" id="fb-pick">＋ Add images</button></div></div>
+      <div class="field"><label for="fb-msg">Your message</label>
+        <textarea id="fb-msg" name="message" maxlength="2000" required aria-describedby="fb-count fb-msg-err" placeholder="Tell us what you think about AstaIDE..."></textarea>
+        <div class="meta"><p class="ferr" id="fb-msg-err" role="alert"></p><span class="count" id="fb-count" aria-live="off">0 / 2000</span></div></div>
+      <div class="field"><label for="fb-contact">Email or Telegram (optional)</label>
+        <input type="text" id="fb-contact" name="contact" maxlength="120" autocomplete="email" placeholder="you@example.com or @username" aria-describedby="fb-contact-hint fb-contact-err">
+        <p class="hint" id="fb-contact-hint">Only needed if you'd like a reply.</p><p class="ferr" id="fb-contact-err" role="alert"></p></div>
+      <div class="field"><span class="label" id="fb-att-l" style="font-weight:500;font-size:.9rem">Screenshots (optional)</span>
+        <div class="dz" id="fb-dz" role="button" tabindex="0" aria-labelledby="fb-att-l fb-dz-t" aria-describedby="fb-dz-s">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>
+          <strong id="fb-dz-t">Attach screenshots</strong><p id="fb-dz-m">Drag and drop images here, or <u>browse files</u></p><p class="sub" id="fb-dz-s">PNG, JPG, JPEG, or WebP · Up to 4 images · 5 MB each · You can also paste with Ctrl + V</p>
+        </div>
+        <input type="file" id="fb-img" accept="image/png,image/jpeg,image/webp" multiple hidden>
+        <p class="ferr" id="fb-att-err" role="alert"></p>
+        <div id="fb-att" hidden><div class="ahead"><span id="fb-att-n" aria-live="polite"></span><button type="button" class="linkbtn" id="fb-clear">Remove all</button></div><ul class="grid" id="fb-grid"></ul></div></div>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-      <div class="row"><button class="btn p" type="submit" id="fb-send">Send feedback</button><span class="count" id="fb-count" aria-live="off">0 / 2000</span></div>
-      <p class="msg" id="fb-msg-out" role="status" aria-live="polite"></p>
+      <div class="actions"><button class="btn p" type="submit" id="fb-send"><span class="spin" aria-hidden="true"></span><span id="fb-send-t">Send feedback</span></button>
+        <p class="msg" id="fb-msg-out" role="status" aria-live="polite"></p></div>
     </form>
   </div>
+  <dialog class="fbview" id="fb-view" aria-label="Image preview"><div class="bar"><span id="fb-view-n"></span><button type="button" class="linkbtn" id="fb-view-x">Close</button></div><img id="fb-view-i" alt=""></dialog>
 </div></section>
 
 <!-- FAQ -->
@@ -789,11 +828,32 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
       sel.addEventListener("change", () => { const i = +sel.value; applyRelease(rels[i], i === 0); });
     }).catch(() => {});
 
-  /* feedback form -> /api/feedback/ (server forwards to Telegram; no secrets in the browser) */
-  const fb = $("#fb-form"), out = $("#fb-msg-out"), btn = $("#fb-send"), ta = $("#fb-msg");
-  ta.addEventListener("input", () => { $("#fb-count").textContent = ta.value.length + " / 2000"; });
+  /* feedback form -> POST /api/feedback/ (multipart; server forwards text + images to Telegram, no secrets in the browser) */
+  const fb = $("#fb-form"), out = $("#fb-msg-out"), btn = $("#fb-send"), ta = $("#fb-msg"), ctc = $("#fb-contact");
+  const MAXIMG = 4, MAXBYTES = 5 * 1024 * 1024, OKTYPES = ["image/png", "image/jpeg", "image/webp"];
+  const HOLD = {feedback: "Tell us what you think about AstaIDE...", improvement: "Describe the feature or improvement you'd like...", bug: "Describe the issue, steps to reproduce, and expected behavior..."};
+  const setErr = (id, el, t) => { $(id).textContent = t || ""; if (el) el.setAttribute("aria-invalid", t ? "true" : "false"); };
+  const status = (cls, t) => { out.className = "msg " + cls; out.textContent = t; };
+  const fmt = n => n < 1024 * 1024 ? Math.max(1, Math.round(n / 1024)) + " KB" : (n / 1048576).toFixed(1) + " MB";
+  let busy = false;
+
+  /* message: placeholder per category, live counter, auto-resize */
+  const fit = () => { ta.style.height = "auto"; ta.style.height = Math.min(420, Math.max(150, ta.scrollHeight + 2)) + "px"; };
+  const fbCount = () => { const c = $("#fb-count"); c.textContent = ta.value.length + " / 2000"; c.classList.toggle("near", ta.value.length >= 1800); };
+  ta.addEventListener("input", () => { fbCount(); fit(); if (ta.value.trim().length >= 10) setErr("#fb-msg-err", ta); });
+  fb.querySelectorAll("input[name=kind]").forEach(r => r.addEventListener("change", () => { ta.placeholder = HOLD[r.value]; }));
+
+  /* contact: optional, validated only when filled */
+  const contactErr = () => {
+    const v = ctc.value.trim();
+    if (!v) return "";
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) || /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/.test(v) ? "" : "Enter a valid email address or a Telegram @username.";
+  };
+  ctc.addEventListener("blur", () => setErr("#fb-contact-err", ctc, contactErr()));
+  ctc.addEventListener("input", () => { if (!contactErr()) setErr("#fb-contact-err", ctc); });
+
   /* attachments: shrunk to JPEG in the browser (max 1600px) so the whole request stays under the 4.5 MB host limit */
-  const att = $("#fb-att"), fin = $("#fb-img"), MAXIMG = 4; let imgs = [];
+  const dz = $("#fb-dz"), fin = $("#fb-img"), grid = $("#fb-grid"), view = $("#fb-view"); let imgs = [], seq = 0;
   const shrink = f => new Promise(res => {
     const u = URL.createObjectURL(f), im = new Image();
     im.onload = () => {
@@ -805,44 +865,83 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
     im.onerror = () => { URL.revokeObjectURL(u); res(null); };
     im.src = u;
   });
+  const dropUrl = a => a.url && URL.revokeObjectURL(a.url);
   const drawAtt = () => {
-    att.querySelectorAll(".th").forEach(n => n.remove());
-    imgs.forEach((b, i) => {
-      const d = document.createElement("div"), im = new Image(), x = document.createElement("button");
-      d.className = "th"; im.alt = "Attachment " + (i + 1); im.src = URL.createObjectURL(b); im.onload = () => URL.revokeObjectURL(im.src);
-      x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove image " + (i + 1)); x.onclick = () => { imgs.splice(i, 1); drawAtt(); };
-      d.append(im, x); att.insertBefore(d, $("#fb-pick"));
+    grid.textContent = "";
+    imgs.forEach(a => {
+      const li = document.createElement("li"), pv = document.createElement("button"), im = new Image(), cap = document.createElement("div"), rm = document.createElement("button");
+      pv.type = "button"; pv.className = "pv"; pv.setAttribute("aria-label", "Preview " + a.name); im.alt = "Preview of " + a.name; im.src = a.url; pv.append(im);
+      pv.onclick = () => { $("#fb-view-i").src = a.url; $("#fb-view-i").alt = "Preview of " + a.name; $("#fb-view-n").textContent = a.name + " · " + fmt(a.orig); view.showModal(); };
+      cap.className = "cap"; cap.innerHTML = "<b></b><span></span>"; cap.firstChild.textContent = a.name; cap.firstChild.title = a.name; cap.lastChild.textContent = fmt(a.orig);
+      rm.type = "button"; rm.className = "rm"; rm.textContent = "×"; rm.setAttribute("aria-label", "Remove " + a.name);
+      rm.onclick = e => { e.stopPropagation(); imgs = imgs.filter(x => x !== a); dropUrl(a); drawAtt(); };
+      li.append(pv, cap, rm); grid.append(li);
     });
-    $("#fb-pick").hidden = imgs.length >= MAXIMG;
+    const full = imgs.length >= MAXIMG;
+    $("#fb-att").hidden = !imgs.length; $("#fb-att-n").textContent = imgs.length + " of " + MAXIMG + " images attached";
+    dz.setAttribute("aria-disabled", full); dz.tabIndex = full ? -1 : 0;
+    $("#fb-dz-m").innerHTML = full ? "Maximum of " + MAXIMG + " images reached. Remove one to add another." : "Drag and drop images here, or <u>browse files</u>";
   };
   const addImgs = async files => {
-    out.className = "msg"; out.textContent = "";
+    setErr("#fb-att-err", null);
+    const errs = [];
     for (const f of files) {
-      if (imgs.length >= MAXIMG) { out.className = "msg err"; out.textContent = "You can attach up to " + MAXIMG + " images."; break; }
-      if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) { out.className = "msg err"; out.textContent = "Only PNG, JPEG, WebP or GIF images can be attached."; continue; }
-      const b = await shrink(f); if (b) imgs.push(b);
+      if (imgs.length >= MAXIMG) { errs.push("You can attach up to " + MAXIMG + " images."); break; }
+      if (!OKTYPES.includes(f.type)) { errs.push(f.name + ": unsupported file — use PNG, JPG, JPEG or WebP."); continue; }
+      if (f.size > MAXBYTES) { errs.push(f.name + ": larger than " + fmt(MAXBYTES) + " (" + fmt(f.size) + ")."); continue; }
+      const key = f.name + "|" + f.size + "|" + f.lastModified;
+      if (imgs.some(a => a.key === key)) { errs.push(f.name + ": already attached."); continue; }
+      const b = await shrink(f);
+      if (!b) { errs.push(f.name + ": this image could not be read."); continue; }
+      if (imgs.length >= MAXIMG) break;
+      imgs.push({id: ++seq, key, blob: b, name: f.name || "screenshot-" + seq + ".png", orig: f.size, url: URL.createObjectURL(b)});
+      drawAtt();
     }
-    drawAtt();
+    drawAtt(); setErr("#fb-att-err", null, errs.join(" "));
   };
-  $("#fb-pick").onclick = () => fin.click();
-  fin.onchange = () => { addImgs([...fin.files]); fin.value = ""; };
-  fb.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/")); if (fs.length) { e.preventDefault(); addImgs(fs); } });
+  const pickImgs = () => { if (imgs.length < MAXIMG && !busy) fin.click(); };
+  dz.addEventListener("click", pickImgs);
+  dz.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickImgs(); } });
+  fin.addEventListener("change", () => { addImgs([...fin.files]); fin.value = ""; });
+  ["dragenter", "dragover"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); if (imgs.length < MAXIMG) dz.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove("over"); }));
+  dz.addEventListener("drop", e => { if (!busy) addImgs([...(e.dataTransfer?.files || [])]); });
+  document.addEventListener("paste", e => {   // Ctrl+V while the form is in use
+    if (busy || !(fb.contains(document.activeElement) || fb.matches(":hover"))) return;
+    const fs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/")); if (!fs.length) return;
+    e.preventDefault(); addImgs(fs);
+  });
+  $("#fb-clear").onclick = () => { imgs.forEach(dropUrl); imgs = []; setErr("#fb-att-err", null); drawAtt(); };
+  $("#fb-view-x").onclick = () => view.close();
+  view.addEventListener("click", e => { if (e.target === view) view.close(); });
+  view.addEventListener("close", () => { $("#fb-view-i").removeAttribute("src"); });
+
+  /* submit: XHR so upload progress is shown; the form is cleared only after the server confirms */
+  const send = fd => new Promise((ok, no) => {
+    const x = new XMLHttpRequest(); x.open("POST", "/api/feedback/"); x.timeout = 60000;
+    x.upload.onprogress = e => { if (e.lengthComputable && imgs.length) $("#fb-send-t").textContent = "Sending feedback… " + Math.round(e.loaded / e.total * 100) + "%"; };
+    x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch {} x.status >= 200 && x.status < 300 ? ok(j) : no(new Error(x.status === 429 ? "Too many messages — please try again later." : x.status === 413 ? "The images are too large. Remove one and try again." : j.detail || "Something went wrong. Please try again.")); };
+    x.onerror = () => no(new Error("Network error — check your connection and try again."));
+    x.ontimeout = () => no(new Error("The request timed out. Please try again."));
+    x.send(fd);
+  });
   fb.addEventListener("submit", async e => {
-    e.preventDefault(); out.className = "msg";
-    const message = ta.value.trim();
-    if (message.length < 10) { out.className = "msg err"; out.textContent = "Please write at least 10 characters."; ta.focus(); return; }
-    btn.disabled = true; btn.textContent = "Sending…"; out.textContent = "";
+    e.preventDefault(); if (busy) return;
+    const message = ta.value.trim(), cerr = contactErr(); status("", "");
+    setErr("#fb-msg-err", ta, message.length < 10 ? "Please write at least 10 characters." : ""); setErr("#fb-contact-err", ctc, cerr);
+    if (message.length < 10) return ta.focus(); if (cerr) return ctc.focus();
+    busy = true; btn.disabled = true; btn.classList.add("sending"); $("#fb-send-t").textContent = "Sending feedback...";
     try {
       const fd = new FormData();
-      fd.append("kind", fb.kind.value); fd.append("message", message); fd.append("contact", fb.contact.value); fd.append("website", fb.website.value);
-      imgs.forEach((b, i) => fd.append("images", b, "image" + (i + 1) + ".jpg"));
-      const r = await fetch("/api/feedback/", {method: "POST", body: fd});
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(r.status === 429 ? "Too many messages — please try again later." : j.detail || "Something went wrong.");
-      out.className = "msg ok"; out.textContent = j.images === false ? "Thank you! Your message was sent, but the images could not be delivered." : "Thank you! Your message was sent."; fb.reset(); imgs = []; drawAtt(); $("#fb-count").textContent = "0 / 2000";
-    } catch (err) { out.className = "msg err"; out.textContent = err.message; }
-    btn.disabled = false; btn.textContent = "Send feedback";
+      fd.append("kind", fb.kind.value); fd.append("message", message); fd.append("contact", ctc.value.trim()); fd.append("website", fb.website.value);
+      imgs.forEach((a, i) => fd.append("images", a.blob, "image" + (i + 1) + ".jpg"));
+      const j = await send(fd);
+      status(j.images === false ? "warn" : "ok", j.images === false ? "Your feedback was sent, but the images could not be delivered." : "Thank you! Your feedback has been sent.");
+      fb.reset(); ta.placeholder = HOLD.feedback; imgs.forEach(dropUrl); imgs = []; fbCount(); fit(); drawAtt();
+    } catch (err) { status("err", err.message); }   // message and attachments are kept so the user can retry
+    busy = false; btn.disabled = false; btn.classList.remove("sending"); $("#fb-send-t").textContent = "Send feedback";
   });
+  fbCount(); fit(); drawAtt();
 
   /* GitHub stats: only shown if the API answers */
   fetch("https://api.github.com/repos/" + REPO).then(r => r.ok ? r.json() : Promise.reject()).then(d => {
