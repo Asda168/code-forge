@@ -211,7 +211,13 @@ class FeedbackView(APIView):
                 return Response({"detail": "Images are too large (4 MB in total)."}, status=status.HTTP_400_BAD_REQUEST)
             photos.append((f"image{len(photos) + 1}.{ctype.split('/')[1]}", ctype, f.read()))
         from . import site
-        if not telegram.send(telegram.feedback_text(kind, message, contact, site.VERSION)):
+        text = telegram.feedback_text(kind, message, contact, site.VERSION)
+        # One Telegram post: the images with the description + contact as the caption under them.
+        # Only if the text is too long for a caption do we fall back to album + separate text.
+        if photos and len(text) <= telegram.CAPTION_MAX:
+            ok = telegram.send_photos(photos, text)
+        else:
+            ok = telegram.send(text) and (telegram.send_photos(photos) if photos else True)
+        if not ok:
             return Response({"detail": "Feedback is temporarily unavailable. Please open a GitHub issue instead."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        sent = telegram.send_photos(photos, f"📎 {kind.title()} attachments") if photos else True
-        return Response({"ok": True, "images": sent})
+        return Response({"ok": True, "images": bool(photos)})

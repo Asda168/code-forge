@@ -76,10 +76,13 @@ class ApiTests(TestCase):
         from unittest import mock
         from django.core.files.uploadedfile import SimpleUploadedFile
         png = SimpleUploadedFile("a.png", b"\x89PNG\r\n\x1a\n" + b"0" * 50, content_type="image/png")
-        with mock.patch("core.telegram.send", return_value=True), mock.patch("core.telegram.send_photos", return_value=True) as photos:
+        with mock.patch("core.telegram.send", return_value=True) as send, mock.patch("core.telegram.send_photos", return_value=True) as photos:
             r = self.c.post("/api/feedback/", {"kind": "bug", "message": "Crash when opening a folder", "contact": "me@x.com", "images": [png]}, format="multipart")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(photos.call_args[0][0][0][1], "image/png")
+        send.assert_not_called()  # one post: images with the description + contact as caption
+        self.assertIn("Crash when opening a folder", photos.call_args[0][1])
+        self.assertIn("me@x.com", photos.call_args[0][1])
         bad = SimpleUploadedFile("a.png", b"not an image at all", content_type="image/png")
         with mock.patch("core.telegram.send", return_value=True) as send:
             r = self.c.post("/api/feedback/", {"message": "Crash when opening a folder", "contact": "me@x.com", "images": [bad]}, format="multipart")

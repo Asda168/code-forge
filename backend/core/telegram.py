@@ -35,8 +35,11 @@ def feedback_text(kind, message, contact, version):
     return "\n".join(lines)
 
 
+CAPTION_MAX = 1024  # Telegram's limit for a photo caption
+
+
 def send_photos(photos, caption=""):
-    """Send 1-10 images (list of (filename, content_type, bytes)) as a photo album. Returns True on success; never raises."""
+    """Send 1-10 images (list of (filename, content_type, bytes)) as a photo album; `caption` (HTML, <= CAPTION_MAX) shows under the first image. Returns True on success; never raises."""
     token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat or not photos:
         return False
@@ -53,11 +56,12 @@ def send_photos(photos, caption=""):
     if len(photos) == 1:
         method = "sendPhoto"
         if caption:
-            field("caption", caption[:1000])
+            field("caption", caption)
+            field("parse_mode", "HTML")
         file("photo", *photos[0])
     else:
         method = "sendMediaGroup"
-        media = [{"type": "photo", "media": f"attach://f{i}", **({"caption": caption[:1000]} if i == 0 and caption else {})} for i in range(len(photos))]
+        media = [{"type": "photo", "media": f"attach://f{i}", **({"caption": caption, "parse_mode": "HTML"} if i == 0 and caption else {})} for i in range(len(photos))]
         field("media", json.dumps(media))
         for i, p in enumerate(photos):
             file(f"f{i}", *p)
