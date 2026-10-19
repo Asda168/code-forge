@@ -33,3 +33,38 @@ def feedback_text(kind, message, contact, version):
     if version:
         lines.append(f"Site version: v{html.escape(version)}")
     return "\n".join(lines)
+
+
+def send_photos(photos, caption=""):
+    """Send 1-10 images (list of (filename, content_type, bytes)) as a photo album. Returns True on success; never raises."""
+    token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat or not photos:
+        return False
+    boundary = "----asta" + os.urandom(8).hex()
+    parts = []
+
+    def field(name, value):
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
+
+    def file(name, filename, ctype, data):
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; filename="{filename}"\r\nContent-Type: {ctype}\r\n\r\n'.encode() + data + b"\r\n")
+
+    field("chat_id", chat)
+    if len(photos) == 1:
+        method = "sendPhoto"
+        if caption:
+            field("caption", caption[:1000])
+        file("photo", *photos[0])
+    else:
+        method = "sendMediaGroup"
+        media = [{"type": "photo", "media": f"attach://f{i}", **({"caption": caption[:1000]} if i == 0 and caption else {})} for i in range(len(photos))]
+        field("media", json.dumps(media))
+        for i, p in enumerate(photos):
+            file(f"f{i}", *p)
+    parts.append(f"--{boundary}--\r\n".encode())
+    req = urllib.request.Request(f"https://api.telegram.org/bot{token}/{method}", data=b"".join(parts), headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT * 3) as r:
+            return r.status == 200
+    except Exception:
+        return False

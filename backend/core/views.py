@@ -180,6 +180,8 @@ class FeedbackView(APIView):
     authentication_classes = []
     throttle_scope = "feedback"
     KINDS = {"feedback", "improvement", "bug"}
+    MAX_IMAGES = 4
+    MAX_BYTES = 4 * 1024 * 1024   # Vercel rejects request bodies over 4.5 MB
 
     def post(self, request):
         d = request.data
@@ -192,7 +194,22 @@ class FeedbackView(APIView):
             return Response({"detail": "Unknown feedback type."}, status=status.HTTP_400_BAD_REQUEST)
         if not 10 <= len(message) <= 2000:
             return Response({"detail": "Please write between 10 and 2000 characters."}, status=status.HTTP_400_BAD_REQUEST)
+        photos = []
+        files = request.FILES.getlist("images") if hasattr(request, "FILES") else []
+        if len(files) > self.MAX_IMAGES:
+            return Response({"detail": f"Please attach at most {self.MAX_IMAGES} images."}, status=status.HTTP_400_BAD_REQUEST)
+        total = 0
+        for f in files:
+            head = f.read(12); f.seek(0)
+            ctype = "image/png" if head.startswith(b"\x89PNG") else "image/jpeg" if head.startswith(b"\xff\xd8") else "image/webp" if head[:4] == b"RIFF" and head[8:12] == b"WEBP" else None
+            total += f.size
+            if not ctype:
+                return Response({"detail": "Attachments must be PNG, JPEG or WebP images."}, status=status.HTTP_400_BAD_REQUEST)
+            if total > self.MAX_BYTES:
+                return Response({"detail": "Images are too large (4 MB in total)."}, status=status.HTTP_400_BAD_REQUEST)
+            photos.append((f"image{len(photos) + 1}.{ctype.split('/')[1]}", ctype, f.read()))
         from . import site
         if not telegram.send(telegram.feedback_text(kind, message, contact, site.VERSION)):
             return Response({"detail": "Feedback is temporarily unavailable. Please open a GitHub issue instead."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response({"ok": True})
+        sent = telegram.send_photos(photos, f"📎 {kind.title()} attachments") if photos else True
+        return Response({"ok": True, "images": sent})

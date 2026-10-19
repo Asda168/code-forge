@@ -248,6 +248,8 @@ h3{margin:0;letter-spacing:-.01em;font-weight:600}
 .fb .kinds input:checked+span{background:color-mix(in srgb,var(--a) 14%,var(--surface2));color:var(--fg);border-color:var(--a)}.fb .kinds input:focus-visible+span{outline:2px solid var(--a);outline-offset:2px}
 .fb textarea,.fb input[type=text]{width:100%;margin-top:6px;font:400 1rem var(--sans);color:var(--fg);background:var(--surface2);border:1px solid var(--line2);border-radius:var(--r-sm);padding:10px var(--s2)}
 .fb textarea{min-height:150px;resize:vertical}.fb textarea:focus,.fb input[type=text]:focus{outline:2px solid var(--a);outline-offset:0;border-color:var(--a)}
+.fb .att{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center;margin-top:6px}.fb .att .pick{padding:7px 14px;border-radius:var(--r-sm);border:1px dashed var(--line2);background:var(--surface2);color:var(--mut);cursor:pointer;font-size:.9rem}.fb .att .pick:hover,.fb .att .pick:focus-visible{color:var(--fg);border-color:var(--a);outline:none}
+.fb .att .th{position:relative;width:64px;height:64px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line2)}.fb .att .th img{width:100%;height:100%;object-fit:cover;display:block}.fb .att .th button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:0;background:#000b;color:#fff;cursor:pointer;line-height:1;font-size:13px;padding:0}
 .fb .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .fb .row{display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap}.fb .count{margin-left:auto;font:400 .78rem var(--mono);color:var(--dim)}
 .fb .msg{margin:0;font-size:.9rem;min-height:1.4em}.fb .msg.ok{color:var(--ok)}.fb .msg.err{color:var(--err)}.fb small{color:var(--dim);font-size:.8rem}
@@ -543,6 +545,8 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
         </div></fieldset>
       <div><label for="fb-msg">Your message</label><textarea id="fb-msg" name="message" maxlength="2000" required aria-describedby="fb-count" placeholder="What would make Asta better for you?"></textarea></div>
       <div><label for="fb-contact">Email or Telegram <small>(optional, only if you want a reply)</small></label><input type="text" id="fb-contact" name="contact" maxlength="120" autocomplete="email" placeholder="you@example.com or @username"></div>
+      <div><label for="fb-img">Screenshots <small>(optional, up to 4 images — you can also paste them)</small></label>
+        <div class="att" id="fb-att"><input type="file" id="fb-img" accept="image/png,image/jpeg,image/webp" multiple hidden><button type="button" class="pick" id="fb-pick">＋ Add images</button></div></div>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="row"><button class="btn p" type="submit" id="fb-send">Send feedback</button><span class="count" id="fb-count" aria-live="off">0 / 2000</span></div>
       <p class="msg" id="fb-msg-out" role="status" aria-live="polite"></p>
@@ -788,17 +792,54 @@ footer{border-top:1px solid var(--line);padding:var(--s7) 0 var(--s5);background
   /* feedback form -> /api/feedback/ (server forwards to Telegram; no secrets in the browser) */
   const fb = $("#fb-form"), out = $("#fb-msg-out"), btn = $("#fb-send"), ta = $("#fb-msg");
   ta.addEventListener("input", () => { $("#fb-count").textContent = ta.value.length + " / 2000"; });
+  /* attachments: shrunk to JPEG in the browser (max 1600px) so the whole request stays under the 4.5 MB host limit */
+  const att = $("#fb-att"), fin = $("#fb-img"), MAXIMG = 4; let imgs = [];
+  const shrink = f => new Promise(res => {
+    const u = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u); c.toBlob(b => res(b), "image/jpeg", .82);
+    };
+    im.onerror = () => { URL.revokeObjectURL(u); res(null); };
+    im.src = u;
+  });
+  const drawAtt = () => {
+    att.querySelectorAll(".th").forEach(n => n.remove());
+    imgs.forEach((b, i) => {
+      const d = document.createElement("div"), im = new Image(), x = document.createElement("button");
+      d.className = "th"; im.alt = "Attachment " + (i + 1); im.src = URL.createObjectURL(b); im.onload = () => URL.revokeObjectURL(im.src);
+      x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove image " + (i + 1)); x.onclick = () => { imgs.splice(i, 1); drawAtt(); };
+      d.append(im, x); att.insertBefore(d, $("#fb-pick"));
+    });
+    $("#fb-pick").hidden = imgs.length >= MAXIMG;
+  };
+  const addImgs = async files => {
+    out.className = "msg"; out.textContent = "";
+    for (const f of files) {
+      if (imgs.length >= MAXIMG) { out.className = "msg err"; out.textContent = "You can attach up to " + MAXIMG + " images."; break; }
+      if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) { out.className = "msg err"; out.textContent = "Only PNG, JPEG, WebP or GIF images can be attached."; continue; }
+      const b = await shrink(f); if (b) imgs.push(b);
+    }
+    drawAtt();
+  };
+  $("#fb-pick").onclick = () => fin.click();
+  fin.onchange = () => { addImgs([...fin.files]); fin.value = ""; };
+  fb.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/")); if (fs.length) { e.preventDefault(); addImgs(fs); } });
   fb.addEventListener("submit", async e => {
     e.preventDefault(); out.className = "msg";
     const message = ta.value.trim();
     if (message.length < 10) { out.className = "msg err"; out.textContent = "Please write at least 10 characters."; ta.focus(); return; }
     btn.disabled = true; btn.textContent = "Sending…"; out.textContent = "";
     try {
-      const r = await fetch("/api/feedback/", {method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({kind: fb.kind.value, message, contact: fb.contact.value, website: fb.website.value})});
+      const fd = new FormData();
+      fd.append("kind", fb.kind.value); fd.append("message", message); fd.append("contact", fb.contact.value); fd.append("website", fb.website.value);
+      imgs.forEach((b, i) => fd.append("images", b, "image" + (i + 1) + ".jpg"));
+      const r = await fetch("/api/feedback/", {method: "POST", body: fd});
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(r.status === 429 ? "Too many messages — please try again later." : j.detail || "Something went wrong.");
-      out.className = "msg ok"; out.textContent = "Thank you! Your message was sent."; fb.reset(); $("#fb-count").textContent = "0 / 2000";
+      out.className = "msg ok"; out.textContent = j.images === false ? "Thank you! Your message was sent, but the images could not be delivered." : "Thank you! Your message was sent."; fb.reset(); imgs = []; drawAtt(); $("#fb-count").textContent = "0 / 2000";
     } catch (err) { out.className = "msg err"; out.textContent = err.message; }
     btn.disabled = false; btn.textContent = "Send feedback";
   });

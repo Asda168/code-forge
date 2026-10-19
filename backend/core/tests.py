@@ -7,6 +7,8 @@ from .models import Download, Release
 
 class ApiTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()   # feedback is throttled per hour; keep tests independent
         self.user = get_user_model().objects.create_user("t", password="pass12345")
         self.c = APIClient()
 
@@ -68,6 +70,20 @@ class ApiTests(TestCase):
             send.assert_not_called()  # honeypot hits are dropped silently
         with mock.patch("core.telegram.send", return_value=False):
             self.assertEqual(self.c.post("/api/feedback/", {"message": "x" * 20}, format="json").status_code, 503)
+
+    def test_feedback_images_pushed_to_telegram(self):
+        from unittest import mock
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        png = SimpleUploadedFile("a.png", b"\x89PNG\r\n\x1a\n" + b"0" * 50, content_type="image/png")
+        with mock.patch("core.telegram.send", return_value=True), mock.patch("core.telegram.send_photos", return_value=True) as photos:
+            r = self.c.post("/api/feedback/", {"kind": "bug", "message": "Crash when opening a folder", "images": [png]}, format="multipart")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(photos.call_args[0][0][0][1], "image/png")
+        bad = SimpleUploadedFile("a.png", b"not an image at all", content_type="image/png")
+        with mock.patch("core.telegram.send", return_value=True) as send:
+            r = self.c.post("/api/feedback/", {"message": "Crash when opening a folder", "images": [bad]}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        send.assert_not_called()
 
 
 class ApiIndexTests(TestCase):
