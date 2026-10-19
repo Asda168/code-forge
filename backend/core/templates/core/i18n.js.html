@@ -1,0 +1,207 @@
+<script>
+/* Khmer / English switcher. Khmer is the default; the choice is remembered in localStorage.
+   English text in the page is the source of truth: matching text nodes and attributes are swapped in place,
+   including strings the page scripts set later (a MutationObserver translates those too). */
+(() => {
+  const KM = {
+    "Skip to content": "រំលងទៅមាតិកា", "Asta IDE home": "ទំព័រដើម Asta IDE", "Primary": "ម៉ឺនុយមេ", "Features": "មុខងារ", "Extensions": "ផ្នែកបន្ថែម",
+    "Documentation": "ឯកសារ", "Documentation ↗": "ឯកសារ ↗", "Download": "ទាញយក", "Open menu": "បើកម៉ឺនុយ", "Close menu": "បិទម៉ឺនុយ", "Mobile menu": "ម៉ឺនុយទូរស័ព្ទ",
+    "Languages": "ភាសា", "Download Asta IDE": "ទាញយក Asta IDE", "Latest": "ចុងក្រោយ", "Open source": "កូដប្រភពបើកចំហ",
+    "Your code. Your workflow. One IDE.": "កូដរបស់អ្នក។ លំហូរការងាររបស់អ្នក។ IDE តែមួយ។",
+    "A fast, customizable, open-source development environment built for modern developers.": "បរិស្ថានអភិវឌ្ឍន៍ប្រភពបើកចំហ ដែលលឿន និងអាចកែតម្រូវបាន សម្រាប់អ្នកអភិវឌ្ឍន៍សម័យទំនើប។",
+    "Explore on GitHub": "ស្វែងរកនៅលើ GitHub", "Preview panel": "ផ្ទាំងមើលជាមុន", "Explorer": "ឧបករណ៍រុករក", "Source Control": "ការគ្រប់គ្រងកូដប្រភព",
+    "Screenshot of the Asta IDE desktop app": "រូបថតអេក្រង់កម្មវិធី Asta IDE លើកុំព្យូទ័រ",
+    "Asta IDE desktop app: the file explorer on the left, a PHP controller open in the editor with syntax highlighting, and an integrated Git Bash terminal at the bottom running git status.": "កម្មវិធី Asta IDE៖ ឧបករណ៍រុករកឯកសារនៅខាងឆ្វេង PHP controller បើកក្នុងកម្មវិធីនិពន្ធដែលមានពណ៌កូដ និងទែមីណាល់ Git Bash នៅខាងក្រោមកំពុងរត់ git status។",
+    "Asta IDE desktop app: the Source Control panel on the left lists changed files as a tree with a commit box, branch selector and Generate button, next to the editor and terminal.": "កម្មវិធី Asta IDE៖ ផ្ទាំងការគ្រប់គ្រងកូដប្រភពនៅខាងឆ្វេងបង្ហាញឯកសារដែលបានផ្លាស់ប្តូរជាដើមឈើ មានប្រអប់ commit ឧបករណ៍ជ្រើសរើស branch និងប៊ូតុង Generate នៅជាប់កម្មវិធីនិពន្ធ និងទែមីណាល់។",
+    "Scroll sideways to see the full window": "រមូរទៅចំហៀងដើម្បីមើលបង្អួចទាំងមូល",
+    "Editor": "កម្មវិធីនិពន្ធ", "Move through code at the speed of thought.": "រុករកកូដបានលឿនដូចគំនិតរបស់អ្នក។",
+    "Built on the Monaco editor, with the navigation tools you already know.": "បង្កើតលើកម្មវិធីនិពន្ធ Monaco ជាមួយឧបករណ៍រុករកដែលអ្នកធ្លាប់ស្គាល់។",
+    "Multi-cursor editing, folding, minimap, split editors and tabs.": "ការកែសម្រួលច្រើនទ្រនិច ការបត់កូដ minimap កម្មវិធីនិពន្ធបំបែក និងផ្ទាំងថេប។",
+    "Quick Open": "បើកលឿន (Quick Open)", "any file with": "ឯកសារណាមួយដោយ", "; search the whole project with": "; ស្វែងរកទូទាំងគម្រោងដោយ",
+    "Go to definition": "ទៅកាន់និយមន័យ", "with": "ដោយ", ", including Laravel views, controllers, routes and config via the built-in Laravel extension.": "រួមទាំង Laravel views, controllers, routes និង config តាមរយៈផ្នែកបន្ថែម Laravel ដែលភ្ជាប់មកស្រាប់។",
+    "A file explorer with the Symbols icon theme and JetBrains Mono out of the box.": "ឧបករណ៍រុករកឯកសារជាមួយ Symbols icon theme និង JetBrains Mono ភ្ជាប់មកស្រាប់។",
+    "Screenshot of Quick Open": "រូបថតអេក្រង់ Quick Open",
+    "Quick Open in Asta IDE: typing \"user\" lists User.php, UserController.php and matching Blade views over the dimmed editor and file explorer.": "Quick Open ក្នុង Asta IDE៖ វាយ \"user\" បង្ហាញ User.php, UserController.php និង Blade views ដែលត្រូវគ្នា លើកម្មវិធីនិពន្ធ និងឧបករណ៍រុករកឯកសារដែលងងឹតបន្តិច។",
+    "Terminal": "ទែមីណាល់", "A real terminal, one keystroke away.": "ទែមីណាល់ពិតប្រាកដ គ្រាន់តែចុចមួយដង។",
+    "Full PTY terminals live in the panel under your editor, so builds, servers and scripts stay next to the code.": "ទែមីណាល់ PTY ពេញលេញស្ថិតក្នុងផ្ទាំងក្រោមកម្មវិធីនិពន្ធ ដូច្នេះ build ម៉ាស៊ីនបម្រើ និងស្គ្រីបនៅជិតកូដ។",
+    "PowerShell, CMD, Git Bash, bash and zsh, whichever are installed, with a shell picker.": "PowerShell, CMD, Git Bash, bash និង zsh ដែលមានដំឡើង ជាមួយឧបករណ៍ជ្រើសរើស shell។",
+    "Split panes side by side or stacked, with tabs and resizable dividers.": "បំបែកផ្ទាំងចំហៀង ឬជង់ ជាមួយថេប និងបន្ទាត់ញែកដែលអាចកែទំហំបាន។",
+    "Toggle with": "បិទ/បើកដោយ", ", split with": ", បំបែកដោយ", ". Links open in your browser.": "។ តំណភ្ជាប់បើកក្នុងកម្មវិធីរុករករបស់អ្នក។",
+    "Integrated terminal": "ទែមីណាល់ដែលភ្ជាប់មកស្រាប់", "Screenshot of split terminals": "រូបថតអេក្រង់ទែមីណាល់បំបែក",
+    "Asta IDE with two Git Bash terminals split side by side in the bottom panel: git log with file stats on the left and git status on the right.": "Asta IDE ជាមួយទែមីណាល់ Git Bash ពីរបំបែកចំហៀងក្នុងផ្ទាំងខាងក្រោម៖ git log ជាមួយស្ថិតិឯកសារនៅខាងឆ្វេង និង git status នៅខាងស្ដាំ។",
+    "Source control": "ការគ្រប់គ្រងកូដប្រភព", "Git, without leaving the editor.": "Git ដោយមិនចាំបាច់ចាកចេញពីកម្មវិធីនិពន្ធ។",
+    "Review, stage and commit from a panel that mirrors your project structure.": "ពិនិត្យ stage និង commit ពីផ្ទាំងដែលឆ្លុះបញ្ចាំងរចនាសម្ព័ន្ធគម្រោងរបស់អ្នក។",
+    "Changed files as a folder tree, with stage, unstage, discard and right-click actions.": "ឯកសារដែលបានផ្លាស់ប្តូរជាដើមឈើថតឯកសារ ជាមួយសកម្មភាព stage, unstage, discard និងចុចខាងស្ដាំ។",
+    "Commit with": "Commit ដោយ", ", generate a commit message, then Sync or Publish Branch.": ", បង្កើតសារ commit បន្ទាប់មក Sync ឬ Publish Branch។",
+    "Switch, create, rename and delete branches from the branch selector.": "ប្តូរ បង្កើត ប្តូរឈ្មោះ និងលុប branch ពីឧបករណ៍ជ្រើសរើស branch។",
+    "Side-by-side diffs, inline merge-conflict resolution, blame, file history and stashes.": "Diff ចំហៀងគ្នា ការដោះស្រាយ merge conflict ក្នុងកូដ blame ប្រវត្តិឯកសារ និង stash។",
+    "Screenshot of the Source Control panel": "រូបថតអេក្រង់ផ្ទាំងការគ្រប់គ្រងកូដប្រភព",
+    "The Source Control panel in Asta IDE: a commit message box with a Generate button, and four unstaged changes grouped by folder with M and U status badges.": "ផ្ទាំងការគ្រប់គ្រងកូដប្រភពក្នុង Asta IDE៖ ប្រអប់សារ commit ជាមួយប៊ូតុង Generate និងការផ្លាស់ប្តូរបួនដែលមិនទាន់ stage ដាក់ជាក្រុមតាមថត ជាមួយស្លាក M និង U។",
+    "Run": "ដំណើរការ", "Open a project. Press Run.": "បើកគម្រោង។ ចុច Run។",
+    "Asta IDE recognises common project types from their files and offers the usual way to start them.": "Asta IDE ស្គាល់ប្រភេទគម្រោងទូទៅពីឯកសាររបស់វា ហើយផ្តល់វិធីធម្មតាដើម្បីចាប់ផ្តើមវា។",
+    "Detects Laravel, Django, Node.js, React, Vue and plain PHP projects.": "រកឃើញគម្រោង Laravel, Django, Node.js, React, Vue និង PHP ធម្មតា។",
+    "Run, Debug, Stop, Stop all and Restart, with": "Run, Debug, Stop, Stop all និង Restart ដោយ", "and": "និង",
+    ". Each run configuration gets its own terminal, so several can run at once.": "។ ការកំណត់ការរត់នីមួយៗមានទែមីណាល់ផ្ទាល់ខ្លួន ដូច្នេះអាចរត់ច្រើនក្នុងពេលតែមួយ។",
+    "Laravel projects also list Artisan commands such as": "គម្រោង Laravel ក៏រាយពាក្យបញ្ជា Artisan ដូចជា",
+    "Run and Debug": "ដំណើរការ និងកែកំហុស", "Screenshot of the Run and Debug panel": "រូបថតអេក្រង់ផ្ទាំង Run and Debug",
+    "The Run and Debug panel in Asta IDE: a Laravel project is detected, with Run, Debug, Stop and Restart buttons, a Laravel Development configuration running php artisan serve, and a list of Artisan commands.": "ផ្ទាំង Run and Debug ក្នុង Asta IDE៖ គម្រោង Laravel ត្រូវបានរកឃើញ ជាមួយប៊ូតុង Run, Debug, Stop និង Restart ការកំណត់ Laravel Development កំពុងរត់ php artisan serve និងបញ្ជីពាក្យបញ្ជា Artisan។",
+    "Extensions & customization": "ផ្នែកបន្ថែម និងការកំណត់ផ្ទាល់ខ្លួន", "Make Asta IDE": "ធ្វើឲ្យ Asta IDE", "yours.": "ជារបស់អ្នក។",
+    "Extensions are declarative JSON (snippets, themes and file associations). They never execute code on your machine.": "ផ្នែកបន្ថែមគឺជា JSON បែបប្រកាស (snippets, themes និងការភ្ជាប់ប្រភេទឯកសារ)។ វាមិនដែលដំណើរការកូដលើកុំព្យូទ័ររបស់អ្នកទេ។",
+    "Rebind any command by clicking it, or edit": "ប្តូរគ្រាប់ចុចនៃពាក្យបញ្ជាណាមួយដោយចុចលើវា ឬកែ", ". Chords like": "។ ការផ្សំគ្រាប់ចុចដូចជា", "work.": "ដំណើរការ។",
+    "One searchable settings page for fonts, terminal, Git and themes.": "ទំព័រការកំណត់តែមួយដែលអាចស្វែងរកបាន សម្រាប់ពុម្ពអក្សរ ទែមីណាល់ Git និង themes។",
+    "Screenshot of the Extensions view": "រូបថតអេក្រង់ទិដ្ឋភាពផ្នែកបន្ថែម",
+    "The Extensions view in Asta IDE listing Django Snippets, Forest Theme, Git Blame, Git Config Files and GitLens with their install state and an Apply button for the theme.": "ទិដ្ឋភាពផ្នែកបន្ថែមក្នុង Asta IDE រាយ Django Snippets, Forest Theme, Git Blame, Git Config Files និង GitLens ជាមួយស្ថានភាពដំឡើង និងប៊ូតុង Apply សម្រាប់ theme។",
+    "Built-in catalog: snippets & language packs": "កាតាឡុកភ្ជាប់មកស្រាប់៖ snippets និងកញ្ចប់ភាសា", "Browse Extensions ↗": "រកមើលផ្នែកបន្ថែម ↗", "Built-in": "ភ្ជាប់មកស្រាប់",
+    "Git file associations": "ការភ្ជាប់ប្រភេទឯកសារ Git", "File types": "ប្រភេទឯកសារ", "JS/TS helpers": "ជំនួយ JS/TS",
+    "Snippets plus Ctrl+click / F12 go-to-definition for views, classes, controller methods, routes, config and Blade components": "Snippets បូក Ctrl+click / F12 ទៅកាន់និយមន័យសម្រាប់ views, classes, controller methods, routes, config និង Blade components",
+    "MySQL specifics": "ពិសេសសម្រាប់ MySQL", "Common PHP snippets": "PHP snippets ទូទៅ", "Python helpers": "ជំនួយ Python", "React components and hooks": "React components និង hooks", "Common SQL": "SQL ទូទៅ",
+    "Themes": "Themes", "Color theme · Asta IDE": "Color theme · Asta IDE", "Calm green dark theme": "theme ងងឹតពណ៌បៃតងស្ងប់ស្ងាត់",
+    "High-energy purple and cyan": "ពណ៌ស្វាយ និងស៊ីយ៉ង់ថាមពលខ្ពស់", "Deep teal dark theme": "theme ងងឹតពណ៌ទឹកសមុទ្រជ្រៅ", "Soft light theme for daytime": "theme ភ្លឺទន់សម្រាប់ពេលថ្ងៃ", "Warm dark theme": "theme ងងឹតពណ៌កក់ក្តៅ",
+    "Languages & frameworks": "ភាសា និង framework", "What Asta IDE integrates with, exactly.": "អ្វីដែល Asta IDE ភ្ជាប់ជាមួយ យ៉ាងពិតប្រាកដ។",
+    "Every row below is something the app does today. Any other language still gets Monaco's syntax highlighting and editing, just no project integration.": "ជួរនីមួយៗខាងក្រោមគឺជាអ្វីដែលកម្មវិធីធ្វើបានសព្វថ្ងៃ។ ភាសាផ្សេងទៀតនៅតែទទួលបានការបន្លិចពណ៌កូដ និងការកែសម្រួលរបស់ Monaco ប៉ុន្តែគ្មានការរួមបញ្ចូលជាមួយគម្រោងទេ។",
+    "Supported languages and frameworks": "ភាសា និង framework ដែលគាំទ្រ", "Language and framework support in Asta IDE": "ការគាំទ្រភាសា និង framework ក្នុង Asta IDE",
+    "Technology": "បច្ចេកវិទ្យា", "Project run": "ការរត់គម្រោង", "Yes": "បាទ/ចាស", "Not available": "មិនមាន", "Detected, no run preset": "រកឃើញ គ្មានការកំណត់រត់", "or": "ឬ", "Yes, JavaScript snippets": "បាទ/ចាស JavaScript snippets",
+    "Run commands are the defaults Asta IDE offers once it recognises the project files (for example": "ពាក្យបញ្ជារត់គឺជាលំនាំដើមដែល Asta IDE ផ្តល់ នៅពេលវាស្គាល់ឯកសារគម្រោង (ឧទាហរណ៍", ", or": ", ឬ", "). Snippets come from the built-in extension catalog.": ")។ Snippets មកពីកាតាឡុកផ្នែកបន្ថែមដែលភ្ជាប់មកស្រាប់។",
+    "Free and open source for Windows, macOS and Linux. Pick your platform and architecture, or any earlier version.": "ឥតគិតថ្លៃ និងប្រភពបើកចំហសម្រាប់ Windows, macOS និង Linux។ ជ្រើសរើសប្រព័ន្ធ និងស្ថាបត្យកម្មរបស់អ្នក ឬកំណែមុនៗណាមួយ។",
+    "Version": "កំណែ", "Choose which version to download": "ជ្រើសរើសកំណែដែលត្រូវទាញយក", "Released": "ចេញផ្សាយ", "downloads": "ការទាញយក", "Free & Open Source": "ឥតគិតថ្លៃ និងប្រភពបើកចំហ",
+    "View all releases ↗": "មើលការចេញផ្សាយទាំងអស់ ↗", "Operating system": "ប្រព័ន្ធប្រតិបត្តិការ", "Windows downloads": "ការទាញយក Windows", "Recommended": "បានណែនាំ", "Architecture": "ស្ថាបត្យកម្ម",
+    "Download for Windows": "ទាញយកសម្រាប់ Windows", "Download for macOS": "ទាញយកសម្រាប់ macOS", "Download for Linux": "ទាញយកសម្រាប់ Linux", "Supported architectures and format": "ស្ថាបត្យកម្ម និងទម្រង់ដែលគាំទ្រ", ".exe installer": "កម្មវិធីដំឡើង .exe",
+    "Windows installers are self-contained. SmartScreen may warn about an unknown publisher — choose": "កម្មវិធីដំឡើង Windows មានអ្វីៗគ្រប់យ៉ាងក្នុងខ្លួន។ SmartScreen អាចព្រមានអំពីអ្នកផ្សព្វផ្សាយមិនស្គាល់ — សូមជ្រើសរើស",
+    "macOS downloads": "ការទាញយក macOS", "First launch may require": "ការបើកលើកដំបូងអាចតម្រូវឲ្យ", "right-click → Open": "ចុចខាងស្ដាំ → Open", "because the current build is not notarized.": "ពីព្រោះកំណែបច្ចុប្បន្នមិនទាន់ត្រូវបាន notarize។",
+    "Linux downloads": "ការទាញយក Linux", "Download AppImage": "ទាញយក AppImage", "Download .deb": "ទាញយក .deb", "Download .rpm": "ទាញយក .rpm", "Download .pacman": "ទាញយក .pacman", "Supported formats": "ទម្រង់ដែលគាំទ្រ",
+    "Ubuntu 20.04+, Fedora 36+ or similar (glibc 2.31+)": "Ubuntu 20.04+, Fedora 36+ ឬស្រដៀងគ្នា (glibc 2.31+)",
+    "Not available in this version": "មិនមានក្នុងកំណែនេះ", "Pick another version above.": "សូមជ្រើសរើសកំណែផ្សេងខាងលើ។",
+    "Downloads by version": "ការទាញយកតាមកំណែ", "total · live from GitHub Releases": "សរុប · ផ្ទាល់ពី GitHub Releases", "View release notes": "មើលកំណត់ចំណាំការចេញផ្សាយ", "No release notes for this version.": "គ្មានកំណត់ចំណាំការចេញផ្សាយសម្រាប់កំណែនេះទេ។",
+    "Hotfix: new terminals open instantly and no longer drop their first output": "Hotfix: ទែមីណាល់ថ្មីបើកភ្លាមៗ ហើយលែងបាត់លទ្ធផលដំបូង",
+    "Hotfix: Source Control updates faster after file changes, with instant Sync / Commit feedback": "Hotfix: ការគ្រប់គ្រងកូដប្រភពធ្វើបច្ចុប្បន្នភាពលឿនជាងមុនក្រោយការផ្លាស់ប្តូរឯកសារ ជាមួយមតិកែលម្អ Sync / Commit ភ្លាមៗ",
+    "Merge conflict resolution: inline Accept Current / Incoming / Both / Compare actions, an Accept All bar and a Merge Changes group in Source Control": "ការដោះស្រាយ merge conflict៖ សកម្មភាព Accept Current / Incoming / Both / Compare ក្នុងកូដ របារ Accept All និងក្រុម Merge Changes ក្នុងការគ្រប់គ្រងកូដប្រភព",
+    "Redesigned Source Control: file tree, Generate commit message, Commit / Sync Changes / Publish Branch button and a branch selector to switch, create, rename and delete branches": "ការគ្រប់គ្រងកូដប្រភពរចនាថ្មី៖ ដើមឈើឯកសារ Generate commit message ប៊ូតុង Commit / Sync Changes / Publish Branch និងឧបករណ៍ជ្រើសរើស branch ដើម្បីប្តូរ បង្កើត ប្តូរឈ្មោះ និងលុប branch",
+    "Right-click options for files and folders in Source Control": "ជម្រើសចុចខាងស្ដាំសម្រាប់ឯកសារ និងថតក្នុងការគ្រប់គ្រងកូដប្រភព",
+    "File menu follows VS Code: Open File, Open Recent, Save As, Auto Save, Revert File, Close Folder": "ម៉ឺនុយ File ដូច VS Code៖ Open File, Open Recent, Save As, Auto Save, Revert File, Close Folder",
+    "Hide Layout Header setting (Ctrl+Alt+H) to give the editor more room": "ការកំណត់ Hide Layout Header (Ctrl+Alt+H) ដើម្បីផ្តល់ទំហំកម្មវិធីនិពន្ធបន្ថែម",
+    "Download the installer (x64 or ARM64)": "ទាញយកកម្មវិធីដំឡើង (x64 ឬ ARM64)", "and follow the wizard": "ហើយធ្វើតាមអ្នកជំនួយ", "Launch Asta IDE from the Desktop or Start Menu": "បើក Asta IDE ពី Desktop ឬ Start Menu",
+    "Download the": "ទាញយក", "Drag": "អូស", "to Applications": "ទៅ Applications", "Right-click →": "ចុចខាងស្ដាំ →", "the first time": "ជាលើកដំបូង",
+    "Download the package for your distro": "ទាញយកកញ្ចប់សម្រាប់ distro របស់អ្នក", "Install it with the command below": "ដំឡើងវាដោយប្រើពាក្យបញ្ជាខាងក្រោម", "Launch Asta IDE from your app menu": "បើក Asta IDE ពីម៉ឺនុយកម្មវិធីរបស់អ្នក",
+    "Copy AppImage commands": "ចម្លងពាក្យបញ្ជា AppImage", "Copy": "ចម្លង", "Copied": "បានចម្លង", "Copy deb command": "ចម្លងពាក្យបញ្ជា deb", "Copy rpm command": "ចម្លងពាក្យបញ្ជា rpm", "Copy Arch Linux pacman command": "ចម្លងពាក្យបញ្ជា pacman របស់ Arch Linux",
+    "Built in the open.": "បង្កើតឡើងដោយបើកចំហ។",
+    "Asta IDE is free and open source under the MIT license. Read the code, follow releases, report bugs, suggest features and send pull requests on GitHub.": "Asta IDE ឥតគិតថ្លៃ និងប្រភពបើកចំហក្រោមអាជ្ញាប័ណ្ណ MIT។ អានកូដ តាមដានការចេញផ្សាយ រាយការណ៍កំហុស ស្នើមុខងារ និងផ្ញើ pull request នៅលើ GitHub។",
+    "View source on GitHub": "មើលកូដប្រភពនៅលើ GitHub", "Stars": "ផ្កាយ", "Open issues": "បញ្ហាបើក", "Repository": "ឃ្លាំងកូដ", "Issues": "បញ្ហា", "Releases": "ការចេញផ្សាយ", "License (MIT)": "អាជ្ញាប័ណ្ណ (MIT)",
+    "Privacy": "ឯកជនភាព", "Your code": "កូដរបស់អ្នក", "stays yours.": "នៅតែជារបស់អ្នក។",
+    "Asta IDE is designed around local development. Your source code, terminal sessions and Git repositories stay on your machine unless you explicitly enable synchronization or external integrations.": "Asta IDE ត្រូវបានរចនាជុំវិញការអភិវឌ្ឍន៍ក្នុងម៉ាស៊ីន។ កូដប្រភព សម័យទែមីណាល់ និងឃ្លាំង Git របស់អ្នកស្ថិតនៅលើកុំព្យូទ័ររបស់អ្នក លុះត្រាតែអ្នកបើកការធ្វើសមកាលកម្ម ឬការរួមបញ្ចូលខាងក្រៅដោយចេតនា។",
+    "LOCAL FILES": "ឯកសារក្នុងម៉ាស៊ីន", "Only folders you open": "តែថតដែលអ្នកបើក", "LOCAL TERMINAL": "ទែមីណាល់ក្នុងម៉ាស៊ីន", "PTY on your machine": "PTY នៅលើកុំព្យូទ័ររបស់អ្នក", "LOCAL GIT": "GIT ក្នុងម៉ាស៊ីន", "Your repositories": "ឃ្លាំងកូដរបស់អ្នក", "YOUR MACHINE": "កុំព្យូទ័ររបស់អ្នក", "Nothing leaves it by default": "គ្មានអ្វីចេញពីវាតាមលំនាំដើមទេ",
+    "Feedback": "មតិកែលម្អ", "Help shape Asta IDE.": "ជួយកំណត់រូបរាង Asta IDE។",
+    "Found a bug, want a feature, or have an idea to make the editor better? Tell us — every message goes straight to the team.": "រកឃើញកំហុស ចង់បានមុខងារ ឬមានគំនិតធ្វើឲ្យកម្មវិធីនិពន្ធល្អប្រសើរ? ប្រាប់យើង — រាល់សារទៅដល់ក្រុមការងារដោយផ្ទាល់។",
+    "Please don't include passwords, access tokens, private keys, or confidential source code. Screenshots should not contain sensitive information. For public discussion, you can also": "សូមកុំបញ្ចូលពាក្យសម្ងាត់ access token private key ឬកូដប្រភពសម្ងាត់។ រូបថតអេក្រង់មិនគួរមានព័ត៌មានរសើបទេ។ សម្រាប់ការពិភាក្សាសាធារណៈ អ្នកក៏អាច",
+    "open a GitHub issue": "បើក GitHub issue", "What is it about?": "តើវាអំពីអ្វី?", "Improvement": "ការកែលម្អ", "Bug report": "រាយការណ៍កំហុស", "Your message": "សាររបស់អ្នក",
+    "Tell us what you think about AstaIDE...": "ប្រាប់យើងពីអ្វីដែលអ្នកគិតអំពី Asta IDE...", "Tell us what you think about Asta IDE...": "ប្រាប់យើងពីអ្វីដែលអ្នកគិតអំពី Asta IDE...",
+    "Describe the feature or improvement you'd like...": "ពិពណ៌នាមុខងារ ឬការកែលម្អដែលអ្នកចង់បាន...", "Describe the issue, steps to reproduce, and expected behavior...": "ពិពណ៌នាបញ្ហា ជំហានដើម្បីបង្កើតឡើងវិញ និងលទ្ធផលដែលរំពឹងទុក...",
+    "Email or Telegram": "អ៊ីមែល ឬ Telegram", "you@example.com or @username": "you@example.com ឬ @username", "Required so we can let you know once your feedback has been addressed.": "ត្រូវការដើម្បីឲ្យយើងអាចប្រាប់អ្នកនៅពេលមតិកែលម្អរបស់អ្នកត្រូវបានដោះស្រាយ។",
+    "Screenshots (optional)": "រូបថតអេក្រង់ (ស្រេចចិត្ត)", "Attach screenshots": "ភ្ជាប់រូបថតអេក្រង់", "Drag and drop images here, or": "អូស និងទម្លាក់រូបភាពនៅទីនេះ ឬ", "browse files": "រកមើលឯកសារ",
+    "PNG, JPG, JPEG, or WebP · Up to 4 images · 5 MB each · You can also paste with Ctrl + V": "PNG, JPG, JPEG ឬ WebP · រហូតដល់ 4 រូបភាព · 5 MB ក្នុងមួយ · អ្នកក៏អាចបិទភ្ជាប់ដោយ Ctrl + V",
+    "Remove all": "លុបទាំងអស់", "Send feedback": "ផ្ញើមតិកែលម្អ", "Sending feedback...": "កំពុងផ្ញើមតិកែលម្អ...", "Image preview": "មើលរូបភាពជាមុន", "Close": "បិទ",
+    "Thank you! Your feedback has been sent.": "សូមអរគុណ! មតិកែលម្អរបស់អ្នកត្រូវបានផ្ញើហើយ។", "Your feedback was sent, but the images could not be delivered.": "មតិកែលម្អត្រូវបានផ្ញើ ប៉ុន្តែរូបភាពមិនអាចដឹកជូនបានទេ។",
+    "Please write at least 10 characters.": "សូមសរសេរយ៉ាងហោចណាស់ 10 តួអក្សរ។", "Please enter your email or Telegram @username so we can notify you.": "សូមបញ្ចូលអ៊ីមែល ឬ Telegram @username របស់អ្នក ដើម្បីឲ្យយើងអាចជូនដំណឹង។",
+    "Enter a valid email address or a Telegram @username.": "សូមបញ្ចូលអាសយដ្ឋានអ៊ីមែល ឬ Telegram @username ដែលត្រឹមត្រូវ។", "Network error — check your connection and try again.": "កំហុសបណ្តាញ — សូមពិនិត្យការតភ្ជាប់ ហើយព្យាយាមម្តងទៀត។",
+    "The request timed out. Please try again.": "សំណើអស់ពេល។ សូមព្យាយាមម្តងទៀត។", "Too many messages — please try again later.": "សារច្រើនពេក — សូមព្យាយាមម្តងទៀតពេលក្រោយ។",
+    "FAQ": "សំណួរញឹកញាប់", "Questions, answered.": "សំណួរ និងចម្លើយ។",
+    "Is Asta IDE free?": "តើ Asta IDE ឥតគិតថ្លៃឬទេ?", "Yes. Asta IDE is free and open source.": "បាទ/ចាស។ Asta IDE ឥតគិតថ្លៃ និងប្រភពបើកចំហ។",
+    "Which operating systems are supported?": "តើប្រព័ន្ធប្រតិបត្តិការណាខ្លះត្រូវបានគាំទ្រ?", "Windows 10/11 (x64 and ARM64), macOS 12+ (Apple Silicon and Intel, universal build) and 64-bit Linux (AppImage, .deb, .rpm and Arch Linux .pacman).": "Windows 10/11 (x64 និង ARM64), macOS 12+ (Apple Silicon និង Intel កំណែ universal) និង Linux 64-bit (AppImage, .deb, .rpm និង Arch Linux .pacman)។",
+    "Does Asta IDE support Laravel?": "តើ Asta IDE គាំទ្រ Laravel ទេ?", "Yes. It detects Laravel projects, can run them in one click, and includes Laravel snippets and file-type support.": "បាទ/ចាស។ វារកឃើញគម្រោង Laravel អាចរត់ដោយចុចតែមួយ និងរួមមាន Laravel snippets និងការគាំទ្រប្រភេទឯកសារ។",
+    "Does it support Python and Django?": "តើវាគាំទ្រ Python និង Django ទេ?", "Yes. Python and Django projects are detected and can be run from the editor, and Django and Python snippet packs are built in.": "បាទ/ចាស។ គម្រោង Python និង Django ត្រូវបានរកឃើញ ហើយអាចរត់ពីកម្មវិធីនិពន្ធ ហើយកញ្ចប់ snippet របស់ Django និង Python ភ្ជាប់មកស្រាប់។",
+    "Does it include Git?": "តើវាមាន Git ទេ?", "Yes — stage, commit, push, pull, branches, diffs, blame, history and stashes are built in.": "បាទ/ចាស — stage, commit, push, pull, branches, diffs, blame, ប្រវត្តិ និង stash ភ្ជាប់មកស្រាប់។",
+    "Can I use Git Bash?": "តើខ្ញុំអាចប្រើ Git Bash បានទេ?", "Yes. The integrated terminal supports Git Bash alongside PowerShell, CMD, bash and zsh when they are installed.": "បាទ/ចាស។ ទែមីណាល់ដែលភ្ជាប់មកស្រាប់គាំទ្រ Git Bash រួមជាមួយ PowerShell, CMD, bash និង zsh នៅពេលដែលពួកវាត្រូវបានដំឡើង។",
+    "Does it support Windows ARM64?": "តើវាគាំទ្រ Windows ARM64 ទេ?", "Yes. There is a dedicated ARM64 installer next to the x64 one in the Windows download card.": "បាទ/ចាស។ មានកម្មវិធីដំឡើង ARM64 ដាច់ដោយឡែកនៅជាប់ x64 ក្នុងកាតទាញយក Windows។",
+    "Does Asta IDE work offline?": "តើ Asta IDE ដំណើរការ offline បានទេ?", "Yes. Editing, the terminal, Git and running projects all work locally. The website, update checks and optional account features need a connection.": "បាទ/ចាស។ ការកែសម្រួល ទែមីណាល់ Git និងការរត់គម្រោងទាំងអស់ដំណើរការក្នុងម៉ាស៊ីន។ គេហទំព័រ ការពិនិត្យបច្ចុប្បន្នភាព និងមុខងារគណនីស្រេចចិត្តត្រូវការអ៊ីនធឺណិត។",
+    "Where can I report bugs?": "តើខ្ញុំអាចរាយការណ៍កំហុសនៅឯណា?", "Open an issue on": "បើក issue នៅលើ", "Where can I find previous releases?": "តើខ្ញុំអាចរកការចេញផ្សាយមុនៗនៅឯណា?",
+    "Use the version selector in the download section, or browse every build on": "ប្រើឧបករណ៍ជ្រើសរើសកំណែក្នុងផ្នែកទាញយក ឬរកមើលរាល់ build នៅលើ",
+    "Product": "ផលិតផល", "Developers": "អ្នកអភិវឌ្ឍន៍", "Community": "សហគមន៍", "Contributing": "ការចូលរួមចំណែក", "Report an issue": "រាយការណ៍បញ្ហា", "Legal": "ផ្លូវច្បាប់", "License: MIT": "អាជ្ញាប័ណ្ណ៖ MIT", "Built for developers.": "បង្កើតសម្រាប់អ្នកអភិវឌ្ឍន៍។"
+  };
+  const RX = [
+    [/^(\d+) built-in catalog entries: .*$/, "$1 ធាតុក្នុងកាតាឡុកភ្ជាប់មកស្រាប់៖ កញ្ចប់ snippet ប្រភេទឯកសារ និង color themes។"],
+    [/^(v?[\d.]+) \(latest\)$/, "$1 (ចុងក្រោយ)"], [/^(v[\d.]+) \(pre-release\)$/, "$1 (មុនចេញផ្សាយ)"],
+    [/^What's new in (v[\d.]+)$/, "មានអ្វីថ្មីក្នុង $1"], [/^Release notes for (v[\d.]+)$/, "កំណត់ចំណាំការចេញផ្សាយសម្រាប់ $1"],
+    [/^· Detected (.+)$/, "· រកឃើញ $1"], [/^Sending feedback… (\d+)%$/, "កំពុងផ្ញើមតិកែលម្អ… $1%"],
+    [/^(\d+) of (\d+) images attached$/, "បានភ្ជាប់រូបភាព $1 ក្នុងចំណោម $2"], [/^Maximum of (\d+) images reached\..*$/, "ឈានដល់រូបភាពអតិបរមា $1 ហើយ។ លុបមួយដើម្បីបន្ថែមមួយទៀត។"],
+    [/^Preview of (.+)$/, "មើលជាមុន $1"], [/^Remove (.+)$/, "លុប $1"]
+  ];
+  const ATTRS = ["alt", "aria-label", "placeholder", "title"];
+  const KEEP = new Map();   // text node -> {o: original, v: our translation}
+  const KEEPA = new WeakMap(); // element -> {attr: {o, v}}
+  const norm = s => s.replace(/\s+/g, " ").trim();
+  const tr = s => { const k = norm(s); if (!k) return null; if (Object.prototype.hasOwnProperty.call(KM, k)) return KM[k]; for (const [r, t] of RX) if (r.test(k)) return k.replace(r, t); return null; };
+  const wrap = (s, t) => s.match(/^\s*/)[0] + t + s.match(/\s*$/)[0];
+  let lang = "km", obs;
+  try { lang = localStorage.getItem("lang") || "km"; } catch {}
+  const SKIP = /^(SCRIPT|STYLE|TEXTAREA|NOSCRIPT|CODE|KBD|PRE)$/;
+
+  function text(n) {
+    const p = n.parentNode; if (!p || SKIP.test(p.nodeName) || p.closest?.(".cmd")) return;
+    const rec = KEEP.get(n);
+    if (rec && n.data === rec.v) return;                 // already ours
+    const t = tr(n.data); if (!t) { KEEP.delete(n); return; }
+    const o = n.data, v = wrap(o, t); KEEP.set(n, { o, v }); n.data = v; changed && changed.add(p);
+  }
+  function attrs(el) {
+    for (const a of ATTRS) {
+      const cur = el.getAttribute?.(a); if (cur == null) continue;
+      const m = KEEPA.get(el) || {}; if (m[a] && m[a].v === cur) continue;
+      const t = tr(cur); if (!t) { if (m[a]) delete m[a]; continue; }
+      m[a] = { o: cur, v: t }; KEEPA.set(el, m); el.setAttribute(a, t);
+    }
+  }
+  function walk(root) {
+    if (root.nodeType === 3) return text(root);
+    if (root.nodeType !== 1) return;
+    attrs(root);
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_ALL);
+    for (let n = w.nextNode(); n; n = w.nextNode()) n.nodeType === 3 ? text(n) : attrs(n);
+  }
+  function restore() {
+    for (const [n, r] of KEEP) if (n.data === r.v) { n.data = r.o; changed && n.parentNode && changed.add(n.parentNode); }
+    KEEP.clear();
+    document.querySelectorAll(ATTRS.map(a => "[" + a + "]").join(",")).forEach(el => { const m = KEEPA.get(el); if (!m) return; for (const a in m) if (el.getAttribute(a) === m[a].v) el.setAttribute(a, m[a].o); KEEPA.delete(el); });
+  }
+  const TITLE_EN = document.title, TITLE_KM = "Asta IDE — IDE ស្រាលសម្រាប់ Laravel, Python និងគេហទំព័រទំនើប";
+  const sw = document.getElementById("lang");
+  const FLAG = {
+    km: '<svg viewBox="0 0 24 16"><rect width="24" height="16" fill="#032ea1"/><rect y="4" width="24" height="8" fill="#e00025"/><path d="M7 10.2h10v-.9h-.8V8h-.9v-.9h-.9V6h-.8V5h-.7v1h-.8v1h-1V6H11V5h-.8v1h-.8v1.1h-.9V8H7.8v1.3H7z" fill="#fff"/></svg>',
+    en: '<svg viewBox="0 0 24 16"><rect width="24" height="16" fill="#012169"/><path d="M0 0l24 16M24 0L0 16" stroke="#fff" stroke-width="3"/><path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" stroke-width="1.2"/><path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5"/><path d="M12 0v16M0 8h24" stroke="#c8102e" stroke-width="3"/></svg>'
+  };
+  let changed = null;   // parents of text that changed during a user-triggered switch; they fly in
+  function paint() {
+    document.documentElement.lang = lang;
+    document.title = lang === "km" ? TITLE_KM : TITLE_EN;
+    if (sw) { sw.querySelector(".fl").innerHTML = FLAG[lang]; sw.querySelector("b").textContent = lang === "km" ? "KM" : "EN"; const a = lang === "km" ? "Switch to English" : "ប្តូរទៅភាសាខ្មែរ"; sw.setAttribute("aria-label", a); sw.title = a; }
+  }
+  function fly() {
+    if (!changed || matchMedia("(prefers-reduced-motion: reduce)").matches) { changed = null; return; }
+    const vh = innerHeight, els = [...changed].filter(el => { const r = el.getBoundingClientRect(); return r.bottom > -40 && r.top < vh + 40 && r.width; });
+    changed = null;
+    els.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).forEach((el, i) => {
+      el.classList.remove("fly"); void el.offsetWidth; el.style.setProperty("--d", Math.min(i * 22, 380) + "ms"); el.classList.add("fly");
+      el.addEventListener("animationend", () => el.classList.remove("fly"), { once: true });
+    });
+  }
+  function apply(animate) {
+    changed = animate ? new Set() : null;
+    obs && obs.disconnect();
+    if (lang === "km") walk(document.body); else restore();
+    paint();
+    fly();
+    document.documentElement.classList.remove("i18n-wait");
+    obs && obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  }
+  obs = new MutationObserver(recs => {
+    if (lang !== "km") return;
+    obs.disconnect();
+    for (const r of recs) {
+      if (r.type === "characterData") text(r.target);
+      else if (r.type === "attributes") attrs(r.target);
+      else r.addedNodes.forEach(walk);
+    }
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  });
+  sw && sw.addEventListener("click", () => { lang = lang === "km" ? "en" : "km"; try { localStorage.setItem("lang", lang); } catch {} apply(true); });
+  apply();
+})();
+</script>

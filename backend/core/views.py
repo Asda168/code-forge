@@ -174,6 +174,20 @@ def og_image(request):
     return r
 
 
+SHOTS = {"explorer", "git", "editor", "terminal", "run", "extensions"}
+
+
+def shot_image(request, name):
+    """Real screenshots of the desktop app (core/seo/shots/<name>.webp), cached by the browser and the CDN."""
+    from pathlib import Path
+    from django.http import Http404, HttpResponse
+    if name not in SHOTS:
+        raise Http404
+    r = HttpResponse((Path(__file__).parent / "seo" / "shots" / f"{name}.webp").read_bytes(), content_type="image/webp")
+    r["Cache-Control"] = "public, max-age=604800, s-maxage=604800"
+    return r
+
+
 class FeedbackView(APIView):
     """Public feedback / improvement form on the website. Forwards to the Telegram bot; stores nothing."""
     permission_classes = [permissions.AllowAny]

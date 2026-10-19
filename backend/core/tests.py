@@ -37,8 +37,16 @@ class ApiTests(TestCase):
     def test_download_page_without_db_rows(self):
         r = self.c.get("/")
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "Download Asta")
+        self.assertContains(r, "Download Asta IDE")
         self.assertContains(r, "Asta-Setup-x64.exe")
+
+    def test_site_screenshots_served(self):
+        for name in ("explorer", "git", "editor", "terminal", "run", "extensions"):
+            r = self.c.get(f"/shots/{name}.webp")
+            self.assertEqual((r.status_code, r["Content-Type"]), (200, "image/webp"))
+            self.assertTrue(r.content.startswith(b"RIFF"))
+        self.assertEqual(self.c.get("/shots/secret.webp").status_code, 404)
+        self.assertEqual(self.c.get("/shots/..%2F..%2Fsettings.webp").status_code, 404)
 
     def test_update_check_and_download_page(self):
         r = Release.objects.create(version="1.2.0", released_at="2026-01-01")

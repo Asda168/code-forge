@@ -7,5 +7,6 @@ urlpatterns = [
     path("robots.txt", views.robots_txt),
     path("sitemap.xml", views.sitemap_xml),
     path("og.png", views.og_image),
+    path("shots/<str:name>.webp", views.shot_image),
     path("download/", views.download_page),
 ]
