@@ -105,7 +105,13 @@
   }
 
   CF.renderExplorer = (body) => {
-    if (!S.root) { body.append(h('div', { class: 'pad muted' }, 'No folder opened.'), h('div', { class: 'pad' }, h('button', { class: 'btn', onclick: CF.openFolder }, 'Open Folder'))); return; }
+    if (!S.root) {
+      body.append(h('div', { class: 'pad muted' }, 'You have not yet opened a folder.'),
+        h('div', { class: 'pad' }, h('button', { class: 'btn', style: 'width:100%', onclick: CF.openFolder }, 'Open Folder')),
+        h('div', { class: 'pad' }, h('button', { class: 'btn sec', style: 'width:100%', onclick: () => CF.cloneDialog() }, 'Clone Repository')),
+        h('div', { class: 'pad muted' }, 'Tip: click the Explorer icon or press Ctrl+B to show/hide this sidebar.'));
+      return;
+    }
     const head = h('div', { class: 'sec-head' }, h('span', {}, base(S.root)), h('span', { class: 'grow' }),
       ...[['newFile', 'New File', () => CF.newFile()], ['newFolder', 'New Folder', () => CF.newFolder()], ['refresh', 'Refresh', () => CF.refreshTree()], ['collapse', 'Collapse All', () => { T.expanded.clear(); CF.refreshTree(); }]].map(([t, ti, f]) => h('button', { class: 'icon-btn', title: ti, onclick: f }, CF.icon(t, 15))));
     const tree = h('div', { id: 'tree', tabindex: '0', onscroll: paint, oncontextmenu: (e) => { if (e.target.id === 'tree' || e.target.id === 'tree-spacer') { e.preventDefault(); CF.menu(e, [['New File', () => CF.newFile(S.root)], ['New Folder', () => CF.newFolder(S.root)], ['Paste', () => paste(S.root)], ['Open in Terminal', () => CF.newTerminal(undefined, S.root)]]); } },

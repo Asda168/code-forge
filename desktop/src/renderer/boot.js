@@ -11,7 +11,7 @@
   CF.bindMenu();
   cf.onHeader((hide) => { S.settings.hideHeader = hide; $('#app').classList.toggle('no-topbar', hide); });   // same setting changed from another window
 
-  $$('#activitybar [data-view]').forEach((b) => (b.onclick = () => CF.showView(b.dataset.view)));
+  $$('#activitybar [data-view]').forEach((b) => (b.onclick = () => (b.dataset.view === CF.curView && S.settings.sidebar && !$('#app').classList.contains('no-sidebar') ? CF.toggleSidebar() : CF.showView(b.dataset.view))));   // clicking the active icon hides the sidebar, same as Ctrl+B
   $$('#panel-switch [data-panel]').forEach((b) => (b.onclick = () => CF.showPanel(b.dataset.panel)));
   $('#panel-close').onclick = CF.togglePanel; $('#panel-max').onclick = CF.toggleMaxPanel;
   $('#cmd-center').onclick = CF.palette;

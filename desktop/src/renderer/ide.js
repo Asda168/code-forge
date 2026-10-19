@@ -34,27 +34,64 @@
   CF.invalidateIndex = () => { indexRoot = null; };
 
   // ---- Find / switch project (Ctrl+R) ------------------------------------------------------------
+  const normPath = (p) => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
   CF.findProject = CF.guard(async (newWin = false) => {
-    const recents = (await cf.ws.recents()).filter((r) => r.path !== S.root);
+    const prevFocus = document.activeElement, cur = S.root ? normPath(S.root) : null, seen = new Set();
+    const recents = (await cf.ws.recents()).reduce((a, r) => {   // recents come newest first; drop the open project and duplicate paths
+      const k = normPath(r.path); if (k === cur || seen.has(k)) return a; seen.add(k);
+      a.push({ ...r, nl: r.name.toLowerCase(), pl: r.path.replace(/\\/g, '/').toLowerCase() }); return a;
+    }, []);
     const o = $('#overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
-    let sel = 0, shown = recents;
-    const list = h('div', { class: 'list' });
+    let sel = 0, shown = recents, tokens = [], rows = [];
+    const list = h('div', { class: 'list fp-list', role: 'listbox' });
+    const hl = (text, lower) => {   // wrap matched substrings in <mark>
+      if (!tokens.length) return text;
+      const hit = new Array(text.length).fill(false);
+      for (const t of tokens) for (let i = lower.indexOf(t); i >= 0; i = lower.indexOf(t, i + t.length)) for (let j = i; j < i + t.length; j++) hit[j] = true;
+      const out = []; let i = 0;
+      while (i < text.length) { let j = i; while (j < text.length && hit[j] === hit[i]) j++; out.push(hit[i] ? h('mark', {}, text.slice(i, j)) : text.slice(i, j)); i = j; }
+      return out;
+    };
+    const close = () => { CF.closeOverlay(); if (prevFocus && prevFocus.isConnected && prevFocus.focus) try { prevFocus.focus(); } catch { /* ignore */ } };
+    const go = (r, inNew) => { CF.closeOverlay(); CF.guard(async () => { if (inNew) await cf.win.new(r.path); else CF.setRoot(await cf.ws.openRecent(r.path)); })(); };
+    const mark = () => { rows.forEach((el, i) => { el.classList.toggle('sel', i === sel); el.setAttribute('aria-selected', i === sel); }); const el = rows[sel]; if (el) el.scrollIntoView({ block: 'nearest' }); };
     const draw = () => {
-      list.innerHTML = '';
-      shown.forEach((r, i) => list.append(h('div', { class: 'it' + (i === sel ? ' sel' : ''), onclick: (e) => go(r, newWin || e.ctrlKey || e.shiftKey) }, h('span', {}, r.name), h('span', { class: 'muted mono', style: 'font-size:11px' }, r.path), h('button', { class: 'btn sec', title: 'Open in New Window (Ctrl+Enter)', style: 'margin-left:auto;padding:0 6px', onclick: (e) => { e.stopPropagation(); go(r, true); } }, '↗'))));
-      if (!shown.length) list.append(h('div', { class: 'it muted' }, recents.length ? 'No matching project' : 'No other recent projects'));
+      list.innerHTML = ''; rows = [];
+      shown.forEach((r, i) => {
+        const el = h('div', { class: 'fp-it', role: 'option', title: r.path, onmousemove: () => { if (sel !== i) { sel = i; mark(); } }, onclick: (e) => go(r, newWin || e.ctrlKey || e.shiftKey) },
+          h('span', { class: 'fp-ic', html: CF.fileIconHtml(r.name, true) }),
+          h('span', { class: 'fp-txt' }, h('span', { class: 'fp-name' }, hl(r.name, r.nl)), h('span', { class: 'fp-path' }, hl(r.path.replace(/\\/g, '/'), r.pl))),
+          h('button', { class: 'fp-new', tabindex: '-1', title: 'Open in New Window (Ctrl+Enter)', onclick: (e) => { e.stopPropagation(); go(r, true); } }, CF.icon('open', 14)));
+        rows.push(el); list.append(el);
+      });
+      if (!shown.length) list.append(h('div', { class: 'fp-empty' }, h('div', {}, recents.length ? 'No matching projects found' : 'No other recent projects'),
+        h('button', { class: 'btn sec', onclick: () => { CF.closeOverlay(); CF.openFolder(); } }, 'Browse for folder…')));
+      mark();
     };
     const filter = () => {
-      const q = input.value.trim().toLowerCase();
-      shown = q ? recents.map((r) => [r, score(r.name + ' ' + r.path, q)]).filter((x) => x[1] >= 0).sort((a, b) => a[1] - b[1]).map((x) => x[0]) : recents;
+      const q = input.value.trim().toLowerCase().replace(/\\/g, '/'); clear.hidden = !input.value;
+      tokens = q ? q.split(/\s+/) : [];
+      if (!q) shown = recents;
+      else {
+        const sub = recents.map((r) => [r, tokens.every((t) => r.nl.includes(t) || r.pl.includes(t)) ? (tokens.some((t) => r.nl.includes(t)) ? 0 : 1) : -1]).filter((x) => x[1] >= 0);
+        shown = sub.length ? sub.sort((a, b) => a[1] - b[1]).map((x) => x[0])   // stable sort keeps recency within a rank
+          : recents.map((r) => [r, score(r.nl + ' ' + r.pl, q)]).filter((x) => x[1] >= 0).sort((a, b) => a[1] - b[1]).map((x) => x[0]);   // fuzzy fallback
+      }
       sel = 0; draw();
     };
-    const go = (r, inNew) => { CF.closeOverlay(); CF.guard(async () => { if (inNew) await cf.win.new(r.path); else CF.setRoot(await cf.ws.openRecent(r.path)); })(); };
-    const input = h('input', { placeholder: newWin ? 'Open project in new window…' : 'Find project…  (Enter to open, Ctrl+Enter for a new window)', oninput: filter, onkeydown: (e) => {
-      if (e.key === 'ArrowDown') { sel = Math.min(shown.length - 1, sel + 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { sel = Math.max(0, sel - 1); draw(); e.preventDefault(); }
-      else if (e.key === 'Enter' && shown[sel]) go(shown[sel], newWin || e.ctrlKey || e.shiftKey); else if (e.key === 'Escape') CF.closeOverlay();
-    } });
-    o.append(h('div', { class: 'palette' }, input, list)); o.onmousedown = (e) => { if (e.target === o) CF.closeOverlay(); };
+    const input = h('input', { placeholder: 'Search projects or folders...', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Search projects or folders', oninput: filter });
+    const clear = h('button', { class: 'fp-clear', hidden: true, title: 'Clear', 'aria-label': 'Clear search', onclick: () => { input.value = ''; filter(); input.focus(); } }, CF.icon('close', 14));
+    const box = h('div', { class: 'palette fp', role: 'dialog', 'aria-label': 'Find project', onkeydown: (e) => {
+      const k = e.key, n = shown.length;
+      if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); if (n) { sel = (sel + (k === 'ArrowDown' ? 1 : -1) + n) % n; mark(); } }
+      else if (k === 'Enter') { e.preventDefault(); e.stopPropagation(); if (shown[sel]) go(shown[sel], newWin || e.ctrlKey || e.metaKey || e.shiftKey); }
+      else if (k === 'Tab') { const f = [input, ...(clear.hidden ? [] : [clear])]; const i = f.indexOf(document.activeElement); e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); }
+      else if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'r') { e.preventDefault(); e.stopPropagation(); }   // Ctrl+R while open: stay put
+    } },
+      h('div', { class: 'fp-search' }, h('span', { class: 'fp-sic' }, CF.icon('search', 16)), input, clear), list,
+      h('div', { class: 'fp-foot' }, ...[['↑ ↓', 'Navigate'], ['Enter', 'Open Project'], ['Ctrl + Enter', 'New Window'], ['Esc', 'Close']].map(([k, t]) => h('span', {}, h('kbd', {}, k), t))));
+    o.append(box); o.onmousedown = (e) => { if (e.target === o) close(); };
     draw(); input.focus();
   });
   // Ctrl+F: always open the editor's find widget (works even when focus is on a tab, the explorer or a preview)

@@ -6,13 +6,14 @@
   const TITLES = { explorer: 'Explorer', search: 'Search', git: 'Source Control', gitlens: 'GitLens', run: 'Run and Debug', extensions: 'Extensions' };
   CF.showView = CF.guard(async (view) => {
     if (view === 'settings') return CF.settingsDialog();
+    CF.curView = view;
     const title = $('#side-title'), body = $('#side-body');
     $('#app').classList.remove('no-sidebar'); S.settings.sidebar = true;
     title.dataset.view = view; title.textContent = TITLES[view]; body.innerHTML = '';
     $$('#activitybar [data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
     ({ explorer: CF.renderExplorer, search: CF.renderSearch, git: CF.renderGit, gitlens: CF.renderGitLens, run: CF.renderRun, extensions: renderExtensions })[view](body);
   });
-  CF.toggleSidebar = () => { S.settings.sidebar = !S.settings.sidebar; $('#app').classList.toggle('no-sidebar', !S.settings.sidebar); const relayout = () => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }; relayout(); requestAnimationFrame(relayout); };
+  CF.toggleSidebar = () => { S.settings.sidebar = !S.settings.sidebar; $('#app').classList.toggle('no-sidebar', !S.settings.sidebar); $$('#activitybar [data-view]').forEach((b) => b.classList.toggle('active', S.settings.sidebar && b.dataset.view === CF.curView)); const relayout = () => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }; relayout(); requestAnimationFrame(relayout); };
 
   // ---- extensions ---------------------------------------------------------------------------
   const BUILTIN_EXT = ['PHP', 'Laravel', 'Python', 'Django', 'JavaScript', 'Vue', 'React', 'SQL', 'MySQL', 'Git'].map((n) => ({ slug: n.toLowerCase(), name: n, version: '1.0.0', description: `${n} language & tooling support` }));
