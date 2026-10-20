@@ -292,6 +292,7 @@
     ['AI: Explain Code (requires consent — not enabled)', () => CF.toast('AI features are not enabled. Nothing is ever sent without your explicit consent.')],
   ];
   CF.palette = () => {
+    CF.restorePanel();
     const o = $('#overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
     const all = COMMANDS(); let sel = 0, shown = all;
     const list = h('div', { class: 'list' });

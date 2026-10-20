@@ -3415,7 +3415,7 @@ html, body { height: 100%; margin: 0; overflow: hidden; }
     opacity: 1;
 }
 #panel.max #panel-terminal, #panel.max #panel-problems, #panel.max #panel-debug { flex: 1 1 0; height: auto; background-color: var(--t-bg, var(--panel)); }
-#main:has(#panel.max) #editor-area { visibility: hidden; }
+#main:has(#panel.max:not(.hidden)) #editor-area { visibility: hidden; }
 
 /* ---- Find in Files (search.js): sidebar view and Search Editor tab ---- */
 .sv { display: flex; flex-direction: column; min-height: 0; height: 100%; font-size: 13px; }

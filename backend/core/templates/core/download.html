@@ -281,6 +281,28 @@ html[lang=km] body{line-height:1.85}
 html[lang=km] :is(h1,h2,h3,h4,.eyebrow,.lbl){letter-spacing:0;line-height:1.45;text-transform:none}
 html[lang=km] .hero h1{font-size:clamp(2rem,5vw,3.75rem);line-height:1.3;max-width:22ch}
 html[lang=km] .btn{line-height:1.4}
+
+/* send button states: idle -> sending (progress) -> sent (check) / error (shake) */
+.fb #fb-send{position:relative;overflow:hidden;min-width:170px;gap:8px;transition:background 240ms,transform 120ms,box-shadow 240ms}
+.fb #fb-send:not([disabled]):hover .plane{transform:translate(2px,-2px)}
+.fb #fb-send:not([disabled]):active{transform:scale(.97)}
+.fb #fb-send .plane{transition:transform 220ms ease}
+.fb #fb-send .prog{position:absolute;inset:0 auto 0 0;width:calc(var(--p,0)*1%);background:rgb(255 255 255/.22);transition:width 200ms ease-out;pointer-events:none}
+.fb #fb-send .ck{display:none}.fb #fb-send .ck path{stroke-dasharray:26;stroke-dashoffset:26}
+.fb #fb-send.sending .plane{display:none}
+.fb #fb-send.sending::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgb(255 255 255/.25) 50%,transparent 70%);transform:translateX(-100%);animation:fbsheen 1.1s ease-in-out infinite}
+@keyframes fbsheen{to{transform:translateX(100%)}}
+.fb #fb-send.done{background:var(--ok);color:#04130a;opacity:1;animation:fbpop 420ms cubic-bezier(.3,1.5,.5,1);box-shadow:0 0 0 6px color-mix(in srgb,var(--ok) 22%,transparent)}
+.fb #fb-send.done .plane,.fb #fb-send.done .spin,.fb #fb-send.done .prog{display:none}
+.fb #fb-send.done .ck{display:inline-block}.fb #fb-send.done .ck path{animation:fbck 420ms 120ms ease-out forwards}
+@keyframes fbck{to{stroke-dashoffset:0}}
+@keyframes fbpop{0%{transform:scale(.92)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
+.fb #fb-send.bad{background:var(--err);color:#fff;animation:fbshake 420ms}
+@keyframes fbshake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.fb .msg{transition:opacity 240ms,transform 240ms}.fb .msg.show{animation:fbmsg 360ms cubic-bezier(.2,.8,.2,1)}
+@keyframes fbmsg{from{opacity:0;transform:translateY(8px)}}
+.fb form.sent{animation:fbflash 700ms ease-out}
+@keyframes fbflash{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 40%,transparent)}100%{box-shadow:0 0 0 24px transparent}}
 </style>
 </head>
 <body id="top">
@@ -585,7 +607,7 @@ html[lang=km] .btn{line-height:1.4}
         <p class="ferr" id="fb-att-err" role="alert"></p>
         <div id="fb-att" hidden><div class="ahead"><span id="fb-att-n" aria-live="polite"></span><button type="button" class="linkbtn" id="fb-clear">Remove all</button></div><ul class="grid" id="fb-grid"></ul></div></div>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-      <div class="actions"><button class="btn p" type="submit" id="fb-send"><span class="spin" aria-hidden="true"></span><span id="fb-send-t">Send feedback</span></button>
+      <div class="actions"><button class="btn p" type="submit" id="fb-send"><i class="prog" aria-hidden="true"></i><span class="spin" aria-hidden="true"></span><svg class="ck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><svg class="plane" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg><span id="fb-send-t">Send feedback</span></button>
         <p class="msg" id="fb-msg-out" role="status" aria-live="polite"></p></div>
     </form>
   </div>
@@ -774,7 +796,7 @@ html[lang=km] .btn{line-height:1.4}
   const MAXIMG = 4, MAXBYTES = 5 * 1024 * 1024, OKTYPES = ["image/png", "image/jpeg", "image/webp"];
   const HOLD = {feedback: "Tell us what you think about Asta IDE...", improvement: "Describe the feature or improvement you'd like...", bug: "Describe the issue, steps to reproduce, and expected behavior..."};
   const setErr = (id, el, t) => { $(id).textContent = t || ""; if (el) el.setAttribute("aria-invalid", t ? "true" : "false"); };
-  const status = (cls, t) => { out.className = "msg " + cls; out.textContent = t; };
+  const status = (cls, t) => { out.className = "msg " + cls; out.textContent = t; if (t) { void out.offsetWidth; out.classList.add("show"); } };
   const fmt = n => n < 1024 * 1024 ? Math.max(1, Math.round(n / 1024)) + " KB" : (n / 1048576).toFixed(1) + " MB";
   let busy = false;
 
@@ -860,7 +882,7 @@ html[lang=km] .btn{line-height:1.4}
   /* submit: XHR so upload progress is shown; the form is cleared only after the server confirms */
   const send = fd => new Promise((ok, no) => {
     const x = new XMLHttpRequest(); x.open("POST", "/api/feedback/"); x.timeout = 60000;
-    x.upload.onprogress = e => { if (e.lengthComputable && imgs.length) $("#fb-send-t").textContent = "Sending feedback… " + Math.round(e.loaded / e.total * 100) + "%"; };
+    x.upload.onprogress = e => { if (e.lengthComputable) { const pc = Math.round(e.loaded / e.total * 100); btn.style.setProperty("--p", pc); if (imgs.length) $("#fb-send-t").textContent = "Sending feedback… " + pc + "%"; } };
     x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch {} x.status >= 200 && x.status < 300 ? ok(j) : no(new Error(x.status === 429 ? "Too many messages — please try again later." : x.status === 413 ? "The images are too large. Remove one and try again." : j.detail || "Something went wrong. Please try again.")); };
     x.onerror = () => no(new Error("Network error — check your connection and try again."));
     x.ontimeout = () => no(new Error("The request timed out. Please try again."));
@@ -871,16 +893,21 @@ html[lang=km] .btn{line-height:1.4}
     const message = ta.value.trim(), cerr = contactErr(); status("", "");
     setErr("#fb-msg-err", ta, message.length < 10 ? "Please write at least 10 characters." : ""); setErr("#fb-contact-err", ctc, cerr);
     if (message.length < 10) return ta.focus(); if (cerr) return ctc.focus();
-    busy = true; btn.disabled = true; btn.classList.add("sending"); $("#fb-send-t").textContent = "Sending feedback...";
+    busy = true; btn.disabled = true; btn.classList.remove("done", "bad"); btn.style.setProperty("--p", 8); btn.classList.add("sending"); $("#fb-send-t").textContent = "Sending feedback...";
+    let ok = false;
     try {
       const fd = new FormData();
       fd.append("kind", fb.kind.value); fd.append("message", message); fd.append("contact", ctc.value.trim()); fd.append("website", fb.website.value);
       imgs.forEach((a, i) => fd.append("images", a.blob, "image" + (i + 1) + ".jpg"));
       const j = await send(fd);
+      ok = true; btn.style.setProperty("--p", 100);
       status(j.images === false ? "warn" : "ok", j.images === false ? "Your feedback was sent, but the images could not be delivered." : "Thank you! Your feedback has been sent.");
       fb.reset(); ta.placeholder = HOLD.feedback; imgs.forEach(dropUrl); imgs = []; fbCount(); fit(); drawAtt();
     } catch (err) { status("err", err.message); }   // message and attachments are kept so the user can retry
-    busy = false; btn.disabled = false; btn.classList.remove("sending"); $("#fb-send-t").textContent = "Send feedback";
+    busy = false; btn.classList.remove("sending"); btn.style.setProperty("--p", 0);
+    if (ok) { btn.classList.add("done"); $("#fb-send-t").textContent = "Sent!"; fb.classList.add("sent"); setTimeout(() => fb.classList.remove("sent"), 800); }
+    else { btn.classList.add("bad"); $("#fb-send-t").textContent = "Try again"; }
+    setTimeout(() => { btn.disabled = false; btn.classList.remove("done", "bad"); $("#fb-send-t").textContent = "Send feedback"; }, ok ? 2200 : 1400);
   });
   fbCount(); fit(); drawAtt();
 

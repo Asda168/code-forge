@@ -818,6 +818,7 @@ CF.showActive = (g) => {
 };
 CF.openFile = CF.guard(async (path, { group, line, col } = {}) => {
   const g = group || CF.activeGroup();
+  if (CF.restorePanel) CF.restorePanel();   // a maximized terminal would otherwise cover the file being opened
   if (CF.isPage(path)) {
     if (!g.tabs.includes(path)) g.tabs.push(path);
     g.active = path;

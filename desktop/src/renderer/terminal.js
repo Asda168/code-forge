@@ -195,7 +195,7 @@
     if (name === 'terminal' && activeTerm) setTimeout(() => activeTerm.grp.terms.forEach((x) => x.fit()), 0);
   };
   const $$ = CF.$$;
-  CF.togglePanel = () => $('#panel').classList.toggle('hidden');
+  CF.togglePanel = () => { if ($('#panel').classList.toggle('hidden')) CF.restorePanel(); };
 
   // Programmatic commands (Run buttons, wizard) are shown in the terminal before Enter is sent,
   // and obviously destructive ones need an extra confirmation.

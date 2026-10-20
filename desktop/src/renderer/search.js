@@ -162,6 +162,7 @@
   };
   // Ctrl+Shift+F: open the Search view, seed the query from the selection (or the word at the cursor) and search straight away.
   CF.findInFiles = CF.guard(async (opt = {}) => {
+    CF.restorePanel();
     const seed = selectedText();
     if (seed) SR.q = seed;
     if (opt.replace) SR.rep = true;

@@ -11,6 +11,7 @@
   };
   CF.quickOpen = CF.guard(async () => {
     if (!S.root) return CF.openFolder();
+    CF.restorePanel();
     if (indexRoot !== S.root) { index = await cf.fs.files(S.root); indexRoot = S.root; }
     const o = $('#overlay'); o.innerHTML = ''; o.className = ''; o.hidden = false;
     let sel = 0, shown = [];
@@ -129,6 +130,8 @@
   drag(sv, (e) => { const w = Math.min(640, Math.max(160, e.clientX - 48)); $('#app').style.setProperty('--side-w', w + 'px'); saved.side = w; localStorage.setItem('cf.layout', JSON.stringify(saved)); place(); });
   const setPanel = (ph) => { $('#panel').classList.remove('max'); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); };
   CF.toggleMaxPanel = () => { const p = $('#panel'); p.classList.remove('hidden'); const on = p.classList.toggle('max'); sh.hidden = on; $('#panel-max').innerHTML = CF.iconHtml(on ? 'chevronDown' : 'chevronUp', 15); setTimeout(() => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }, 30); };
+  // Leave the maximized state (used when the panel is closed or a file is opened) so the editor is visible again.
+  CF.restorePanel = () => { const p = $('#panel'); if (!p.classList.contains('max')) return; p.classList.remove('max'); sh.hidden = false; $('#panel-max').innerHTML = CF.iconHtml('chevronUp', 15); setTimeout(() => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }, 30); };
   sh.addEventListener('dblclick', () => setPanel(260));
   drag(sh, (e) => { const mainBox = $('#main').getBoundingClientRect(); const ph = Math.min(mainBox.height - 120, Math.max(80, mainBox.bottom - e.clientY)); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); });
   new ResizeObserver(place).observe($('#sidebar')); place();
