@@ -95,16 +95,15 @@
     o.append(box); o.onmousedown = (e) => { if (e.target === o) close(); };
     draw(); input.focus();
   });
-  // Ctrl+F: always open the editor's find widget (works even when focus is on a tab, the explorer or a preview)
-  document.addEventListener('keydown', (e) => {
-    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyF') return;
-    const t = e.target; if (t.closest && (t.closest('.xterm') || t.closest('#overlay') || t.closest('.monaco-editor'))) return;
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-    e.preventDefault(); e.stopPropagation();
+  // Find / Replace in the active file: the `find` / `replace` commands (keybindings.js). Works from any focus (tab, explorer, preview) except text fields and the terminal.
+  CF.findInFile = (replace) => {
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && !ae.closest('.monaco-editor')) return;
     const g = CF.activeGroup && CF.activeGroup();
-    if (!g || !g.active) return CF.quickOpen();   // no file open: Ctrl+F finds a file instead
-    g.editor.focus(); setTimeout(() => { const a = g.editor.getAction('actions.find'); a && a.run(); }, 0);
-  }, true);
+    if (!g || !g.active) return replace ? null : CF.quickOpen();   // no file open: Ctrl+F finds a file instead
+    if (CF.isPage(g.active)) return CF.toast('Find in file works in text editors only');
+    g.editor.focus(); setTimeout(() => { const a = g.editor.getAction(replace ? 'editor.action.startFindReplaceAction' : 'actions.find'); a && a.run(); }, 0);
+  };
   // ---- tab shortcuts --------------------------------------------------------------------------
   CF.closeActiveTab = () => { const g = CF.activeGroup(); if (g.active) CF.closeTab(g, g.active); };
   CF.cycleTab = (d) => { const g = CF.activeGroup(); if (g.tabs.length < 2) return; const i = g.tabs.indexOf(g.active); CF.openFile(g.tabs[(i + d + g.tabs.length) % g.tabs.length], { group: g }); };
