@@ -6,7 +6,7 @@ for it instead of a link that would 404. Flip it (and set `url`) when you publis
 """
 REPO = "https://github.com/Asda168/code-forge"
 VERSION = "1.3.8"
-RELEASED = "2026-10-20"
+RELEASED = "2026-10-21"
 # Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
 VERSIONS = ["1.3.8", "1.3.7", "1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
