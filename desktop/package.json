@@ -93,9 +93,7 @@
           ]
         }
       ],
-      "artifactName": "Asta-macOS-universal.${ext}",
-      "entitlements": "scripts/entitlements.mac.plist",
-      "entitlementsInherit": "scripts/entitlements.mac.plist"
+      "artifactName": "Asta-macOS-universal.${ext}"
     },
     "linux": {
       "icon": "assets/icons/png",

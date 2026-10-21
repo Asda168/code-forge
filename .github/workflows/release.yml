@@ -63,7 +63,7 @@ jobs:
         run: |
           extra=""
           if [ "$RUNNER_OS" = "macOS" ] && [ -n "$CSC_LINK" ]; then
-            extra="-c.mac.hardenedRuntime=true"
+            extra="-c.mac.hardenedRuntime=true -c.mac.entitlements=scripts/entitlements.mac.plist -c.mac.entitlementsInherit=scripts/entitlements.mac.plist"
             [ -n "$APPLE_ID" ] && extra="$extra -c.mac.notarize=true"
           fi
           npx electron-builder ${{ matrix.args }} -c.npmRebuild=true --publish never $extra
