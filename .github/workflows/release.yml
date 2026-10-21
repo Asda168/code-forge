@@ -36,15 +36,37 @@ jobs:
       - name: Unit tests (path/command safety)
         run: node scripts/security-test.js
       # node-pty has no prebuilt Linux binaries, so rebuild native modules on Linux/macOS.
+      # Code signing is opt-in: with the secrets below set, installers are signed (Windows) / signed + notarized (macOS),
+      # which removes the SmartScreen / Gatekeeper warnings. Without them the build is unsigned, exactly as before.
+      # See docs/SIGNING.md.
       - name: Build (Windows keeps node-pty prebuilds)
         if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         # One arch per run: a combined x64+arm64 build emits a tiny stub per-arch installer.
         run: |
-          npx electron-builder --win --x64 --publish never
-          npx electron-builder --win --arm64 --publish never
+          $sign = @()
+          if ($env:CSC_LINK) { $sign = @('-c.win.signAndEditExecutable=true'); Write-Host 'Signing Windows installers' } else { Write-Host 'No WIN_CSC_LINK secret: building unsigned' }
+          npx electron-builder --win --x64 --publish never @sign
+          npx electron-builder --win --arm64 --publish never @sign
       - name: Build
         if: runner.os != 'Windows'
-        run: npx electron-builder ${{ matrix.args }} -c.npmRebuild=true --publish never
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          extra=""
+          if [ "$RUNNER_OS" = "macOS" ] && [ -n "$CSC_LINK" ]; then
+            extra="-c.mac.hardenedRuntime=true"
+            [ -n "$APPLE_ID" ] && extra="$extra -c.mac.notarize=true"
+          fi
+          npx electron-builder ${{ matrix.args }} -c.npmRebuild=true --publish never $extra
       - uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os }}
@@ -67,6 +89,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: artifacts, merge-multiple: true }
+      - name: SHA-256 checksums
+        working-directory: artifacts
+        run: sha256sum Asta* > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*

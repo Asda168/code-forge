@@ -175,6 +175,12 @@ kbd{font:500 .72rem var(--mono);padding:1px 6px;border:1px solid var(--line2);bo
 .dlist{display:grid;gap:var(--s1)}.dlist .btn{justify-content:space-between;width:100%;height:40px}.dlist .sz{font:400 .74rem var(--mono);opacity:.7}
 .note{color:var(--mut);font-size:.8125rem;margin:0;min-height:1.3em}.note.soft{color:var(--dim)}
 .plat .grow{flex:1}
+.help{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface2);padding:0 var(--s2)}
+.help summary{cursor:pointer;padding:10px 0;font:500 .85rem var(--sans);color:var(--fg);list-style:none;display:flex;justify-content:space-between;gap:var(--s1)}.help summary::-webkit-details-marker{display:none}
+.help summary::after{content:"+";font:400 1.1rem var(--mono);color:var(--mut);transition:transform var(--ease)}.help[open] summary::after{transform:rotate(45deg)}
+.help p,.help ol{margin:0 0 var(--s2);color:var(--mut);font-size:.82rem}.help ol{padding-left:20px}.help li{margin:4px 0}.help li::marker{color:var(--a);font-weight:600}
+.help code{font-size:.78rem;color:var(--fg)}.help .cmd{margin:0 0 var(--s2)}
+#verify .cmd{margin-top:var(--s2)}
 @media (max-width:980px){.plats{grid-template-columns:minmax(0,1fr)}.seg{display:flex}.plat[hidden]{display:none}}
 @media (min-width:981px){.plat[hidden]{display:flex}}
 @media (max-width:560px){.plat{padding:20px}.arch button{min-width:100%}}
@@ -509,7 +515,14 @@ html[lang=km] .btn{line-height:1.4}
       <a class="btn p lg" data-main href="#download" aria-disabled="true">Download for Windows</a>
       <div class="facts" aria-label="Supported architectures and format"><span>.exe installer</span><span>x64</span><span>ARM64</span></div>
       <p class="note" data-note></p>
-      <p class="note soft">Windows installers are self-contained. SmartScreen may warn about an unknown publisher — choose <b>More info → Run anyway</b>.</p>
+      <details class="help" data-help="windows">
+        <summary>Seeing “Windows protected your PC”?</summary>
+        <p>The installer is safe but not yet code-signed, so SmartScreen warns about an unknown publisher. It is not a virus warning.</p>
+        <ol><li>Click <b>More info</b> in the blue window.</li><li>Click <b>Run anyway</b>.</li></ol>
+        <p>If the file was blocked after download: right-click it → <b>Properties</b> → tick <b>Unblock</b> → OK. Or in PowerShell:</p>
+        <div class="cmd" tabindex="0">Unblock-File "$HOME\Downloads\Asta-Setup-x64.exe"<button class="copy" type="button" data-copy="Unblock-File &quot;$HOME\Downloads\Asta-Setup-x64.exe&quot;" aria-label="Copy Unblock-File command">Copy</button></div>
+        <p>Not sure which one? <b>x64</b> fits almost every PC; pick <b>ARM64</b> only for Snapdragon / ARM laptops.</p>
+      </details>
     </article>
 
     <article class="card plat" data-panel="macos" aria-label="macOS downloads">
@@ -520,7 +533,14 @@ html[lang=km] .btn{line-height:1.4}
       <a class="btn p lg" data-main href="#download" aria-disabled="true">Download for macOS</a>
       <div class="facts" aria-label="Supported architectures and format"><span>.dmg</span><span>Apple Silicon</span><span>Intel</span></div>
       <p class="note" data-note></p>
-      <p class="note soft">First launch may require <b>right-click → Open</b> because the current build is not notarized.</p>
+      <details class="help" data-help="macos">
+        <summary>macOS says it can’t verify Asta?</summary>
+        <p>The current build is not notarized by Apple yet, so Gatekeeper blocks the first launch.</p>
+        <ol><li>Open the <code>.dmg</code> and drag <b>Asta</b> into <b>Applications</b>.</li><li>macOS 12–14: right-click <b>Asta</b> → <b>Open</b> → <b>Open</b>.</li><li>macOS 15 (Sequoia) and later: try to open it once, then go to <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</li></ol>
+        <p>Or remove the quarantine flag in Terminal:</p>
+        <div class="cmd" tabindex="0">xattr -dr com.apple.quarantine /Applications/Asta.app<button class="copy" type="button" data-copy="xattr -dr com.apple.quarantine /Applications/Asta.app" aria-label="Copy xattr command">Copy</button></div>
+        <p>One universal build runs natively on both Apple Silicon and Intel.</p>
+      </details>
     </article>
 
     <article class="card plat" data-panel="linux" aria-label="Linux downloads">
@@ -529,7 +549,14 @@ html[lang=km] .btn{line-height:1.4}
         {% for d in downloads %}{% if d.platform == "linux" %}<a class="btn s" data-asset="{{ d.filename }}" data-direct data-url="{{ d.url }}" data-ok="{{ d.available|yesno:'1,0' }}" href="#download" aria-disabled="true"><span>Download {% if d.kind == "AppImage" %}AppImage{% else %}.{{ d.kind }}{% endif %}</span><span class="sz"></span></a>{% endif %}{% endfor %}
       </div>
       <div class="facts" aria-label="Supported formats"><span>x64</span><span>.AppImage</span><span>.deb</span><span>.rpm</span><span>.pacman</span></div>
-      <p class="note soft grow">{{ requirements.linux }}</p>
+      <p class="note soft">{{ requirements.linux }}</p>
+      <details class="help grow" data-help="linux">
+        <summary>Which one should I pick?</summary>
+        <ol><li><b>Ubuntu / Debian / Mint:</b> <code>.deb</code></li><li><b>Fedora / RHEL / openSUSE:</b> <code>.rpm</code></li><li><b>Arch / Manjaro:</b> <code>.pacman</code></li><li><b>Anything else:</b> <code>.AppImage</code> (no install needed)</li></ol>
+        <p>AppImage won’t start on Ubuntu 22.04+? Install FUSE 2 first (the package is <code>libfuse2t64</code> on 24.04):</p>
+        <div class="cmd" tabindex="0">sudo apt install libfuse2<button class="copy" type="button" data-copy="sudo apt install libfuse2" aria-label="Copy libfuse2 command">Copy</button></div>
+        <p>On Ubuntu 24.04, if the AppImage still exits with a sandbox error, use the <code>.deb</code> instead.</p>
+      </details>
     </article>
   </div>
 
@@ -555,6 +582,14 @@ html[lang=km] .btn{line-height:1.4}
       <div class="cmd" tabindex="0">sudo pacman -U ./Asta.pacman<button class="copy" type="button" data-copy="sudo pacman -U ./Asta.pacman" aria-label="Copy Arch Linux pacman command">Copy</button></div>
     </div>
   </div>
+
+  <details class="card notes reveal" id="verify">
+    <summary><span>Verify your download</span><span class="tag" style="margin-left:6px">SHA-256</span></summary>
+    <p class="fine">Every release publishes <a id="sums-link" href="{{ repo }}/releases/latest/download/SHA256SUMS.txt" target="_blank" rel="noopener">SHA256SUMS.txt</a>. Compare it with your file to be sure it is complete and unmodified.</p>
+    <div class="cmd" tabindex="0">Get-FileHash .\Asta-Setup-x64.exe -Algorithm SHA256<button class="copy" type="button" data-copy="Get-FileHash .\Asta-Setup-x64.exe -Algorithm SHA256" aria-label="Copy Windows checksum command">Copy</button></div>
+    <div class="cmd" tabindex="0">shasum -a 256 Asta-macOS-universal.dmg<button class="copy" type="button" data-copy="shasum -a 256 Asta-macOS-universal.dmg" aria-label="Copy macOS checksum command">Copy</button></div>
+    <div class="cmd" tabindex="0">sha256sum Asta.AppImage<button class="copy" type="button" data-copy="sha256sum Asta.AppImage" aria-label="Copy Linux checksum command">Copy</button></div>
+  </details>
 </div></section>
 
 <!-- TRUST -->
@@ -691,6 +726,8 @@ html[lang=km] .btn{line-height:1.4}
   const names = {windows: "Windows", macos: "macOS", linux: "Linux"}, arm = /arm|aarch64/i.test(ua);
   const tabs = $$("#seg [data-tab]"), panels = $$("[data-panel]"), hero = $("#hero-dl"), mb = n => Math.round(n / 1048576) + " MB";
   if (detected) $("#detected").textContent = " · Detected " + names[detected];
+  /* open the first-run help for the visitor's OS so the SmartScreen / Gatekeeper steps are visible before they run the installer */
+  if (detected) { const hp = $('[data-help="' + detected + '"]'); if (hp) hp.open = true; }
 
   function pick(panel, chip) {
     $$("[data-asset]:not([data-direct])", panel).forEach(c => c.setAttribute("aria-pressed", c === chip));
@@ -764,6 +801,7 @@ html[lang=km] .btn{line-height:1.4}
     const rc = $("#rel-count"); $("b", rc).textContent = count(rel).toLocaleString(); rc.hidden = false;
     $("#rel-date").textContent = (rel.published_at || "").slice(0, 10) || staticDate;
     if (rel.html_url) $("#rel-link").href = rel.html_url;
+    $("#verify").hidden = !assets["SHA256SUMS.txt"]; if (assets["SHA256SUMS.txt"]) $("#sums-link").href = assets["SHA256SUMS.txt"].browser_download_url;
     $("#notes-title").textContent = latest ? staticTitle : "Release notes for v" + v;
     nl.hidden = !latest; nb.hidden = latest; nb.textContent = latest ? "" : ((rel.body || "").trim().slice(0, 900) || "No release notes for this version.");
     refresh();
