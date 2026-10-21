@@ -53,7 +53,8 @@ function createWindow(query = {}) {
   });
   if (process.env.CODEFORGE_DEBUG) win.webContents.on('console-message', (_e, level, msg, line, src) => { if (level >= 2) console.log(`[renderer:${level}] ${msg} (${path.basename(src)}:${line})`); });
   wins.add(win); currentWin = win; if (process.env.CODEFORGE_DEBUG) console.log('[windows]', wins.size, JSON.stringify(query));
-  win.on('focus', () => { currentWin = win; });
+  win.on('focus', () => { currentWin = win; win.webContents.focus(); });   // keyboard input must reach this window's page (Ctrl+F etc.), not stay on the previous one
+  win.webContents.once('did-finish-load', () => { if (!win.isDestroyed() && win.isFocused()) win.webContents.focus(); });
   win.on('closed', () => { wins.delete(win); if (currentWin === win) currentWin = [...wins].pop() || null; });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query });
   if (process.env.CODEFORGE_E2E) win.webContents.once('did-finish-load', () => setTimeout(async () => {
@@ -167,10 +168,14 @@ function writeKeys(map) {
     '// "mod" is Cmd on macOS and Ctrl elsewhere. A space makes a chord, for example "mod+k mod+s". Keys: ctrl alt shift cmd + a key.',
     '// You can also change shortcuts from Preferences > Keyboard Shortcuts (Ctrl+K Ctrl+S).', '',
   ].join('\n');
-  fs.writeFileSync(keyFile(), header + '{\n' + body + '\n}\n');
+  const tmp = keyFile() + '.' + process.pid + '.tmp';       // atomic: another window reading keyboard.json never sees a half-written file
+  fs.writeFileSync(tmp, header + '{\n' + body + '\n}\n'); fs.renameSync(tmp, keyFile());
 }
 // make sure the file exists and uses the current layout (older versions only wrote a header and the overrides)
-function ensureKeyFile() {
+let keyFileChecked = false;
+function ensureKeyFile(force) {
+  if (keyFileChecked && !force) return;          // once per run: every extra window used to re-read/rewrite the file
+  keyFileChecked = true;
   try {
     if (!fs.existsSync(keyFile())) return writeKeys({});
     const r = readKeys(); if (r.error) return;                      // never overwrite a file the user broke
@@ -717,7 +722,7 @@ ipcMain.handle('ext:sync', async () => {          // download everything listed 
 });
 ipcMain.handle('keys:get', () => { const r = readKeys(); return { defaults: DEFAULT_KEYS, user: r.map, error: r.error || null, file: keyFile() }; });
 ipcMain.handle('keys:set', (_e, map) => { const clean = cleanKeys(map); writeKeys(clean); buildMenu(); return clean; });
-ipcMain.handle('keys:file', () => { ensureKeyFile(); return keyFile(); });
+ipcMain.handle('keys:file', () => { ensureKeyFile(true); return keyFile(); });
 ipcMain.handle('settings:file', () => { const p = storeFile('settings.json'); if (!fs.existsSync(p)) writeJson('settings.json', { ...DEFAULT_SETTINGS }); return p; });
 
 async function api(method, p, body) {

@@ -176,5 +176,12 @@
   CF.shortcutsDialog = () => CF.openFile('kbd://shortcuts');
   CF.openKeyboardJson = CF.guard(async () => { const p = await cf.keys.file(); S.keyboardFile = p; CF.openFile(p); });
 
-  CF.loadKeys().catch(() => rebuild());
+  // A failed first load (e.g. keyboard.json busy while several windows start) must not leave the table empty: retry, then fall back to the built-in defaults.
+  const boot = (n) => CF.loadKeys().catch(() => (n > 0 ? setTimeout(() => boot(n - 1), 300) : rebuild()));
+  boot(5);
+  window.addEventListener('focus', () => {   // switching between windows: re-sync shortcuts if the table is empty and put the caret back in the editor
+    if (!table.size) boot(0);
+    const a = document.activeElement, g = CF.activeGroup && CF.activeGroup();
+    if ((!a || a === document.body) && g && g.active && !CF.isPage(g.active) && g.editor) g.editor.focus();
+  });
 })();
