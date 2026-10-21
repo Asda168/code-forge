@@ -47,6 +47,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         # One arch per run: a combined x64+arm64 build emits a tiny stub per-arch installer.
         run: |
+          if (-not $env:CSC_LINK) { Remove-Item Env:CSC_LINK, Env:CSC_KEY_PASSWORD -ErrorAction SilentlyContinue }
           $sign = @()
           if ($env:CSC_LINK) { $sign = @('-c.win.signAndEditExecutable=true'); Write-Host 'Signing Windows installers' } else { Write-Host 'No WIN_CSC_LINK secret: building unsigned' }
           npx electron-builder --win --x64 --publish never @sign
@@ -61,8 +62,10 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # An empty CSC_LINK is read by electron-builder as a path (the project dir) and breaks the build, so unset it.
+          [ -z "$CSC_LINK" ] && unset CSC_LINK CSC_KEY_PASSWORD
           extra=""
-          if [ "$RUNNER_OS" = "macOS" ] && [ -n "$CSC_LINK" ]; then
+          if [ "$RUNNER_OS" = "macOS" ] && [ -n "${CSC_LINK:-}" ]; then
             extra="-c.mac.hardenedRuntime=true -c.mac.entitlements=scripts/entitlements.mac.plist -c.mac.entitlementsInherit=scripts/entitlements.mac.plist"
             [ -n "$APPLE_ID" ] && extra="$extra -c.mac.notarize=true"
           fi
