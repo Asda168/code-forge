@@ -816,8 +816,9 @@ html[lang=km] .btn{line-height:1.4}
     });
     refresh();
   });
-  fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=30", {headers: {Accept: "application/vnd.github+json"}})
-    .then(r => r.ok ? r.json() : Promise.reject())
+  /* own cached proxy first (no per-IP rate limit), direct GitHub as fallback */
+  fetch("/api/github-releases/").then(r => r.ok ? r.json() : Promise.reject())
+    .catch(() => fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=30", {headers: {Accept: "application/vnd.github+json"}}).then(r => r.ok ? r.json() : Promise.reject()))
     .then(list => {
       const vt = r => (r.tag_name || "").replace(/^v/, "").split(".").map(n => parseInt(n, 10) || 0);
       const rels = list.filter(r => !r.draft && (r.assets || []).length).sort((a, b) => { const x = vt(a), y = vt(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return y[i] - x[i]; return 0; });

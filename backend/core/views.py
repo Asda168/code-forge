@@ -132,6 +132,37 @@ def _vtuple(v):
         return (0,)
 
 
+class GithubReleases(APIView):
+    """Cached proxy of GitHub Releases (assets + download_count) so visitors share one request instead of hitting GitHub's 60/h-per-IP limit."""
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        import json
+        import urllib.request
+        from django.core.cache import cache
+        from . import site
+        key = "gh_releases"
+        data = cache.get(key)
+        if data is None:
+            headers = {"Accept": "application/vnd.github+json", "User-Agent": "asta-site"}
+            if os.environ.get("GITHUB_TOKEN"):
+                headers["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
+            try:
+                req = urllib.request.Request(f"https://api.github.com/repos/{site.REPO.replace('https://github.com/', '')}/releases?per_page=30", headers=headers)
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    data = json.load(r)
+                cache.set(key, data, 300)
+                cache.set(key + "_stale", data, 86400)
+            except Exception:
+                data = cache.get(key + "_stale")
+                if data is None:
+                    return Response({"detail": "GitHub unavailable."}, status=status.HTTP_502_BAD_GATEWAY)
+        resp = Response(data)
+        resp["Cache-Control"] = "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
+        return resp
+
+
 class ExtensionList(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []

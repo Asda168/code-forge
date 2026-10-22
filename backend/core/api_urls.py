@@ -16,6 +16,7 @@ urlpatterns = [
     path("settings/", views.SettingsView.as_view()),
     path("releases/", views.ReleaseList.as_view()),
     path("releases/latest/", views.LatestRelease.as_view()),
+    path("github-releases/", views.GithubReleases.as_view()),
     path("extensions/", views.ExtensionList.as_view()),
     path("feedback/", views.FeedbackView.as_view()),
     path("", include(router.urls)),
