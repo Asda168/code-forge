@@ -98,11 +98,13 @@
   // Find / Replace in the active file: the `find` / `replace` commands (keybindings.js). Works from any focus (tab, explorer, preview) except text fields and the terminal.
   CF.findInFile = (replace) => {
     const ae = document.activeElement;
-    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && !ae.closest('.monaco-editor')) return;
+    // only a visible text field keeps its own Ctrl+F; a stale/hidden one (left over from another panel or project) must not swallow it
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && !ae.closest('.monaco-editor') && ae.offsetParent !== null) return;
     const g = CF.activeGroup && CF.activeGroup();
     if (!g || !g.active) return replace ? null : CF.quickOpen();   // no file open: Ctrl+F finds a file instead
     if (CF.isPage(g.active)) return CF.toast('Find in file works in text editors only');
-    g.editor.focus(); setTimeout(() => { const a = g.editor.getAction(replace ? 'editor.action.startFindReplaceAction' : 'actions.find'); a && a.run(); }, 0);
+    const id = replace ? 'editor.action.startFindReplaceAction' : 'actions.find';
+    g.editor.focus(); setTimeout(() => { g.editor.focus(); const a = g.editor.getAction(id); a ? a.run() : g.editor.trigger('keyboard', id, null); }, 0);
   };
   // ---- tab shortcuts --------------------------------------------------------------------------
   CF.closeActiveTab = () => { const g = CF.activeGroup(); if (g.active) CF.closeTab(g, g.active); };
