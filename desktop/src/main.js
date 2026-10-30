@@ -14,6 +14,30 @@ try { pty = require('node-pty'); } catch { /* falls back to piped child_process 
 
 const API_BASE = process.env.CODEFORGE_API || (app.isPackaged ? 'https://astaide.vercel.app/api' : 'http://127.0.0.1:8000/api');
 const userData = () => app.getPath('userData');
+
+// ---- central error log (<userData>/logs/errors.log, local only, nothing is uploaded) ----
+// Secrets are scrubbed before anything is written: bearer/API tokens, passwords, URL credentials, and the user's home path.
+function scrub(text) {
+  let t = String(text == null ? '' : text);
+  const home = os.homedir(); if (home) t = t.split(home).join('~');
+  return t
+    .replace(/(authorization["']?\s*[:=]\s*["']?)(bearer\s+)?[^\s"',;]+/gi, '$1[redacted]')
+    .replace(/\b(bearer)\s+[A-Za-z0-9._~+\/-]{8,}=*/gi, '$1 [redacted]')
+    .replace(/\b(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|client[_-]?secret)(["']?\s*[:=]\s*["']?)[^\s"',;&]+/gi, '$1$2[redacted]')
+    .replace(/(https?:\/\/)[^\s\/:@]+:[^\s\/@]+@/gi, '$1[redacted]@')
+    .replace(/\b(gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,})/g, '[redacted]');
+}
+function logError(kind, err, extra) {
+  try {
+    const dir = path.join(userData(), 'logs'), file = path.join(dir, 'errors.log');
+    fs.mkdirSync(dir, { recursive: true });
+    try { if (fs.statSync(file).size > 1024 * 1024) fs.renameSync(file, file + '.1'); } catch { /* first write */ }
+    const msg = err && err.stack ? err.stack : String(err);
+    fs.appendFileSync(file, `${new Date().toISOString()} [${kind}] v${app.getVersion()} ${process.platform} ${scrub(msg)}${extra ? ' ' + scrub(JSON.stringify(extra)) : ''}\n`);
+  } catch { /* logging must never throw */ }
+}
+process.on('uncaughtException', (e) => { logError('uncaughtException', e); console.error('[Asta] uncaughtException:', scrub(e && e.stack || e)); });
+process.on('unhandledRejection', (e) => { logError('unhandledRejection', e); console.error('[Asta] unhandledRejection:', scrub(e && e.stack || e)); });
 const storeFile = (n) => path.join(userData(), n);
 
 // Asta was called FastForge and, before that, CodeCambo (the data folder is named after the product). On the first run copy the
@@ -53,6 +77,10 @@ function createWindow(query = {}) {
   });
   if (process.env.CODEFORGE_DEBUG) win.webContents.on('console-message', (_e, level, msg, line, src) => { if (level >= 2) console.log(`[renderer:${level}] ${msg} (${path.basename(src)}:${line})`); });
   wins.add(win); currentWin = win; if (process.env.CODEFORGE_DEBUG) console.log('[windows]', wins.size, JSON.stringify(query));
+  // A crashed or killed renderer is logged and the window reloaded once, instead of staying blank until the user force-closes it.
+  let reloads = 0;
+  win.webContents.on('render-process-gone', (_e, d) => { logError('render-process-gone', d.reason, { exitCode: d.exitCode }); if (d.reason !== 'clean-exit' && !win.isDestroyed() && reloads++ < 2) setTimeout(() => { try { win.reload(); } catch { /* window closed */ } }, 300); });
+  win.webContents.on('unresponsive', () => logError('unresponsive', 'renderer unresponsive'));
   win.on('focus', () => { currentWin = win; win.webContents.focus(); });   // keyboard input must reach this window's page (Ctrl+F etc.), not stay on the previous one
   win.webContents.once('did-finish-load', () => { if (!win.isDestroyed() && win.isFocused()) win.webContents.focus(); });
   win.on('closed', () => { wins.delete(win); if (currentWin === win) currentWin = [...wins].pop() || null; });
@@ -98,7 +126,7 @@ function openProjectWindow(root) {
 ipcMain.handle('win:new', (_e, p) => {
   if (p == null) { openProjectWindow(null); return true; }
   const r = path.resolve(String(p));
-  if (!roots.has(r) && !readJson('recents.json', []).some((x) => x.path === r)) throw new Error('Not a known project');
+  if (!roots.has(r) && !knownRecent(r)) throw new Error('Not a known project');
   openProjectWindow(registerRoot(r)); return true;
 });
 ipcMain.handle('win:newPick', async () => {                // pick a folder and open it in its own window
@@ -112,7 +140,7 @@ ipcMain.handle('win:newPick', async () => {                // pick a folder and 
 // "mod" = Cmd on macOS, Ctrl elsewhere; a space separates the two parts of a chord ("mod+k mod+s").
 // The renderer (keybindings.js) dispatches every shortcut; menu accelerators are only shown, never registered.
 const DEFAULT_KEYS = {
-  'open-folder': 'mod+o', 'new-window': 'mod+shift+n', 'new-file': 'mod+n', 'quick-open': 'mod+p', save: 'mod+s', 'close-tab': 'mod+w', 'next-tab': 'ctrl+tab', 'prev-tab': 'ctrl+shift+tab', split: 'mod+\\', 'save-all': 'mod+alt+s',
+  'open-folder': 'mod+o', 'new-window': 'mod+shift+n', 'new-file': 'mod+n', rename: 'f2', 'quick-open': 'mod+p', save: 'mod+s', 'close-tab': 'mod+w', 'next-tab': 'ctrl+tab', 'prev-tab': 'ctrl+shift+tab', split: 'mod+\\', 'save-all': 'mod+alt+s',
   search: 'mod+shift+f', palette: 'mod+shift+p', 'toggle-sidebar': 'mod+b', 'open-file': 'mod+alt+o', 'save-as': 'mod+shift+s', 'toggle-header': 'mod+alt+h', 'toggle-terminal': 'mod+`', 'view-explorer': 'mod+shift+e', 'view-git': 'ctrl+shift+g', 'view-extensions': 'mod+shift+x', 'view-gitlens': 'alt+g', 'view-run': 'mod+shift+d',
   'font-inc': 'mod+=', 'font-dec': 'mod+-', 'font-reset': 'mod+0', 'goto-line': 'mod+g', find: 'mod+f', replace: 'mod+h', 'goto-def': 'f12', run: 'f5', stop: 'shift+f5', restart: 'mod+shift+f5', settings: 'mod+,',
   'new-terminal': 'ctrl+shift+`', 'split-terminal': 'mod+shift+5', 'term-split-down': 'mod+shift+6', 'term-close-pane': 'mod+shift+w', 'clear-terminal': 'mod+shift+k', 'term-font-inc': 'mod+=', 'term-font-dec': 'mod+-', 'term-font-reset': 'mod+0',
@@ -130,7 +158,7 @@ function cleanKeys(o) {
 // Group and title of every command, in the order they are listed in keyboard.json (commands without a default key are listed too).
 const KEY_META = {
   palette: ['General', 'Command Palette'], 'quick-open': ['General', 'Go to File'], 'find-project': ['General', 'Find Project'], settings: ['General', 'Open Settings'], 'keyboard-shortcuts': ['General', 'Open Keyboard Shortcuts'], 'color-theme': ['General', 'Color Theme'], 'toggle-preview': ['General', 'Toggle File Preview'],
-  'open-folder': ['File', 'Open Folder'], 'open-file': ['File', 'Open File'], 'save-as': ['File', 'Save As'], 'revert-file': ['File', 'Revert File'], 'toggle-autosave': ['File', 'Toggle Auto Save'], 'new-window': ['File', 'New Window'], 'open-folder-new-window': ['File', 'Open Folder in New Window'], 'new-file': ['File', 'New File'], save: ['File', 'Save'], 'save-all': ['File', 'Save All'],
+  'open-folder': ['File', 'Open Folder'], 'open-file': ['File', 'Open File'], 'save-as': ['File', 'Save As'], 'revert-file': ['File', 'Revert File'], 'toggle-autosave': ['File', 'Toggle Auto Save'], 'new-window': ['File', 'New Window'], 'open-folder-new-window': ['File', 'Open Folder in New Window'], 'new-file': ['File', 'New File'], rename: ['File', 'Rename File'], save: ['File', 'Save'], 'save-all': ['File', 'Save All'],
   'close-tab': ['Editor', 'Close Editor'], 'next-tab': ['Editor', 'Next Editor'], 'prev-tab': ['Editor', 'Previous Editor'], split: ['Editor', 'Split Editor Right'], find: ['Editor', 'Find'], replace: ['Editor', 'Replace'], 'goto-line': ['Editor', 'Go to Line'], 'goto-def': ['Editor', 'Go to Definition'],
   'view-explorer': ['View', 'Show Explorer'], search: ['View', 'Find in Files'], 'search-replace': ['View', 'Replace in Files'], 'search-toggle-details': ['View', 'Search: Toggle Search Details'], 'search-toggle-case': ['View', 'Search: Match Case (search focused)'], 'search-toggle-word': ['View', 'Search: Match Whole Word (search focused)'], 'search-toggle-regex': ['View', 'Search: Use Regular Expression (search focused)'], 'search-new-editor': ['View', 'Search: Open New Search Editor'], 'view-git': ['View', 'Show Source Control'], 'view-gitlens': ['View', 'Show GitLens'], 'view-run': ['View', 'Show Run and Debug'], 'view-extensions': ['View', 'Show Extensions'],
   'toggle-sidebar': ['View', 'Toggle Sidebar'], 'toggle-header': ['View', 'Toggle Layout Header'], 'toggle-panel': ['View', 'Toggle Panel'], 'toggle-terminal': ['View', 'Toggle Terminal'], 'show-problems': ['View', 'Show Problems'], 'show-debug': ['View', 'Show Debug Console'],
@@ -192,10 +220,10 @@ function toAccel(seq) {
 }
 
 function recentItems() {
-  const list = readJson('recents.json', []).filter((r) => r && r.path && fs.existsSync(r.path)).slice(0, 10);
+  const list = loadRecents().filter((r) => fs.existsSync(r.path)).sort((a, b) => b.at - a.at).slice(0, 10);
   const items = list.map((r) => ({ label: `${r.name || path.basename(r.path)}    ${r.path}`, click: () => send('menu', 'open-recent', r.path) }));
   if (!items.length) return [{ label: 'No recent folders', enabled: false }];
-  return [...items, { type: 'separator' }, { label: 'Clear Recently Opened', click: () => { writeJson('recents.json', []); buildMenu(); } }];
+  return [...items, { type: 'separator' }, { label: 'Clear Recently Opened', click: () => { saveRecents(loadRecents().filter((x) => x.pinned)); buildMenu(); } }];
 }
 let menuBuilt = false;
 function buildMenu() {
@@ -244,13 +272,35 @@ function assertInRoot(p) {
   return path.resolve(p);
 }
 
+// Recent-project history (recents.json): [{ path, name, at, pinned, type }]. Always sanitised on read, so a hand-edited or corrupted file can never break the UI or smuggle odd values in.
+const RECENT_MAX = 30;
+const sameP = (a, b) => (process.platform === 'win32' || process.platform === 'darwin' ? a.toLowerCase() === b.toLowerCase() : a === b);
+function loadRecents() {
+  const raw = readJson('recents.json', []), out = [];
+  if (!Array.isArray(raw)) return out;
+  for (const r of raw) {
+    if (!r || typeof r !== 'object' || typeof r.path !== 'string' || !path.isAbsolute(r.path) || r.path.length > 1024) continue;
+    const p = path.resolve(r.path);
+    if (out.some((x) => sameP(x.path, p))) continue;
+    out.push({ path: p, name: typeof r.name === 'string' && r.name ? r.name.slice(0, 200) : path.basename(p) || p, at: Number.isFinite(r.at) ? r.at : 0, pinned: r.pinned === true, type: typeof r.type === 'string' ? r.type.slice(0, 30) : '' });
+  }
+  return out;
+}
+function saveRecents(list) {
+  const pinned = list.filter((x) => x.pinned), rest = list.filter((x) => !x.pinned).sort((a, b) => b.at - a.at).slice(0, Math.max(0, RECENT_MAX - pinned.length));
+  writeJson('recents.json', [...pinned, ...rest]);
+}
+// Cheap project-type guess from marker files in the folder root (names only, file contents are never read).
+const TYPE_MARKERS = [['package.json', 'Node.js'], ['pyproject.toml', 'Python'], ['requirements.txt', 'Python'], ['manage.py', 'Django'], ['composer.json', 'PHP'], ['Cargo.toml', 'Rust'], ['go.mod', 'Go'], ['pom.xml', 'Java'], ['build.gradle', 'Java'], ['pubspec.yaml', 'Dart'], ['index.html', 'Web']];
+function detectProjectType(dir) { try { for (const [f, t] of TYPE_MARKERS) if (fs.existsSync(path.join(dir, f))) return t; } catch { /* unreadable */ } return ''; }
+const knownRecent = (p) => { const r = path.resolve(String(p)); return loadRecents().find((x) => sameP(x.path, r)); };
+
 function registerRoot(p) {
   const r = path.resolve(p);
   if (!sec.isAllowedRoot(r)) throw new Error('This folder cannot be opened as a workspace (system or home directory).');
   roots.add(r);
-  const recents = readJson('recents.json', []).filter((x) => x.path !== r);
-  recents.unshift({ path: r, name: path.basename(r), at: Date.now() });
-  writeJson('recents.json', recents.slice(0, 15));
+  const all = loadRecents(), prev = all.find((x) => sameP(x.path, r));
+  saveRecents([{ path: r, name: path.basename(r) || r, at: Date.now(), pinned: !!(prev && prev.pinned), type: detectProjectType(r) }, ...all.filter((x) => x !== prev)]);
   if (menuBuilt) { try { buildMenu(); } catch { /* menu refresh is cosmetic */ } }
   return r;
 }
@@ -276,12 +326,16 @@ ipcMain.handle('ws:saveAsDialog', async (_e, suggested) => {
   if (!sec.insideAnyRoot(p, [...roots])) registerRoot(path.dirname(p));
   return p;
 });
-ipcMain.handle('ws:recents', () => readJson('recents.json', []).filter((r) => fs.existsSync(r.path)));
+// Missing folders are returned (flagged) so the Welcome screen can show and remove them instead of silently hiding history.
+ipcMain.handle('ws:recents', () => loadRecents().map((r) => ({ ...r, missing: !fs.existsSync(r.path) })));
 ipcMain.handle('ws:openRecent', (_e, p) => {
-  const known = readJson('recents.json', []).some((r) => r.path === path.resolve(p));
-  if (!known) throw new Error('Not a known recent project');
+  if (typeof p !== 'string' || !knownRecent(p)) throw new Error('Not a known recent project');
+  if (!fs.existsSync(p)) throw new Error('This folder no longer exists: ' + p);
   return registerRoot(p);
 });
+ipcMain.handle('ws:recentPin', (_e, p) => { const r = knownRecent(p); if (!r) return false; r.pinned = !r.pinned; saveRecents(loadRecents().map((x) => (sameP(x.path, r.path) ? { ...x, pinned: r.pinned } : x))); if (menuBuilt) buildMenu(); return r.pinned; });
+ipcMain.handle('ws:recentRemove', (_e, p) => { const r = knownRecent(p); if (!r) return false; saveRecents(loadRecents().filter((x) => !sameP(x.path, r.path))); if (menuBuilt) buildMenu(); return true; });
+ipcMain.handle('ws:recentClear', () => { saveRecents(loadRecents().filter((x) => x.pinned)); if (menuBuilt) buildMenu(); return true; });
 ipcMain.handle('ws:pickDir', async () => {           // for "Location" fields in wizards / clone
   const r = await dialog.showOpenDialog(currentWin, { properties: ['openDirectory', 'createDirectory'] });
   return r.canceled ? null : r.filePaths[0];
@@ -442,7 +496,7 @@ ipcMain.handle('fs:watch', (e, root) => {
   root = assertInRoot(root);
   const wc = e.sender, st = watchers.get(wc.id) || {}; watchers.set(wc.id, st);
   if (st.watcher) { st.watcher.close(); st.watcher = null; }
-  wc.once('destroyed', () => { try { st.watcher && st.watcher.close(); } catch { /* gone */ } watchers.delete(wc.id); });
+  if (!st.bound) { st.bound = true; wc.once('destroyed', () => { try { st.watcher && st.watcher.close(); } catch { /* gone */ } watchers.delete(wc.id); }); }
   const ping = () => { clearTimeout(st.timer); st.timer = setTimeout(() => sendTo(wc, 'fs:changed'), 120); };
   try {
     st.watcher = fs.watch(root, { recursive: true }, (_ev, name) => {
@@ -503,14 +557,14 @@ const cachedShells = (fresh) => { if (fresh || !shellCache || Date.now() - shell
 ipcMain.handle('term:shells', () => cachedShells(true));
 ipcMain.handle('term:detectGitBash', () => findGitBash());
 
-const terms = new Map(); let termSeq = 0;
+const terms = new Map(); let termSeq = 0; const winTerms = new Map();   // webContents id -> its terminal ids
 ipcMain.handle('term:create', (e, { shellId, cwd, cols = 80, rows = 24 }) => {
   const shells = cachedShells();
   const sh = shells.find((x) => x.id === shellId) || shells[0];
   if (!sh) throw new Error('No shell found');
   const dir = cwd && sec.insideAnyRoot(cwd, [...roots]) ? cwd : (roots.size ? [...roots][0] : os.homedir());
   const id = ++termSeq, wc = e.sender, send = (...a) => sendTo(wc, ...a);
-  wc.once('destroyed', () => { terms.get(id)?.kill(); terms.delete(id); });   // window closed: its shells go with it
+  (winTerms.get(wc.id) || (winTerms.set(wc.id, new Set()), wc.once('destroyed', () => { for (const t of winTerms.get(wc.id) || []) { try { terms.get(t)?.kill(); } catch { /* already exited */ } terms.delete(t); } winTerms.delete(wc.id); }), winTerms.get(wc.id))).add(id);   // window closed: its shells go with it (one listener per window)
   const env = { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' };
   if (pty) {
     const p = pty.spawn(sh.file, sh.args, { name: 'xterm-256color', cols, rows, cwd: dir, env });
@@ -535,7 +589,7 @@ ipcMain.handle('term:create', (e, { shellId, cwd, cols = 80, rows = 24 }) => {
 });
 ipcMain.on('term:write', (_e, id, d) => terms.get(id)?.write(String(d)));
 ipcMain.on('term:resize', (_e, id, c, r) => { try { terms.get(id)?.resize(c, r); } catch { /* ignore */ } });
-ipcMain.on('term:kill', (_e, id) => { terms.get(id)?.kill(); terms.delete(id); });
+ipcMain.on('term:kill', (_e, id) => { try { terms.get(id)?.kill(); } catch { /* already exited */ } terms.delete(id); });
 
 // ---------------------------------------------------------------- git
 let gitPath = 'git';
@@ -758,6 +812,7 @@ function shutdown(why) {
   quitting = true; dlog('Shutdown requested:', why);
   killTerminals();
 }
+app.on('child-process-gone', (_e, d) => logError('child-process-gone', d.type + ':' + d.reason, { exitCode: d.exitCode, name: d.name }));
 app.on('before-quit', () => shutdown('before-quit'));
 app.on('will-quit', () => { shutdown('will-quit'); dlog('Shutdown complete'); });
 process.on('exit', () => { try { killTerminals(); } catch { /* ignore */ } });

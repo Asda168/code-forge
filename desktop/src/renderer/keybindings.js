@@ -14,7 +14,7 @@
     C('toggle-preview', 'Toggle File Preview', 'General', () => CF.toggleMdPreview(), { when: '!terminal', alias: 'Preview: Toggle File Preview (Markdown, HTML, SVG)' }),
     C('new-window', 'New Window', 'File', null, { alias: 'New Window' }), C('open-folder-new-window', 'Open Folder in New Window…', 'File', null, { alias: 'Open Folder in New Window…' }),
     C('open-file', 'Open File…', 'File'), C('save-as', 'Save As…', 'File'), C('revert-file', 'Revert File', 'File'), C('toggle-autosave', 'Toggle Auto Save', 'File', null, { alias: 'File: Toggle Auto Save' }),
-    C('open-folder', 'Open Folder', 'File', null, { alias: 'Open Folder' }), C('new-file', 'New File', 'File', null, { alias: 'New File' }), C('save', 'Save', 'File'), C('save-all', 'Save All', 'File', null, { alias: 'Save All' }),
+    C('open-folder', 'Open Folder', 'File', null, { alias: 'Open Folder' }), C('new-file', 'New File', 'File', null, { alias: 'New File' }), C('rename', 'Rename File', 'File', () => CF.renameCurrent(), { alias: 'Rename' }), C('save', 'Save', 'File'), C('save-all', 'Save All', 'File', null, { alias: 'Save All' }),
     C('close-tab', 'Close Editor', 'Editor'), C('next-tab', 'Next Editor', 'Editor'), C('prev-tab', 'Previous Editor', 'Editor'), C('split', 'Split Editor Right', 'Editor', null, { alias: 'Split Editor Right' }),
     C('find', 'Find', 'Editor', () => CF.findInFile(), { when: '!terminal', alias: 'Find' }), C('replace', 'Replace', 'Editor', () => CF.findInFile(true), { when: '!terminal', alias: 'Replace' }),
     C('goto-line', 'Go to Line…', 'Editor', null, { alias: 'Go to Line…' }), C('goto-def', 'Go to Definition', 'Editor'),

@@ -43,15 +43,50 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         env:
+          # Option A: PFX (OV/EV) certificate.  Option B (recommended): Azure Trusted Signing. See docs/SIGNING.md.
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+          # Must equal the certificate subject (the validated organisation/individual name).
+          WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
+          IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
         # One arch per run: a combined x64+arm64 build emits a tiny stub per-arch installer.
         run: |
           if (-not $env:CSC_LINK) { Remove-Item Env:CSC_LINK, Env:CSC_KEY_PASSWORD -ErrorAction SilentlyContinue }
           $sign = @()
-          if ($env:CSC_LINK) { $sign = @('-c.win.signAndEditExecutable=true'); Write-Host 'Signing Windows installers' } else { Write-Host 'No WIN_CSC_LINK secret: building unsigned' }
+          if ($env:AZURE_ACCOUNT -and $env:AZURE_CLIENT_SECRET) {
+            if (-not $env:WIN_PUBLISHER_NAME) { throw 'Signing is configured but the WIN_PUBLISHER_NAME variable is empty. Set it to the certificate subject name.' }
+            $sign = @('-c.win.signAndEditExecutable=true', "-c.win.azureSignOptions.publisherName=$env:WIN_PUBLISHER_NAME",
+              "-c.win.azureSignOptions.endpoint=$env:AZURE_ENDPOINT", "-c.win.azureSignOptions.certificateProfileName=$env:AZURE_PROFILE",
+              "-c.win.azureSignOptions.codeSigningAccountName=$env:AZURE_ACCOUNT")
+            Write-Host 'Signing Windows binaries with Azure Trusted Signing'
+          } elseif ($env:CSC_LINK) {
+            if (-not $env:WIN_PUBLISHER_NAME) { throw 'Signing is configured but the WIN_PUBLISHER_NAME variable is empty. Set it to the certificate subject name.' }
+            $sign = @('-c.win.signAndEditExecutable=true', "-c.win.signtoolOptions.publisherName=$env:WIN_PUBLISHER_NAME")
+            Write-Host 'Signing Windows binaries with the PFX certificate'
+          } elseif ($env:IS_RELEASE -eq 'true') {
+            throw 'Refusing to publish an UNSIGNED Windows release: Smart App Control and SmartScreen block it. Configure the signing secrets (docs/SIGNING.md), or run the workflow manually for an unsigned test build.'
+          } else { Write-Warning 'No signing configured: building UNSIGNED (Smart App Control will block it).' }
           npx electron-builder --win --x64 --publish never @sign
+          if ($LASTEXITCODE) { throw "electron-builder x64 failed (exit $LASTEXITCODE). If signing: check the secrets, the certificate profile and that the timestamp server is reachable." }
           npx electron-builder --win --arm64 --publish never @sign
+          if ($LASTEXITCODE) { throw "electron-builder arm64 failed (exit $LASTEXITCODE)." }
+      - name: Verify Windows signatures (before publishing)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
+          IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          $a = @('-Path', 'dist', '-Publisher', $env:WIN_PUBLISHER_NAME)
+          if ($env:IS_RELEASE -eq 'true') { $a += '-Require' }
+          ./scripts/verify-signatures.ps1 @a
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Build
         if: runner.os != 'Windows'
         shell: bash
@@ -169,6 +204,15 @@ jobs:
           Start-Process pkg\Asta-Setup-x64.exe -ArgumentList '/S' -Wait
           $exe = "$env:LOCALAPPDATA\Programs\Asta\Asta.exe"
           if (-not (Test-Path $exe)) { throw "not installed at $exe" }
+      - name: Installed binaries are signed
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature "$env:LOCALAPPDATA\Programs\Asta\Asta.exe"
+          Write-Host "$($sig.Status) $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') {
+            Write-Warning "Asta.exe is not validly signed ($($sig.Status)); Smart App Control will block it."
+            if ('${{ startsWith(github.ref, 'refs/tags/v') }}' -eq 'true') { throw 'unsigned release' }
+          }
       - name: App starts and stays running
         shell: pwsh
         run: |
@@ -182,3 +226,16 @@ jobs:
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw "installer hung (cannot close running app)" }
           if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
           if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Asta\Asta.exe")) { throw "app missing after upgrade" }
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          Get-Process Asta -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Process "$env:LOCALAPPDATA\Programs\Asta\Uninstall Asta.exe" -ArgumentList '/S' -Wait
+          Start-Sleep 5
+          if (Test-Path "$env:LOCALAPPDATA\Programs\Asta\Asta.exe") { throw 'uninstall left Asta.exe behind' }
+      - name: Code Integrity log (blocked binaries)
+        if: always()
+        shell: pwsh
+        run: |
+          # 3033/3077 = image blocked by code integrity / policy. Hosted runners do not enforce Smart App Control, so this is informational there.
+          Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-CodeIntegrity/Operational'; Id=3033,3034,3077} -MaxEvents 20 -ErrorAction SilentlyContinue | Format-List TimeCreated, Id, Message

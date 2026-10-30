@@ -152,6 +152,6 @@
   // ---- empty editor watermark ----------------------------------------------------------------------------------
   const wm = h('div', { id: 'watermark' }, h('img', { src: '../../assets/asda.png', width: 96 }), h('div', {}, [['Quick Open', 'Ctrl+P'], ['Command Palette', 'Ctrl+Shift+P'], ['Toggle Terminal', 'Ctrl+`'], ['Find in Files', 'Ctrl+Shift+F']].map(([a, k]) => h('div', {}, a + '  ', h('kbd', {}, k)))));
   $('#editor-area').append(wm);
-  const sync = () => { wm.style.display = !S.groups.some((g) => g.tabs.length) && $('#welcome').hidden ? '' : 'none'; };
+  const sync = () => { const wl = $('#welcome'), mini = !wl.hidden && wl.classList.contains('wl-mini'); wm.style.display = !S.groups.some((g) => g.tabs.length) && (wl.hidden || mini) ? '' : 'none'; if (wl.hidden) wm.querySelectorAll('.wl-home').forEach((n) => n.remove()); };   // new-window start page keeps the placeholder and sits below it
   setInterval(sync, 300);
 })();

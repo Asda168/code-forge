@@ -18,14 +18,15 @@
     G.repo = await cf.git.detect(S.root).catch(() => false);
     const setBadge = (n) => { const b = $('#activitybar [data-view="git"]'); if (!b) return; let el = b.querySelector('.act-badge'); if (!n) return el && el.remove(); if (!el) { el = h('span', { class: 'act-badge' }); b.append(el); } el.textContent = n > 99 ? '99+' : n; b.title = `Source Control (${n} pending change${n === 1 ? '' : 's'})`; };
     if (!G.repo) { setBadge(0); $('#sb-branch').textContent = '⑂ no repo'; if ($('#side-title').dataset.view === 'git') CF.showView('git'); return; }
-    const st = await git(['status', '--porcelain=v1', '-b', '-uall']);
-    const lines = st.stdout.split('\n').filter(Boolean);
+    const st = await git(['status', '--porcelain=v1', '-z', '-b', '-uall']);    // -z: NUL-separated, paths are never quoted/escaped
+    const lines = [], parts = st.stdout.split('\0').filter(Boolean);
+    for (let i = 0; i < parts.length; i++) { lines.push(parts[i]); if (i > 0 && /[RC]/.test(parts[i].slice(0, 2))) i++; }     // a rename/copy entry is followed by its original path: skip it
     const head = lines.shift() || '';
     G.branch = head.replace(/^## /, '').split('...')[0].replace(/^No commits yet on /, '');
     G.sync = (head.match(/\[(.+)\]/) || [])[1] || '';
     G.ahead = +((G.sync.match(/ahead (\d+)/) || [])[1] || 0); G.behind = +((G.sync.match(/behind (\d+)/) || [])[1] || 0); G.gone = /gone/.test(G.sync); G.hasUp = head.includes('...');
     CF.G = G;
-    G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3).replace(/^"|"$/g, '').replace(/.* -> /, '') }));
+    G.files = lines.map((l) => ({ x: l[0], y: l[1], path: l.slice(3) }));
     const total = new Set(G.files.map((f) => f.path)).size;
     setBadge(total);
     const sb = $('#sb-branch'); sb.textContent = `⎇ ${G.branch}${G.sync ? ' (' + G.sync + ')' : ''}`;
@@ -87,7 +88,7 @@
     return `${type}${verb} ${shown}${more > 0 ? ` and ${more} more file${more === 1 ? '' : 's'}` : ''}${scope}`;
   };
 
-  function fileRow(f, staged, depth = 0) {
+  function fileRow(f, staged) {
     const code = staged ? f.x : (f.y === ' ' ? f.x : f.y);
     const label = f.x === '?' ? 'U' : code;
     const btn = (t, ti, fn) => h('button', { class: 'icon-btn', title: ti, 'aria-label': ti, onclick: (e) => { e.stopPropagation(); fn(); } }, t);
@@ -104,7 +105,7 @@
       ...(gone ? [] : [['Reveal in Explorer', () => CF.revealInTree && CF.revealInTree(abs(f.path))], ['Reveal in File Manager', () => cf.fs.reveal(abs(f.path))]]),
     ]);
     const more = (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: Math.max(8, r.right - 180), clientY: r.bottom + 4, preventDefault() {}, stopPropagation() {} }); };
-    return h('div', { class: 'gi scm-file', style: `padding-left:${10 + depth * 12 + 16}px`, tabindex: 0, role: 'button', 'aria-haspopup': 'menu', onclick: () => CF.showDiff(f, staged),
+    return h('div', { class: 'gi scm-file', style: 'padding-left:10px', title: f.path, tabindex: 0, role: 'button', 'aria-haspopup': 'menu', onclick: () => CF.showDiff(f, staged),
       oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); menu(e); },
       onkeydown: (e) => { if (e.key === 'Enter') CF.showDiff(f, staged); else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: r.left + 40, clientY: r.bottom, preventDefault() {}, stopPropagation() {} }); } } },
       h('span', { class: 'ic', html: CF.fileIconHtml(base(f.path), false) }), h('span', { class: 'nm', title: f.path }, base(f.path)),
@@ -142,37 +143,8 @@
       h('span', { class: 'st X', title: kind }, '!'));
   }
 
-  // Files grouped by folder (single-child folder chains are shown as one row, like VS Code's compact folders).
-  const buildTree = (files) => {
-    const root = { dirs: new Map(), files: [] };
-    for (const f of files) { let n = root; for (const p of f.path.split('/').slice(0, -1)) { if (!n.dirs.has(p)) n.dirs.set(p, { dirs: new Map(), files: [] }); n = n.dirs.get(p); } n.files.push(f); }
-    return root;
-  };
-  const allFiles = (n) => [...n.files, ...[...n.dirs.values()].flatMap(allFiles)];
-  const renderTree = (node, depth, key, staged, prefix = '') => {
-    const out = [];
-    [...node.dirs.entries()].sort(([a], [b]) => a.localeCompare(b)).forEach(([name, child]) => {
-      let label = name, cur = child, path = prefix + name;
-      while (!cur.files.length && cur.dirs.size === 1) { const [n2, c2] = [...cur.dirs.entries()][0]; label += '/' + n2; cur = c2; path += '/' + n2; }
-      const fk = `dir:${key}:${path}`, list = allFiles(cur), kids = h('div', {}), arrow = h('span', { class: 'arr' });
-      renderTree(cur, depth + 1, key, staged, path + '/').forEach((k) => kids.append(k));
-      const set = () => { const c = !!G.fold[fk]; arrow.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); kids.hidden = c; };
-      const act = (e) => { e.stopPropagation(); (staged ? unstageMany : stageMany)(list.map((f) => f.path)); };
-      const dmenu = (e) => CF.menu(e, [
-        [staged ? 'Unstage Folder' : 'Stage Folder', () => (staged ? unstageMany : stageMany)(list.map((f) => f.path))],
-        [G.fold[fk] ? 'Expand' : 'Collapse', () => { G.fold[fk] = !G.fold[fk]; set(); }], '-',
-        ['Copy Relative Path', CF.guard(async () => { await cf.clip.write(path); CF.toast('Relative path copied'); })],
-        ['Reveal in File Manager', () => cf.fs.reveal(abs(path))]]);
-      out.push(h('div', { class: 'scm-dir', style: `padding-left:${10 + depth * 12}px`, tabindex: 0, oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); dmenu(e); },
-        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); G.fold[fk] = !G.fold[fk]; set(); } },
-        onclick: () => { G.fold[fk] = !G.fold[fk]; set(); } },
-        arrow, h('span', { class: 'ic', html: CF.fileIconHtml(name, true) }), h('span', { class: 'nm', title: path }, label), h('span', { class: 'cnt' }, list.length),
-        h('span', { class: 'acts' }, h('button', { class: 'icon-btn', title: staged ? 'Unstage folder' : 'Stage folder', 'aria-label': staged ? 'Unstage folder' : 'Stage folder', onclick: act }, CF.icon(staged ? 'minus' : 'plus', 13)))), kids);
-      set();
-    });
-    node.files.slice().sort((a, b) => base(a.path).localeCompare(base(b.path))).forEach((f) => out.push(fileRow(f, staged, depth)));
-    return out;
-  };
+  // Changed files as a flat list (file name only; the full relative path is in the tooltip), sorted by name then path.
+  const renderFlat = (files, staged) => files.slice().sort((a, b) => base(a.path).localeCompare(base(b.path)) || a.path.localeCompare(b.path)).map((f) => fileRow(f, staged));
 
   // Collapsible section: header toggles a box; state survives refreshes.
   const fold = (body, key, title, count, extra, items) => {
@@ -282,7 +254,7 @@
     const group = (label, list, isStaged, bulk) => {
       if (!list.length) return;
       secBody.append(h('div', { class: 'scm-group' }, h('span', {}, label), h('span', { class: 'scm-count' }, list.length), h('span', { class: 'grow' }), bulk));
-      renderTree(buildTree(list), 0, label, isStaged).forEach((n) => secBody.append(n));
+      renderFlat(list, isStaged).forEach((n) => secBody.append(n));
     };
     if (conflicts.length) {
       secBody.append(h('div', { class: 'scm-group scm-group-conflict' }, h('span', {}, 'Merge Changes'), h('span', { class: 'scm-count' }, conflicts.length), h('span', { class: 'grow' })));

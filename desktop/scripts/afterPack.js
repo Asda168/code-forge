@@ -12,7 +12,9 @@ exports.default = async function afterPack(ctx) {
   const icon = path.join(ctx.packager.projectDir, 'build', 'icon.ico');
   if (!rcedit || !fs.existsSync(icon)) { console.warn('afterPack: rcedit or icon missing; exe keeps the default icon'); return; }
   const v = ctx.packager.appInfo.version;
+  // Keep the exe's CompanyName identical to the signing certificate's publisher (WIN_PUBLISHER_NAME) so Windows shows one consistent publisher.
+  const company = process.env.WIN_PUBLISHER_NAME || 'Asta';
   execFileSync(rcedit, [exe, '--set-icon', icon, '--set-version-string', 'ProductName', 'Asta', '--set-version-string', 'FileDescription', 'Asta',
-    '--set-version-string', 'CompanyName', 'Asta', '--set-file-version', v, '--set-product-version', v]);
+    '--set-version-string', 'CompanyName', company, '--set-file-version', v, '--set-product-version', v]);
   console.log('afterPack: icon + version set on', path.basename(exe));
 };

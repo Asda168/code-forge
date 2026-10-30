@@ -68,7 +68,12 @@
       "icon": "build/icon.ico",
       "target": "nsis",
       "artifactName": "Asta-Setup-${arch}.${ext}",
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "signDlls": true,
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "rfc3161TimeStampServer": "http://timestamp.acs.microsoft.com"
     },
     "nsis": {
       "oneClick": false,

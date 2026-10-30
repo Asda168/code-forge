@@ -5,7 +5,7 @@ const on = (ch, fn) => { const h = (_e, ...a) => fn(...a); ipcRenderer.on(ch, h)
 
 contextBridge.exposeInMainWorld('cf', {
   pathFor: (file) => webUtils.getPathForFile(file),
-  ws: { openFile: inv('ws:openFileDialog'), saveAs: inv('ws:saveAsDialog'), openDialog: inv('ws:openDialog'), recents: inv('ws:recents'), openRecent: inv('ws:openRecent'), pickDir: inv('ws:pickDir'),
+  ws: { openFile: inv('ws:openFileDialog'), saveAs: inv('ws:saveAsDialog'), openDialog: inv('ws:openDialog'), recents: inv('ws:recents'), openRecent: inv('ws:openRecent'), recentPin: inv('ws:recentPin'), recentRemove: inv('ws:recentRemove'), recentClear: inv('ws:recentClear'), pickDir: inv('ws:pickDir'),
         save: inv('ws:saveWorkspace'), list: inv('ws:listWorkspaces'), load: inv('ws:loadWorkspace') },
   fs: { list: inv('fs:list'), read: inv('fs:read'), write: inv('fs:write'), createFile: inv('fs:createFile'), mkdir: inv('fs:mkdir'),
         rename: inv('fs:rename'), move: inv('fs:move'), copy: inv('fs:copy'), delete: inv('fs:delete'), reveal: inv('fs:reveal'),

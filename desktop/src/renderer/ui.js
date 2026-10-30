@@ -266,7 +266,7 @@
     await cf.ws.save({ name: v.n, folders: [S.root], files: [...new Set(S.groups.flatMap((g) => g.tabs))].filter((p) => !CF.isPage(p)), split: S.groups.length > 1 ? (S.vertical ? 'down' : 'right') : null, terminals: S.terms.map((t) => t.name), runConfigs: JSON.parse(localStorage.getItem('cf.runcfg.' + S.root) || '[]') });
     CF.toast('Workspace saved');
   });
-  const openWorkspace = CF.guard(async () => {
+  const openWorkspace = CF.openWorkspace = CF.guard(async () => {
     const list = await cf.ws.list(); if (!list.length) return CF.toast('No saved workspaces', true);
     const v = await CF.ask('Open Workspace', [{ id: 'n', label: 'Workspace', type: 'select', options: list.map((w) => w.name) }], 'Open'); if (!v) return;
     const ws = await cf.ws.load(v.n); await CF.setRoot(ws.folders[0]);
