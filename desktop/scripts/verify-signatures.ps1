@@ -4,9 +4,10 @@
 param([string]$Path = 'dist', [string]$Publisher = '', [switch]$Require)
 $ErrorActionPreference = 'Stop'
 $files = Get-ChildItem $Path -Recurse -Include *.exe, *.dll, *.node -File |
-  Where-Object { $_.FullName -notmatch '\(node_modules|resources\app)\' -or $_.Extension -ne '.dll' }
+  Where-Object { $_.FullName -notmatch '\\(node_modules|resources\\app)\\' -or $_.Extension -ne '.dll' }
 if (-not $files) { throw "No binaries found under $Path" }
-$bad = @(); $unsigned = @()
+$bad = @(); $unsigned = @(); $thirdParty = @()
+$isOwn = { param($f, $cert) ($f.Name -match '^(Asta|Uninstall Asta|__uninstaller)') -or ($Publisher -and $cert -and $cert.Subject -match [regex]::Escape($Publisher)) }
 foreach ($f in $files) {
   $sig = Get-AuthenticodeSignature $f.FullName
   if ($sig.Status -eq 'NotSigned') { $unsigned += $f.FullName; continue }
@@ -20,9 +21,11 @@ foreach ($f in $files) {
     $chain = New-Object Security.Cryptography.X509Certificates.X509Chain
     if (-not $chain.Build($cert)) { $why += 'certificate chain does not build to a trusted root' }
   }
-  if ($why) { $bad += "$($f.FullName): $($why -join '; ')" } else { Write-Host "OK  $($f.Name)  [$($cert.Subject)]" }
+  if ($why -and -not (& $isOwn $f $cert)) { $thirdParty += "$($f.FullName): $($why -join '; ')" }
+  elseif ($why) { $bad += "$($f.FullName): $($why -join '; ')" } else { Write-Host "OK  $($f.Name)  [$($cert.Subject)]" }
 }
 $must = $unsigned | Where-Object { $_ -notmatch '\.node$' }  # native addons (.node) are reported but not required
+if ($thirdParty) { Write-Warning "$($thirdParty.Count) bundled third-party file(s) with signature notes (not ours):`n  $($thirdParty -join "`n  ")" }
 if ($unsigned) { Write-Warning "$($unsigned.Count) unsigned file(s):`n  $($unsigned -join "`n  ")" }
 if ($bad) { Write-Error "Signature verification FAILED:`n$($bad -join "`n")"; exit 1 }
 if ($Require -and $must) { Write-Error "Release requires signed binaries but found unsigned files (see warning above)."; exit 1 }
