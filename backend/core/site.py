@@ -5,11 +5,13 @@ without DATABASE_URL), so the download page never depends on a writable database
 for it instead of a link that would 404. Flip it (and set `url`) when you publish a build.
 """
 REPO = "https://github.com/Asda168/code-forge"
-VERSION = "1.3.8"
-RELEASED = "2026-10-21"
+VERSION = "1.3.9"
+RELEASED = "2026-10-30"
 # Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
-VERSIONS = ["1.3.8", "1.3.7", "1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
+VERSIONS = ["1.3.9", "1.3.8", "1.3.7", "1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
+    "Fix: Tab / Space no longer vanish and the caret no longer jumps back while typing with auto save and trim-whitespace enabled",
+    "Windows signing: native addons (.node) are signed, builds fail when signing is configured but breaks, and a signature audit + SHA-256 manifest is published with each build",
     "Hotfix: a maximized terminal no longer hides the editor after closing the panel (Ctrl+J) or when searching and opening files (Ctrl+P, command palette, Find in Files)",
     "Hotfix: new terminals open instantly and no longer drop their first output",
     "Hotfix: Source Control updates faster after file changes, with instant Sync / Commit feedback",

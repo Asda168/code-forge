@@ -88,7 +88,7 @@ Windows: `npm run dist:win` (works on Windows). macOS and Linux installers must 
 
 ### Version control and releases
 - **Git + GitHub**: repo `Asda168/code-forge`, default branch `main`.
-- **Versioning**: SemVer, version in `desktop/package.json` (currently `1.3.8`), tagged `vMAJOR.MINOR.PATCH` (e.g. `v1.3.8`).
+- **Versioning**: SemVer, version in `desktop/package.json` (currently `1.3.9`), tagged `vMAJOR.MINOR.PATCH` (e.g. `v1.3.9`).
 - **CI/CD**: GitHub Actions (`.github/workflows/release.yml`, `actions/checkout@v4`, `setup-node@v4`, `setup-python@v5`, `upload-artifact@v4`, `softprops/action-gh-release@v2`).
   - Build matrix: `windows-latest`, `macos-latest`, `ubuntu-latest`.
   - Pushing a `v*` tag builds all installers and attaches them to a GitHub Release.
