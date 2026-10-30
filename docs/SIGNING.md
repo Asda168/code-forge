@@ -23,11 +23,18 @@ Repository **secrets**: Azure -> `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CL
 
 ### What the pipeline does (`.github/workflows/release.yml`, `desktop/package.json`)
 - Signs `Asta.exe`, all DLLs (`win.signDlls`), the installer and the uninstaller, SHA-256 digest (`signingHashAlgorithms`) with an RFC 3161 timestamp (`rfc3161TimeStampServer`).
+- `win.signExts: ['.node']` + `signDlls` also sign native addons and the unpacked node-pty `winpty-agent.exe`/`winpty.dll` (electron-builder 25.x; v26 uses the same `signExts`). When signing is configured the workflow passes `-c.forceCodeSigning=true`, so a signing failure stops the build instead of shipping an unsigned file. Microsoft's own `conpty.dll`/`OpenConsole.exe` ship already signed; check after the first signed build that they still show Microsoft as publisher (the audit flags this).
+- `desktop/scripts/audit-binaries.ps1` (read-only) writes `signature-audit.csv/.md` (publisher, status, issuer, timestamp, SHA-256, origin, expected-signed) and `SHA256-MANIFEST.txt`; `-Compare old-manifest` fails on modified/missing/extra files. CI uploads it as the `signature-audit` artifact. Unknown-origin files are reported, never auto-signed.
 - With signing configured, tag builds are verified strictly. With no signing configured the build is unsigned and only warns.
 - `desktop/scripts/verify-signatures.ps1` runs before artifacts are uploaded: every exe/dll must be `Valid`, timestamped, SHA-2, chain to a trusted root and match `WIN_PUBLISHER_NAME`; `-Require` (tags) also rejects unsigned files. Run it locally: `pwsh desktop/scripts/verify-signatures.ps1 -Path desktop/dist -Publisher "<name>" -Require`.
 - `test-windows` installs silently, checks the installed `Asta.exe` signature, launches, upgrades over a running app, uninstalls and prints Code Integrity block events.
 - Note: GitHub-hosted runners do not enforce Smart App Control. Final acceptance must be done by hand on a Windows 11 machine with SAC **On** (Settings -> Privacy & security -> Windows Security -> App & browser control -> Smart App Control): install the signed `Asta-Setup-x64.exe`, launch, uninstall, and confirm no new 3033/3077 events for Asta binaries.
 - In-app updates only check the release feed and open the download page (no silent self-update), so "update" means installing the new signed installer over the old one.
+
+### Evidence from an affected machine (SAC enforcing, Code Integrity log)
+Events 3033/3077 for `...\Programs\Asta\Asta.exe` (launched by explorer.exe), `Uninstall Asta.exe` and the installer's `old-uninstaller.exe`; all `NotSigned`.
+Also unsigned in the 1.3.8 install: Electron's `ffmpeg.dll`, `libEGL.dll`, `libGLESv2.dll`, `vk_swiftshader.dll`, `vulkan-1.dll`, `resources/elevate.exe`, and node-pty's `pty.node`, `conpty.node`, `winpty*` (these would block the integrated terminal once `Asta.exe` itself passes).
+No signature can be produced without a real certificate; until `WIN_PUBLISHER_NAME` + a signing secret exist, builds stay unsigned and SAC will keep blocking them.
 
 ## macOS (Gatekeeper)
 - Needs an Apple Developer account ($99/yr) and a *Developer ID Application* certificate.

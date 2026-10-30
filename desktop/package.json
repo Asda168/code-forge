@@ -70,6 +70,9 @@
       "artifactName": "Asta-Setup-${arch}.${ext}",
       "signAndEditExecutable": false,
       "signDlls": true,
+      "signExts": [
+        ".node"
+      ],
       "signingHashAlgorithms": [
         "sha256"
       ],

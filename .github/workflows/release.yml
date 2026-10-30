@@ -61,13 +61,13 @@ jobs:
           $sign = @()
           if ($env:AZURE_ACCOUNT -and $env:AZURE_CLIENT_SECRET) {
             if (-not $env:WIN_PUBLISHER_NAME) { throw 'Signing is configured but the WIN_PUBLISHER_NAME variable is empty. Set it to the certificate subject name.' }
-            $sign = @('-c.win.signAndEditExecutable=true', "-c.win.azureSignOptions.publisherName=$env:WIN_PUBLISHER_NAME",
+            $sign = @('-c.win.signAndEditExecutable=true', '-c.forceCodeSigning=true', "-c.win.azureSignOptions.publisherName=$env:WIN_PUBLISHER_NAME",
               "-c.win.azureSignOptions.endpoint=$env:AZURE_ENDPOINT", "-c.win.azureSignOptions.certificateProfileName=$env:AZURE_PROFILE",
               "-c.win.azureSignOptions.codeSigningAccountName=$env:AZURE_ACCOUNT")
             Write-Host 'Signing Windows binaries with Azure Trusted Signing'
           } elseif ($env:CSC_LINK) {
             if (-not $env:WIN_PUBLISHER_NAME) { throw 'Signing is configured but the WIN_PUBLISHER_NAME variable is empty. Set it to the certificate subject name.' }
-            $sign = @('-c.win.signAndEditExecutable=true', "-c.win.signtoolOptions.publisherName=$env:WIN_PUBLISHER_NAME")
+            $sign = @('-c.win.signAndEditExecutable=true', '-c.forceCodeSigning=true', "-c.win.signtoolOptions.publisherName=$env:WIN_PUBLISHER_NAME")
             Write-Host 'Signing Windows binaries with the PFX certificate'
           } else { Write-Warning 'No signing configured: building UNSIGNED. Windows Smart App Control / SmartScreen will block it until a certificate is added (docs/SIGNING.md).' }
           npx electron-builder --win --x64 --publish never @sign
@@ -86,6 +86,22 @@ jobs:
           if ($env:WIN_PUBLISHER_NAME) { $verify.Publisher = $env:WIN_PUBLISHER_NAME }
           if ($env:IS_RELEASE -eq 'true' -and $env:WIN_PUBLISHER_NAME) { $verify.Require = $true }   # strict only for releases with signing configured
           ./scripts/verify-signatures.ps1 @verify
+      - name: Binary audit + SHA-256 manifest (win-unpacked)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
+        run: |
+          # Read-only report: per-file publisher/status/issuer/SHA-256/origin, plus a manifest to detect later modification.
+          foreach ($d in 'win-unpacked', 'win-arm64-unpacked') {
+            if (Test-Path "dist/$d") { ./scripts/audit-binaries.ps1 -Path "dist/$d" -Out "audit/$d" -Publisher $env:WIN_PUBLISHER_NAME }
+          }
+          Get-ChildItem dist/Asta-Setup-*.exe | Get-FileHash -Algorithm SHA256 | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLower(), (Split-Path $_.Path -Leaf) } | Set-Content audit/installers.sha256 -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: signature-audit
+          path: desktop/audit
       - name: Build
         if: runner.os != 'Windows'
         shell: bash

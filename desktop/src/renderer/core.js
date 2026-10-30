@@ -846,7 +846,7 @@ CF.openFile = CF.guard(async (path, { group, line, col } = {}) => {
       }
       if (d && S.settings.autoSave === "afterDelay") {
         clearTimeout(m.timer);
-        m.timer = setTimeout(() => CF.save(path), S.settings.autoSaveDelay);
+        m.timer = setTimeout(() => CF.save(path, true), S.settings.autoSaveDelay);
       }
       CF.updateProblems();
     });
@@ -1068,7 +1068,7 @@ CF.closeTab = CF.guard(async (g, p, force) => {
   if (S.root && S.groups.every((x) => !x.tabs.length) && !S.root)
     $("#welcome").hidden = false;
 });
-CF.save = CF.guard(async (path) => {
+CF.save = CF.guard(async (path, auto) => {
   const g = CF.activeGroup();
   path = path || g.active;
   const m = path && S.models.get(path);
@@ -1076,14 +1076,25 @@ CF.save = CF.guard(async (path) => {
   if (!/\.(md|markdown)$/i.test(path)) {
     // optional save-time clean-up (kept off for Markdown, where trailing double-space is a line break)
     const edits = [];
+    // Auto-save fires while the user is mid-typing: leave the line(s) holding a cursor alone, otherwise a fresh Tab/space
+    // (indentation or trailing whitespace) is stripped under the caret and the cursor jumps back.
+    const caretLines = new Set();
+    if (auto)
+      S.groups.forEach((x) => {
+        if (x.editor && x.editor.getModel() === m.model)
+          (x.editor.getSelections() || []).forEach((sl) => {
+            for (let l = sl.startLineNumber; l <= sl.endLineNumber; l++) caretLines.add(l);
+          });
+      });
     if (S.settings.trimWhitespace)
       for (let i = 1, n = m.model.getLineCount(); i <= n; i++) {
+        if (caretLines.has(i)) continue;
         const c = m.model.getLineMaxColumn(i),
           t = m.model.getLineContent(i).replace(/\s+$/, "").length + 1;
         if (t < c)
           edits.push({ range: new monaco.Range(i, t, i, c), text: "" });
       }
-    if (S.settings.finalNewline) {
+    if (S.settings.finalNewline && !caretLines.has(m.model.getLineCount())) {
       const n = m.model.getLineCount(),
         c = m.model.getLineMaxColumn(n);
       if (c > 1)
@@ -1094,7 +1105,12 @@ CF.save = CF.guard(async (path) => {
   const text = m.model.getValue();
   await cf.fs.write(path, text);
   m.saved = text;
-  m.dirty = false;
+  // keystrokes made while the write was in flight are not on disk yet: stay dirty (and keep auto-save armed)
+  m.dirty = m.model.getValue() !== text;
+  if (m.dirty && S.settings.autoSave === "afterDelay") {
+    clearTimeout(m.timer);
+    m.timer = setTimeout(() => CF.save(path, true), S.settings.autoSaveDelay);
+  }
   CF.renderTabs();
   if (path === S.keyboardFile) {
     // hand-edited keyboard.json: re-read it so the shortcuts change immediately
@@ -1137,9 +1153,19 @@ CF.reloadOpenFiles = CF.guard(async () => {
     if (!m.dirty) {
       try {
         const r = await cf.fs.read(m.path);
-        if (r.text !== m.saved) {
+        // the user may have typed (or a save finished) while we were reading: never overwrite their edits
+        if (r.text !== m.saved && !m.dirty && m.model.getValue() === m.saved) {
           m.saved = r.text;
-          m.model.setValue(r.text);
+          // replace via an edit (not setValue) and restore cursor/scroll, so a reload never throws the caret back to line 1
+          const eds = S.groups.map((x) => x.editor).filter((e) => e && e.getModel() === m.model);
+          const views = eds.map((e) => [e, e.getSelections(), e.getScrollTop()]);
+          m.model.pushEditOperations(
+            [],
+            [{ range: m.model.getFullModelRange(), text: r.text }],
+            () => null,
+          );
+          m.model.pushStackElement();
+          views.forEach(([e, sel, top]) => { e.setSelections(sel); e.setScrollTop(top); });
         }
       } catch {
         /* deleted */

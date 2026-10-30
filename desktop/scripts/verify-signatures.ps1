@@ -10,6 +10,7 @@ if (-not $files) { throw "No binaries found under $Path" }
 $bad = @(); $unsigned = @(); $thirdParty = @()
 $isOwn = { param($f, $cert) ($f.Name -match '^(Asta|Uninstall Asta|__uninstaller)') -or ($Publisher -and $cert -and $cert.Subject -match [regex]::Escape($Publisher)) }
 foreach ($f in $files) {
+  if ($f.FullName -match 'prebuilds[\\/](darwin|linux)') { continue }   # other-platform binaries are never loaded by Windows
   $sig = Get-AuthenticodeSignature $f.FullName
   if ($sig.Status -eq 'NotSigned') { $unsigned += $f.FullName; continue }
   $why = @()
@@ -25,7 +26,8 @@ foreach ($f in $files) {
   if ($why -and -not (& $isOwn $f $cert)) { $thirdParty += "$($f.FullName): $($why -join '; ')" }
   elseif ($why) { $bad += "$($f.FullName): $($why -join '; ')" } else { Write-Host "OK  $($f.Name)  [$($cert.Subject)]" }
 }
-$must = $unsigned | Where-Object { $_ -notmatch '\.node$' }  # native addons (.node) are reported but not required
+# Native addons (.node) are signed too (win.signExts); only other-platform prebuilds (never loaded on Windows) are exempt.
+$must = $unsigned | Where-Object { $_ -notmatch 'prebuilds[\\/](darwin|linux)' }
 if ($thirdParty) { Write-Warning "$($thirdParty.Count) bundled third-party file(s) with signature notes (not ours):`n  $($thirdParty -join "`n  ")" }
 if ($unsigned) { Write-Warning "$($unsigned.Count) unsigned file(s):`n  $($unsigned -join "`n  ")" }
 if ($bad) { Write-Error "Signature verification FAILED:`n$($bad -join "`n")"; exit 1 }
