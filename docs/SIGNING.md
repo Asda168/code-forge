@@ -2,7 +2,7 @@
 
 Unsigned installers trigger **Windows Smart App Control / SmartScreen** ("Windows protected your PC") and **macOS Gatekeeper**.
 Only signing removes the warnings; the download page explains the workaround until then.
-Windows signing is mandatory for tagged releases in `.github/workflows/release.yml` (the build fails without it); manual runs may be unsigned.
+Windows signing is used automatically when the secrets below are set (and then verified strictly); without them the workflow still builds, with a warning, and the installer is UNSIGNED, so Smart App Control will block it.
 
 ## Windows (Smart App Control + SmartScreen)
 
@@ -23,7 +23,7 @@ Repository **secrets**: Azure -> `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CL
 
 ### What the pipeline does (`.github/workflows/release.yml`, `desktop/package.json`)
 - Signs `Asta.exe`, all DLLs (`win.signDlls`), the installer and the uninstaller, SHA-256 digest (`signingHashAlgorithms`) with an RFC 3161 timestamp (`rfc3161TimeStampServer`).
-- Tag builds **fail** if no signing is configured; manual runs may build unsigned for testing (with a warning).
+- With signing configured, tag builds are verified strictly. With no signing configured the build is unsigned and only warns.
 - `desktop/scripts/verify-signatures.ps1` runs before artifacts are uploaded: every exe/dll must be `Valid`, timestamped, SHA-2, chain to a trusted root and match `WIN_PUBLISHER_NAME`; `-Require` (tags) also rejects unsigned files. Run it locally: `pwsh desktop/scripts/verify-signatures.ps1 -Path desktop/dist -Publisher "<name>" -Require`.
 - `test-windows` installs silently, checks the installed `Asta.exe` signature, launches, upgrades over a running app, uninstalls and prints Code Integrity block events.
 - Note: GitHub-hosted runners do not enforce Smart App Control. Final acceptance must be done by hand on a Windows 11 machine with SAC **On** (Settings -> Privacy & security -> Windows Security -> App & browser control -> Smart App Control): install the signed `Asta-Setup-x64.exe`, launch, uninstall, and confirm no new 3033/3077 events for Asta binaries.
