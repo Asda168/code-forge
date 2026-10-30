@@ -81,10 +81,11 @@ jobs:
           WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
           IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
         run: |
-          $a = @('-Path', 'dist', '-Publisher', $env:WIN_PUBLISHER_NAME)
-          if ($env:IS_RELEASE -eq 'true' -and $env:WIN_PUBLISHER_NAME) { $a += '-Require' }   # strict only when signing is configured
-          ./scripts/verify-signatures.ps1 @a
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # Hashtable splatting passes real NAMED parameters (an array would be passed positionally, making the string '-Path' the path).
+          $verify = @{ Path = 'dist' }
+          if ($env:WIN_PUBLISHER_NAME) { $verify.Publisher = $env:WIN_PUBLISHER_NAME }
+          if ($env:IS_RELEASE -eq 'true' -and $env:WIN_PUBLISHER_NAME) { $verify.Require = $true }   # strict only for releases with signing configured
+          ./scripts/verify-signatures.ps1 @verify
       - name: Build
         if: runner.os != 'Windows'
         shell: bash

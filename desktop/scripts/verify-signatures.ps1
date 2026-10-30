@@ -3,6 +3,7 @@
 #   -Require   fail if anything is unsigned (use for releases). Without it, unsigned files only produce warnings.
 param([string]$Path = 'dist', [string]$Publisher = '', [switch]$Require)
 $ErrorActionPreference = 'Stop'
+if (-not (Test-Path -LiteralPath $Path -PathType Container)) { throw "Path '$Path' is not an existing directory (run from the folder that contains it, and pass named parameters: -Path dist)." }
 $files = Get-ChildItem $Path -Recurse -Include *.exe, *.dll, *.node -File |
   Where-Object { $_.FullName -notmatch '\\(node_modules|resources\\app)\\' -or $_.Extension -ne '.dll' }
 if (-not $files) { throw "No binaries found under $Path" }
