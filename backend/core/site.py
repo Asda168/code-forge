@@ -6,10 +6,14 @@ for it instead of a link that would 404. Flip it (and set `url`) when you publis
 """
 REPO = "https://github.com/Asda168/code-forge"
 VERSION = "1.3.9"
-RELEASED = "2026-10-30"
+RELEASED = "2026-10-31"
 # Versions offered in the download picker (newest first). Used when the GitHub API is unreachable.
 VERSIONS = ["1.3.9", "1.3.8", "1.3.7", "1.3.6", "1.3.5", "1.3.4", "1.3.3", "1.3.2"]
 CHANGES = [
+    "Source Control redesign: only the changes list scrolls; Branches, Commits and Remotes live in footer tabs with filters, context menus, relative times and per-remote fetch/push; fixed footer with Fetch / Pull / Push",
+    "New Documentation center at /docs/ (57 pages: install, Git, terminal, extensions, themes, every setting and shortcut) with search",
+    "Fix: the editor no longer shrinks to a sliver on small windows, and the sidebar is capped on narrow windows",
+    "Fix: Initialize Repository now uses the Default branch setting",
     "Fix: Tab / Space no longer vanish and the caret no longer jumps back while typing with auto save and trim-whitespace enabled",
     "Windows signing: native addons (.node) are signed, builds fail when signing is configured but breaks, and a signature audit + SHA-256 manifest is published with each build",
     "Hotfix: a maximized terminal no longer hides the editor after closing the panel (Ctrl+J) or when searching and opening files (Ctrl+P, command palette, Find in Files)",
