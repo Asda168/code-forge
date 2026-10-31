@@ -9,11 +9,15 @@ npm install && npm run icons && npm start      # run from source
 npm run dist:win | dist:mac | dist:linux       # installers (build on matching OS)
 node scripts/security-test.js                  # path/command safety tests
 node scripts/e2e*.js                           # Electron end-to-end scripts
+node scripts/ui-audit.js                       # UI quality check: 3 themes x 6 window sizes (900x600 .. 2560x1440), overlays, screenshots; exit 1 on any issue
 
 # backend (run in backend/)
 python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
 python manage.py migrate && python manage.py seed && python manage.py runserver
 python manage.py test core
+
+# docs (run in repo root; no dependencies)
+node docs/build.js --check                     # docs/**/*.md -> backend/core/docs_site/ (served at /docs/); fails on broken links/anchors/images
 ```
 `CODEFORGE_API` env var points the app at the backend (default `http://127.0.0.1:8000/api`). A packaged app defaults to `https://astaide.vercel.app/api` (used for the update check).
 
@@ -24,6 +28,8 @@ python manage.py test core
 - `desktop/src/renderer/*.js` – plain browser scripts (no bundler/modules) sharing one global `CF` namespace; load order is set in `index.html`. `core.js` (state `CF.S`, themes, Monaco, tabs), `explorer.js`, `git.js`, `gitlens.js`, `terminal.js`, `icons.js`, `themes.js`, `ui.js` (settings dialog, palette, extensions UI), `laravel.js`, `ide.js`, `boot.js` (startup).
 - `desktop/src/catalog/*.json` – bundled declarative extensions (themes, snippets, file associations). Synced from `backend/core/catalog.json` via `scripts/sync-catalog.py`.
 - `backend/codeforge/` Django project; `backend/core/` app (models, DRF views, Channels consumers, seed command).
+
+- `docs/` – documentation center sources: `nav.json` (page list), `<category>/<page>.md`, `site/` (CSS/JS), `build.js`. The built HTML in `backend/core/docs_site/` is committed (Vercel does not run Node); rebuild and commit it after editing docs. `{{shortcuts}}` and `{{settings-defaults}}` in pages are generated from `main.js` (`DEFAULT_KEYS`/`KEY_META`/`DEFAULT_SETTINGS`), so never hand-copy those tables.
 
 ## Conventions
 - Renderer files are IIFEs/scripts attaching to `CF`; no imports. Dense, compact style: arrow functions, `h(tag, attrs, ...children)` DOM helper, `CF.guard(async fn)` wraps handlers to toast errors.

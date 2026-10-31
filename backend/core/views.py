@@ -190,10 +190,17 @@ def robots_txt(request):
 
 
 def sitemap_xml(request):
+    import json
+    from pathlib import Path
     from django.http import HttpResponse
     from . import site
-    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-           f'<url><loc>{_site_url(request)}/</loc><lastmod>{site.RELEASED}</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url></urlset>')
+    base = _site_url(request)
+    urls = [f"<url><loc>{base}/</loc><lastmod>{site.RELEASED}</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>"]
+    pages = Path(__file__).parent / "docs_site" / "pages.json"
+    if pages.is_file():                                  # documentation center: every page is listed for search engines
+        for u in json.loads(pages.read_text(encoding="utf8")):
+            urls.append(f"<url><loc>{base}{u}</loc><lastmod>{site.RELEASED}</lastmod><changefreq>monthly</changefreq><priority>{'0.8' if u == '/docs/' else '0.6'}</priority></url>")
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + "".join(urls) + "</urlset>"
     return HttpResponse(xml, content_type="application/xml")
 
 
@@ -216,6 +223,33 @@ def shot_image(request, name):
         raise Http404
     r = HttpResponse((Path(__file__).parent / "seo" / "shots" / f"{name}.webp").read_bytes(), content_type="image/webp")
     r["Cache-Control"] = "public, max-age=604800, s-maxage=604800"
+    return r
+
+
+_DOCS_TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+               ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".svg": "image/svg+xml"}
+
+
+def docs_page(request, path=""):
+    """Static documentation center (built from /docs by `node docs/build.js` into core/docs_site/).
+    Serves <dir>/index.html for page URLs and the shared assets; never reads outside docs_site."""
+    from pathlib import Path
+    from django.http import Http404, HttpResponse, HttpResponsePermanentRedirect
+    root = (Path(__file__).parent / "docs_site").resolve()
+    rel = path.strip("/")
+    target = (root / rel).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        raise Http404
+    if target.is_dir():
+        if path and not path.endswith("/"):
+            return HttpResponsePermanentRedirect(request.path + "/")
+        target = target / "index.html"
+    if not target.is_file() or target.suffix not in _DOCS_TYPES:
+        raise Http404
+    r = HttpResponse(target.read_bytes(), content_type=_DOCS_TYPES[target.suffix])
+    r["Cache-Control"] = "public, max-age=300, s-maxage=3600" if target.suffix in (".html", ".json") else "public, max-age=86400, s-maxage=86400"
     return r
 
 

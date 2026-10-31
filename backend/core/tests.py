@@ -105,3 +105,37 @@ class ApiIndexTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("requires_sign_in", r.json())
         self.assertEqual(c.get("/api/profile/").status_code, 401)
+
+
+class DocsCenterTests(TestCase):
+    """The documentation center is built into core/docs_site by `node docs/build.js` and served at /docs/."""
+
+    def test_home_and_every_listed_page_render(self):
+        import json
+        from pathlib import Path
+        pages = json.loads((Path(__file__).parent / "docs_site" / "pages.json").read_text(encoding="utf8"))
+        self.assertGreater(len(pages), 60)
+        for url in pages:
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            self.assertIn(b"AstaIDE", r.content, url)
+
+    def test_assets_and_search_index(self):
+        for url, ctype in (("/docs/assets/docs.css", "text/css"), ("/docs/assets/docs.js", "javascript"), ("/docs/search-index.json", "application/json"), ("/docs/assets/logo.png", "image/png")):
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            self.assertIn(ctype, r["Content-Type"], url)
+
+    def test_missing_slash_redirects_and_unknown_is_404(self):
+        self.assertEqual(self.client.get("/docs/getting-started/install").status_code, 301)
+        self.assertEqual(self.client.get("/docs/nope/").status_code, 404)
+
+    def test_no_path_traversal(self):
+        for url in ("/docs/../views.py", "/docs/..%2f..%2fcodeforge/settings.py", "/docs/assets/../../views.py"):
+            self.assertEqual(self.client.get(url).status_code, 404, url)
+
+    def test_sitemap_lists_docs_and_homepage_links_to_them(self):
+        self.assertIn(b"/docs/getting-started/install/", self.client.get("/sitemap.xml").content)
+        home = self.client.get("/").content
+        self.assertIn(b'href="/docs/"', home)
+        self.assertIn(b"Read the docs", home)

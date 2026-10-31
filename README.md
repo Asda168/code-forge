@@ -103,3 +103,8 @@ Windows: `npm run dist:win` (works on Windows). macOS and Linux installers must 
 - `node desktop/scripts/security-test.js`: path/command safety tests.
 - `desktop/scripts/e2e*.js`: Electron end-to-end scripts.
 - `python backend/manage.py test core`: backend tests.
+- `node desktop/scripts/ui-audit.js`: UI quality check (themes x window sizes x overlays, with screenshots).
+- `node docs/build.js --check`: builds the documentation center and checks every link, anchor and image.
+
+### Documentation
+User documentation lives in [`docs/`](docs) (Markdown + `nav.json`) and is published at <https://astaide.vercel.app/docs/>. Build it with `node docs/build.js`; the generated site in `backend/core/docs_site/` is committed.

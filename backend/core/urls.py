@@ -9,4 +9,6 @@ urlpatterns = [
     path("og.png", views.og_image),
     path("shots/<str:name>.webp", views.shot_image),
     path("download/", views.download_page),
+    path("docs/", views.docs_page),
+    path("docs/<path:path>", views.docs_page),
 ]

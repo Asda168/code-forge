@@ -1,0 +1,83 @@
+[
+  { "slug": "getting-started", "title": "Getting Started", "desc": "Install AstaIDE, open a project and find your way around.", "pages": [
+    { "slug": "introduction", "title": "Introduction to AstaIDE", "desc": "What AstaIDE is, what it includes and who it is for." },
+    { "slug": "requirements", "title": "System Requirements", "desc": "Supported operating systems and the tools AstaIDE works best with." },
+    { "slug": "install", "title": "Download and Installation", "desc": "Install AstaIDE on Windows, macOS or Linux." },
+    { "slug": "first-launch", "title": "First Launch", "desc": "What you see the first time you start AstaIDE and what to set up first." },
+    { "slug": "open-project", "title": "Open Your First Project", "desc": "Open a folder, a recent project or a saved workspace." },
+    { "slug": "interface", "title": "Interface Overview", "desc": "A tour of the activity bar, sidebar, editor, panel and status bar." },
+    { "slug": "create-project", "title": "Create Your First Project", "desc": "Use the New Project wizard to scaffold Laravel, Django, Node, React, Vue and more." }
+  ] },
+  { "slug": "ide-fundamentals", "title": "IDE Fundamentals", "desc": "The editor, explorer, tabs, search and code navigation.", "pages": [
+    { "slug": "editor", "title": "Understanding the Editor", "desc": "Monaco-based editing, auto save, minimap, multi-cursor and font zoom." },
+    { "slug": "explorer", "title": "File Explorer", "desc": "Create, rename, move, copy and delete files and folders." },
+    { "slug": "tabs-and-split", "title": "Editor Tabs and Split Editor", "desc": "Work with several files side by side." },
+    { "slug": "search", "title": "Search and Replace", "desc": "Find in a file and Find in Files, with regex and replace." },
+    { "slug": "navigation", "title": "Code Navigation", "desc": "Go to line, go to definition, quick open and breadcrumbs." }
+  ] },
+  { "slug": "terminal", "title": "Terminal Guide", "desc": "The integrated terminal: shells, panes, appearance and fixes.", "pages": [
+    { "slug": "shells", "title": "Open the Terminal and Choose a Shell", "desc": "PowerShell, CMD, Git Bash and the default shell." },
+    { "slug": "panes", "title": "Multiple Terminals, Split and Resize", "desc": "Create tabs, split panes and resize the panel." },
+    { "slug": "run-commands", "title": "Run Commands", "desc": "Type commands, run project tasks and open a terminal in a folder." },
+    { "slug": "appearance", "title": "Terminal Font and Appearance", "desc": "Font, size, line height and cursor." },
+    { "slug": "troubleshooting", "title": "Troubleshoot Terminal Issues", "desc": "Fix a terminal that will not open or looks wrong." }
+  ] },
+  { "slug": "source-control", "title": "Source Control & Git", "desc": "Everything Git: commits, branches, remotes, conflicts and history.", "pages": [
+    { "slug": "overview", "title": "Git Integration, Init, Connect and Clone", "desc": "Initialize, connect a GitHub repository or clone one." },
+    { "slug": "stage-commit", "title": "Stage, Commit and Generate Messages", "desc": "The commit box, the Generate button and amend." },
+    { "slug": "branches", "title": "Create, Switch, Rename and Delete Branches", "desc": "Branch management from the footer dock and the branch picker." },
+    { "slug": "history-diff", "title": "Commit History, Diffs, Blame and File History", "desc": "Inspect commits, compare files and see who changed a line." },
+    { "slug": "remotes-sync", "title": "Remotes, Fetch, Pull and Push", "desc": "Manage remotes and keep your branch in sync." },
+    { "slug": "conflicts-stash", "title": "Resolve Merge Conflicts and Stash", "desc": "Inline conflict actions and stashing work in progress." }
+  ] },
+  { "slug": "run-debug", "title": "Run and Debug", "desc": "Project detection, run configurations and language setups.", "pages": [
+    { "slug": "overview", "title": "Understanding Run and Debug", "desc": "Detection, configurations, running processes, stop and restart." },
+    { "slug": "laravel", "title": "Laravel and Artisan", "desc": "Run php artisan serve and use the Artisan shortcuts." },
+    { "slug": "php", "title": "PHP Development Setup", "desc": "The PHP built-in server and Xdebug." },
+    { "slug": "python-django", "title": "Python and Django Setup", "desc": "Virtual environments, manage.py and the Django shortcuts." },
+    { "slug": "node-react-vue", "title": "Node.js, React and Vue Setup", "desc": "npm scripts, Vite and the Node inspector." },
+    { "slug": "sql-mysql", "title": "SQL and MySQL Workflow", "desc": "Snippets, SQL files and the mysql command line." }
+  ] },
+  { "slug": "extensions", "title": "Extensions", "desc": "Install, manage and write declarative extensions.", "pages": [
+    { "slug": "overview", "title": "Introduction, Browse, Install and Manage", "desc": "The Extensions view, enable, disable and reload." },
+    { "slug": "create", "title": "Create a Custom Extension", "desc": "Folder structure and the extension.json file." },
+    { "slug": "snippets", "title": "Snippet Extensions", "desc": "Add code snippets for any language." },
+    { "slug": "themes", "title": "Theme Extensions", "desc": "Ship a colour theme as JSON." },
+    { "slug": "file-associations", "title": "File Association Extensions", "desc": "Map file extensions to a language." },
+    { "slug": "security", "title": "Extension Security", "desc": "Why extensions can never run code, and what is validated." }
+  ] },
+  { "slug": "themes", "title": "Themes and Appearance", "desc": "Colour themes, fonts, layout and resetting appearance.", "pages": [
+    { "slug": "color-theme", "title": "Change the Color Theme", "desc": "Built-in themes plus Forest, Neon Night, Ocean, Paper and Sunset." },
+    { "slug": "editor-appearance", "title": "Editor Colors and Fonts", "desc": "Syntax colours, font family, size and line height." },
+    { "slug": "layout", "title": "Sidebar, Terminal and Layout Appearance", "desc": "Hide the header, toggle bars and reset everything." }
+  ] },
+  { "slug": "settings", "title": "Settings and Configuration", "desc": "settings.json, the Settings page, backups and resets.", "pages": [
+    { "slug": "open-and-edit", "title": "Open, Search and Edit Settings", "desc": "The Settings page, settings.json and what is (and is not) supported." },
+    { "slug": "reference", "title": "Settings Reference", "desc": "Every supported setting key with values, defaults and examples." },
+    { "slug": "backup-reset", "title": "Backup, Restore and Reset", "desc": "Move your configuration to another machine or start fresh." }
+  ] },
+  { "slug": "keyboard-shortcuts", "title": "Keyboard Shortcuts", "desc": "Every default shortcut and how to change it.", "pages": [
+    { "slug": "reference", "title": "Complete Shortcut Reference", "desc": "All default key bindings, generated from the application." },
+    { "slug": "customize", "title": "Customize Shortcuts and Resolve Conflicts", "desc": "The Keyboard Shortcuts tab and keyboard.json." },
+    { "slug": "platforms", "title": "Windows, macOS and Linux Differences", "desc": "What Ctrl/Cmd means on each system." }
+  ] },
+  { "slug": "troubleshooting", "title": "Troubleshooting", "desc": "Fixes for installation, Git, runtimes and application problems.", "pages": [
+    { "slug": "installation", "title": "Installation, SmartScreen and Smart App Control", "desc": "Windows warnings and how to get past them." },
+    { "slug": "git", "title": "Git Not Detected and Git Bash Setup", "desc": "Point AstaIDE at the right Git." },
+    { "slug": "runtimes", "title": "PHP, Python and Node.js Not Found", "desc": "Fix PATH problems for the tools your projects need." },
+    { "slug": "application", "title": "Extensions, Performance, Rendering and Crashes", "desc": "Diagnose and reset when something misbehaves." }
+  ] },
+  { "slug": "advanced-guides", "title": "Advanced Guides", "desc": "Tune AstaIDE for your stack and workflow.", "pages": [
+    { "slug": "laravel", "title": "Customize AstaIDE for Laravel", "desc": "Laravel navigation, snippets, Blade and run setup." },
+    { "slug": "python-django", "title": "Customize AstaIDE for Python and Django", "desc": "Settings and habits for Python work." },
+    { "slug": "nodejs", "title": "Customize AstaIDE for Node.js", "desc": "Node scripts, formatting settings and debugging." },
+    { "slug": "frontend", "title": "Customize AstaIDE for Frontend Development", "desc": "React, Vue, previews and themes." },
+    { "slug": "database", "title": "Customize AstaIDE for Database Development", "desc": "SQL snippets and a terminal-based workflow." },
+    { "slug": "productivity", "title": "Developer Productivity Tips", "desc": "Shortcuts and habits that save time." },
+    { "slug": "backup-migration", "title": "Backup and Migration Guide", "desc": "Move to a new computer without losing your setup." }
+  ] },
+  { "slug": "tutorials", "title": "Tutorials", "desc": "Complete step-by-step walkthroughs with real commands.", "pages": [
+    { "slug": "laravel", "title": "Tutorial: Build and Ship a Laravel Project", "desc": "From installing PHP to committing on a feature branch." },
+    { "slug": "django", "title": "Tutorial: Django from Zero to Running", "desc": "Virtual environment, dependencies, runserver and Git." }
+  ] }
+]
