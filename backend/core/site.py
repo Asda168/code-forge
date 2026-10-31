@@ -25,6 +25,9 @@ CHANGES = [
     "File menu follows VS Code: Open File, Open Recent, Save As, Auto Save, Revert File, Close Folder",
     "Hide Layout Header setting (Ctrl+Alt+H) to give the editor more room",
 ]
+# Real downloads of the ORIGINAL v1.3.9 build (read from GitHub Releases on 2026-10-31, before it was re-released with new installers).
+# Uploading new assets resets GitHub's per-asset counters, so this is added to the live count for that tag so the history is not lost.
+DOWNLOAD_BASELINE = {"v1.3.9": 11}
 _REL = f"{REPO}/releases/latest/download"
 
 DOWNLOADS = [
@@ -56,6 +59,6 @@ def catalog():
 def context():
     return {
         "extensions": catalog(),
-        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "versions": VERSIONS, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "requirements": REQUIREMENTS, "projects": PROJECTS, "show_projects": SHOW_PROJECTS,
+        "repo_slug": REPO.replace("https://github.com/", ""), "version": VERSION, "versions": VERSIONS, "changes": CHANGES, "released": RELEASED, "repo": REPO, "downloads": DOWNLOADS, "download_baseline": DOWNLOAD_BASELINE, "requirements": REQUIREMENTS, "projects": PROJECTS, "show_projects": SHOW_PROJECTS,
         "source_zip": f"{REPO}/archive/refs/heads/main.zip",
     }

@@ -496,6 +496,7 @@ html[lang=km] .btn{line-height:1.4}
       <select id="ver-select" aria-label="Choose which version to download">{% for v in versions %}<option value="{{ v }}">v{{ v }}{% if forloop.first %} (latest){% endif %}</option>{% endfor %}</select>
     </label>
     <span>Released <b id="rel-date" class="mono">{{ released }}</b></span>
+    {{ download_baseline|json_script:"dl-base" }}
     <span id="rel-count" hidden><b class="mono"></b> downloads</span>
     <span class="pill"><i></i>Free &amp; Open Source</span>
     <a id="rel-link" href="{{ repo }}/releases" target="_blank" rel="noopener">View all releases ↗</a>
@@ -778,7 +779,8 @@ html[lang=km] .btn{line-height:1.4}
   /* live release data (GitHub Releases) -> version picker */
   const sel = $("#ver-select"), nl = $("#notes-list"), nb = $("#notes-body");
   const staticTitle = $("#notes-title").textContent, staticDate = $("#rel-date").textContent;
-  const count = rel => (rel.assets || []).reduce((n, a) => n + (a.download_count || 0), 0);
+  const BASELINE = JSON.parse($("#dl-base").textContent);   /* downloads from before a re-release (GitHub resets counters on re-upload) */
+  const count = rel => (rel.assets || []).reduce((n, a) => n + (a.download_count || 0), 0) + (BASELINE[rel.tag_name] || 0);
   function renderCounts(rels) {
     const nums = rels.map(count), total = nums.reduce((a, b) => a + b, 0), max = Math.max(...nums, 1);
     $("#dl-total").textContent = total.toLocaleString();

@@ -139,3 +139,12 @@ class DocsCenterTests(TestCase):
         home = self.client.get("/").content
         self.assertIn(b'href="/docs/"', home)
         self.assertIn(b"Read the docs", home)
+
+
+class DownloadBaselineTests(TestCase):
+    def test_homepage_exposes_baseline_for_re_released_version(self):
+        from . import site
+        self.assertEqual(site.DOWNLOAD_BASELINE.get("v1.3.9"), 11)
+        html = self.client.get("/").content.decode()
+        self.assertIn('id="dl-base"', html)
+        self.assertIn('"v1.3.9": 11', html)
