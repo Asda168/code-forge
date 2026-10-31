@@ -1,7 +1,7 @@
 // Source control: status, stage/commit, branches, history, diff viewer, clone/init.
 (() => {
   const { S, $, h, base, join, rel } = CF;
-  const G = { repo: false, branch: '', files: [], branches: [], commits: [], remotes: [], msg: '', fold: {} };
+  const G = { repo: false, branch: '', files: [], branches: [], commits: [], remotes: [], msg: '', fold: {}, q: { branches: '', commits: '' }, logN: 100, lastSync: 0, rsync: {}, scroll: 0, focusQ: null, dock: null };
   const git = async (args, opts) => cf.git.run(S.root, args, opts);
   const must = async (args) => { const r = await git(args); if (r.code !== 0) throw new Error((r.stderr || r.stdout || 'git failed').trim()); return r.stdout; };
   const abs = (p) => join(S.root, p.replace(/\//g, S.platform.platform === 'win32' ? '\\' : '/'));
@@ -37,6 +37,8 @@
   const run = (label, args) => CF.guard(async () => { await must(args); CF.toast(label + ' done'); await CF.gitRefresh(); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); });
   CF.gitCmd = (label, args) => run(label, args)();
 
+  // New repositories start on the 'Default branch' from Settings > Git (git >= 2.28 understands -b).
+  const initArgs = () => { const b = String(S.settings.gitDefaultBranch || '').trim(); return /^[\w./-]+$/.test(b) && !b.startsWith('-') ? ['init', '-b', b] : ['init']; };
   const stage = (p) => run('Stage', ['add', '--', p])();
   const unstage = (p) => run('Unstage', ['restore', '--staged', '--', p])();
   const discard = CF.guard(async (f) => {
@@ -146,22 +148,71 @@
   // Changed files as a flat list (file name only; the full relative path is in the tooltip), sorted by name then path.
   const renderFlat = (files, staged) => files.slice().sort((a, b) => base(a.path).localeCompare(base(b.path)) || a.path.localeCompare(b.path)).map((f) => fileRow(f, staged));
 
-  // Collapsible section: header toggles a box; state survives refreshes.
-  const fold = (body, key, title, count, extra, items) => {
-    const box = h('div', {}); const arrow = h('span', { class: 'arr' });
-    const set = () => { const c = !!G.fold[key]; arrow.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); box.hidden = c; };
-    body.append(h('div', { class: 'sec-head clickable', 'data-fold': key, onclick: () => { G.fold[key] = !G.fold[key]; set(); } }, arrow, title, count != null ? h('span', { class: 'badge' }, count) : null, h('span', { class: 'grow' }), extra ? h('span', { onclick: (e) => e.stopPropagation(), style: 'display:flex' }, extra) : null), box);
-    items.forEach((i) => box.append(i)); set(); return box;
+  // ---- shared bits for the Branches / Commits / Remotes sections ----------------------------------------------
+  const ago = (sec) => {
+    const d = Math.max(0, Date.now() / 1000 - sec); if (d < 45) return 'just now';
+    const m = Math.round(d / 60); if (m < 60) return m + 'm ago';
+    const hr = Math.round(m / 60); if (hr < 24) return hr + 'h ago';
+    const dy = Math.round(hr / 24); if (dy < 30) return dy + 'd ago';
+    const mo = Math.round(dy / 30.4); return mo < 12 ? mo + 'mo ago' : Math.round(dy / 365) + 'y ago';
   };
+  const lastSyncText = () => (G.lastSync ? 'Synced ' + ago(G.lastSync / 1000) : 'Not synced yet');
+  const maskUrl = (u) => (u || '').replace(/\/\/[^/@\s]+@/, '//***@');                // never show embedded credentials (https://user:token@host/...)
+  const okName = (n) => /^[\w./-]+$/.test(n) && !n.startsWith('-') && !n.includes('..') && !n.endsWith('/') && !n.endsWith('.lock');
+  const copy = (text, what) => CF.guard(async () => { await cf.clip.write(text); CF.toast(what + ' copied'); })();
+  const ibtn = (icon, title, fn) => h('button', { class: 'scm-ic sm', type: 'button', title, 'aria-label': title, onclick: (e) => { e.stopPropagation(); fn(e); } }, CF.icon(icon, 13));
+  const menuBelow = (el, items) => { const r = el.getBoundingClientRect(); CF.menu({ clientX: Math.max(8, r.right - 190), clientY: r.bottom + 4 }, items); };
+  // Keyboard model shared by all rows: Enter = primary action, Up/Down = move between rows, Menu key / Shift+F10 = context menu.
+  const rowProps = (open, menu) => ({ tabindex: 0, role: 'button', 'data-row': '', 'aria-haspopup': 'menu', onclick: open,
+    oncontextmenu: (e) => { e.preventDefault(); e.stopPropagation(); menu(e); },
+    onkeydown: (e) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Enter') { e.preventDefault(); open(); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const rows = [...e.currentTarget.parentElement.querySelectorAll('[data-row]')], n = rows[rows.indexOf(e.currentTarget) + (e.key === 'ArrowDown' ? 1 : -1)]; if (n) n.focus(); }
+      else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); menu({ clientX: r.left + 40, clientY: r.bottom, preventDefault() {}, stopPropagation() {} }); } } });
+
+  // Filter box. The text lives in G.q so it survives a panel refresh; only the list is rebuilt while typing.
+  const filterBox = (key, placeholder, onChange) => {
+    const inp = h('input', { type: 'text', 'data-q': key, placeholder, spellcheck: 'false', 'aria-label': placeholder, value: G.q[key] || '' });
+    const clr = h('button', { class: 'scm-ic sm', type: 'button', title: 'Clear filter', 'aria-label': 'Clear filter', onclick: () => { inp.value = ''; sync(); inp.focus(); } }, CF.icon('close', 12));
+    const sync = () => { G.q[key] = inp.value; clr.hidden = !inp.value; onChange(); };
+    inp.addEventListener('input', sync);
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Escape' && inp.value) { e.stopPropagation(); inp.value = ''; sync(); } });
+    inp.addEventListener('focus', () => { G.focusQ = key; });
+    inp.addEventListener('blur', () => setTimeout(() => { if (inp.isConnected && G.focusQ === key) G.focusQ = null; }, 0));   // a blur caused by the panel being rebuilt (not connected) keeps the marker
+    clr.hidden = !inp.value;
+    return h('div', { class: 'scm-q' }, h('span', { class: 'qi', html: CF.iconHtml('search', 12) }), inp, clr);
+  };
+
+  // Collapsible section with an animated body (grid-rows 0fr<->1fr). `inert` keeps collapsed rows out of the tab order.
+  const section = (key, title, tools) => {
+    const arrow = h('span', { class: 'arr' }), count = h('span', { class: 'scm-count' }), inner = h('div', { class: 'scm-fold-in' }), box = h('div', { class: 'scm-fold' }, inner);
+    const set = () => { const c = !!G.fold[key]; arrow.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); box.classList.toggle('closed', c); inner.inert = c; head.setAttribute('aria-expanded', String(!c)); };
+    const toggle = (v) => { G.fold[key] = v === undefined ? !G.fold[key] : !v; set(); };
+    const head = h('div', { class: 'scm-sec', role: 'button', tabindex: 0, 'data-fold': key, 'aria-label': title, onclick: () => toggle(),
+      onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggle(); } } },
+      arrow, h('span', { class: 'ttl' }, title), count, h('span', { class: 'grow' }), tools ? h('span', { class: 'scm-tools', onclick: (e) => e.stopPropagation(), onkeydown: (e) => e.stopPropagation() }, tools) : null);
+    set();
+    return { key, head, box, inner, count, open: () => toggle(true), setCount: (n) => { count.textContent = n; } };
+  };
+  const stateRow = (kind, text, action) => h('div', { class: 'scm-state ' + kind, role: kind === 'err' ? 'alert' : 'status' }, h('span', {}, text), action || null);
 
   CF.renderGit = async (parent) => {
     let body = parent;
     for (const k of ['Branches', 'Commits', 'Remotes']) if (!(k in G.fold)) G.fold[k] = true;     // 4 open panels is too much vertical space: secondary ones start collapsed
     if (!S.root) return body.append(h('div', { class: 'pad muted' }, 'Open a folder first.'));
     if (!G.repo) return body.append(h('div', { class: 'pad' }, h('p', { class: 'muted' }, 'This folder is not a Git repository.'),
-      h('button', { class: 'btn', onclick: run('Init', ['init']) }, 'Initialize Repository'), ' ', h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone…')));
+      h('button', { class: 'btn', onclick: run('Init', initArgs()) }, 'Initialize Repository'), ' ', h('button', { class: 'btn sec', onclick: () => CF.cloneDialog() }, 'Clone…')));
     const staged = G.files.filter((f) => f.x !== ' ' && f.x !== '?'), changes = G.files.filter((f) => f.y !== ' ' && f.x !== '?'), untracked = G.files.filter((f) => f.x === '?');
-    const wrap = h('div', { class: 'scm' }); parent.append(wrap); body = wrap;
+    // Three fixed regions: top (branch, message, commit button) and footer never scroll; only `scroll` does.
+    const wrap = h('div', { class: 'scm' }), top = h('div', { class: 'scm-top' }), scroll = h('div', { class: 'scm-scroll', tabindex: -1 }), foot = h('footer', { class: 'scm-foot', 'aria-label': 'Repository status' });
+    wrap.append(top, scroll, foot); parent.append(wrap); body = top;
+    let ready = false;                                                       // ignore the scroll events caused by our own restore while content is still loading
+    scroll.addEventListener('scroll', () => { if (ready) G.scroll = scroll.scrollTop; }, { passive: true });
+    const restoreView = () => {                                             // the panel is rebuilt on every refresh: put the user back where they were
+      if (scroll.scrollTop !== G.scroll) scroll.scrollTop = G.scroll;
+      if (G.focusQ) { const q = scroll.querySelector(`[data-q="${G.focusQ}"]`); if (q && document.activeElement !== q) { q.focus({ preventScroll: true }); q.setSelectionRange(q.value.length, q.value.length); } }
+    };
     const lum = (() => { const m = (getComputedStyle(document.body).backgroundColor || '').match(/\d+/g); return m ? (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) : 0; })();
     if (lum > 150) wrap.classList.add('scm-light');                        // light themes keep their own surface colours
     const total = new Set(G.files.map((f) => f.path)).size;
@@ -196,7 +247,7 @@
     // commit message: auto-growing field with an embedded Generate pill
     const ta = h('textarea', { id: 'commit-msg', rows: 1, placeholder: 'Message (Ctrl+Enter to commit…)', spellcheck: 'false', 'aria-label': 'Commit message' });
     ta.value = G.msg;
-    const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 220) + 'px'; };
+    const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'; };
     ta.addEventListener('input', () => { G.msg = ta.value; fit(); });
     let primaryAct = commit;                                                    // set below once the button mode is known
     ta.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); primaryAct(); } });
@@ -238,7 +289,7 @@
     const tools = h('span', { class: 'scm-tools' },
       tool('sparkle', 'Generate commit message', () => gen.click()),
       (() => { const b = tool('refresh', 'Sync changes (pull & push)', () => syncIt()); b.dataset.sync = '1'; return b; })(),
-      tool('git', 'Branch view', () => { G.fold.Branches = false; const hd = body.querySelector('[data-fold="Branches"]'); if (hd) { hd.nextSibling && (hd.nextSibling.hidden = false); hd.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }),
+      tool('git', 'Branch view', () => { G.dock = null; openDock('Branches'); }),
       tool('plus', 'Stage all changes', () => run('Stage all', ['add', '-A'])()),
       tool('undo', 'Discard all changes', async () => {
         if (!G.files.length) return CF.toast('Nothing to discard');
@@ -247,10 +298,11 @@
         await CF.gitRefresh(); CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); CF.toast('Changes discarded');
       }));
     const secBody = h('div', { class: 'scm-secbody' }), arr = h('span', { class: 'arr' });
-    const setSec = () => { const c = !!G.fold.__changes; arr.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); secBody.hidden = c; };
-    body.append(h('div', { class: 'scm-sec', role: 'button', tabindex: 0, 'aria-expanded': String(!G.fold.__changes), onclick: () => { G.fold.__changes = !G.fold.__changes; setSec(); },
-      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); G.fold.__changes = !G.fold.__changes; setSec(); } } },
-      arr, h('span', { class: 'ttl' }, 'Changes'), total ? h('span', { class: 'scm-count' }, total) : null, h('span', { class: 'grow' }), tools), secBody);
+    const setSec = () => { const c = !!G.fold.__changes; arr.innerHTML = CF.iconHtml(c ? 'chevronRight' : 'chevronDown', 12); secBody.hidden = c; chHead.setAttribute('aria-expanded', String(!c)); };
+    const chHead = h('div', { class: 'scm-sec', role: 'button', tabindex: 0, 'aria-expanded': String(!G.fold.__changes), onclick: () => { G.fold.__changes = !G.fold.__changes; setSec(); },
+      onkeydown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); G.fold.__changes = !G.fold.__changes; setSec(); } } },
+      arr, h('span', { class: 'ttl' }, 'Changes'), total ? h('span', { class: 'scm-count' }, total) : null, h('span', { class: 'grow' }), tools);
+    scroll.append(chHead, secBody);
     const group = (label, list, isStaged, bulk) => {
       if (!list.length) return;
       secBody.append(h('div', { class: 'scm-group' }, h('span', {}, label), h('span', { class: 'scm-count' }, list.length), h('span', { class: 'grow' }), bulk));
@@ -267,27 +319,137 @@
     if (!G.files.length && !conflicts.length) secBody.append(h('div', { class: 'scm-empty' }, h('span', { html: CF.iconHtml('check', 18) }), h('b', {}, 'Working tree clean'), h('small', {}, 'No changes to commit.')));
     setSec();
 
-    const [br, log, rem] = await Promise.all([git(['branch', '-a', '--format=%(HEAD)|%(refname:short)']), git(['log', '--all', '--date=short', '--pretty=format:%h|%an|%ad|%s|%D', '-n', '100']), git(['remote', '-v'])]);
-    G.branches = br.stdout.split('\n').filter(Boolean).map((l) => ({ cur: l[0] === '*', name: l.slice(2) }));
-    fold(body, 'Branches', 'Branches', G.branches.length, h('button', { class: 'icon-btn', title: 'Create branch', onclick: newBranch }, '＋'), G.branches.map((b) => h('div', { class: 'gi', onclick: () => !b.cur && run('Checkout', ['checkout', b.name.replace(/^origin\//, '')])(), oncontextmenu: (e) => { e.preventDefault(); CF.menu(e, [
-      ['Checkout', run('Checkout', ['checkout', b.name.replace(/^origin\//, '')])], ['Merge into current', run('Merge', ['merge', b.name])], ['Rebase current onto this', run('Rebase', ['rebase', b.name])],
-      ['Delete branch', CF.guard(async () => { if (await CF.confirm(`Delete branch ${b.name}?`, 'Delete')) run('Delete branch', ['branch', '-d', b.name])(); })]]); } },
-    h('span', { class: 'st', style: 'color:var(--cyan)' }, b.cur ? '●' : ''), h('span', { class: 'nm' }, b.name))));
-    const commitRows = log.stdout.split('\n').filter(Boolean).map((l) => { const [hash, an, ad, subj, refs] = l.split('|');
-      return h('div', { class: 'commit scm-cm', tabindex: 0, onclick: () => CF.showCommit(hash), onkeydown: (e) => { if (e.key === 'Enter') CF.showCommit(hash); } }, h('span', { class: 'dot' }),
-        h('div', { class: 'cm-body' }, h('div', { class: 'cm-subj' }, h('span', { class: 'cm-t', title: subj }, subj), refs ? h('span', { class: 'cm-ref' }, refs.split(', ')[0].replace('HEAD -> ', '')) : null),
-          h('div', { class: 'cm-meta' }, h('span', { class: 'cm-hash' }, hash), `${an} · ${ad}`))); });
-    fold(body, 'Commits', 'Commits', commitRows.length, null, commitRows);
-    const seen = new Set(), remRows = [];
-    rem.stdout.split('\n').filter(Boolean).forEach((l) => { if (!l.includes('(fetch)')) return; const k = l.split('\t')[0]; if (seen.has(k)) return; seen.add(k); remRows.push(h('div', { class: 'gi scm-remote', title: l.replace(' (fetch)', '') }, h('span', { class: 'rn' }, k), h('span', { class: 'ru' }, l.split('\t')[1] ? l.split('\t')[1].replace(' (fetch)', '') : ''))); });
-    if (!remRows.length) remRows.push(h('div', { class: 'scm-emptycard' }, h('b', {}, 'No remote yet'), h('small', {}, 'Add one to push, pull and collaborate on a Git host.'),
-      h('button', { class: 'scm-btn', type: 'button', onclick: addRemote }, CF.icon('plus', 12), 'Add remote')));
-    fold(body, 'Remotes', 'Remotes', seen.size, h('button', { class: 'icon-btn', title: 'Add remote', onclick: addRemote }, '＋'), remRows);
+    // ---- Branches / Commits / Remotes: independent animated sections. Each loads on its own and has loading / empty / error states. ----
+    const dock = h('div', { class: 'scm-dock', hidden: !G.dock }), tabCount = {}, tabBtn = {}, wraps = {};
+    scroll.after(dock);                                                      // Branches / Commits / Remotes live in a dock above the footer; the footer tabs pick which one is shown
+    const applyDock = () => { dock.hidden = !G.dock; for (const k in wraps) wraps[k].hidden = G.dock !== k; for (const k in tabBtn) { tabBtn[k].classList.toggle('on', G.dock === k); tabBtn[k].setAttribute('aria-pressed', String(G.dock === k)); } };
+    const mk = (key, title, tools) => { G.fold[key] = false; const s = section(key, title, tools), sc = s.setCount; s.setCount = (n) => { sc(n); if (tabCount[key]) tabCount[key].textContent = n; };
+      s.head.addEventListener('click', () => { G.dock = null; applyDock(); }); wraps[key] = h('div', { class: 'scm-dockpane', hidden: G.dock !== key }, s.head, s.box); dock.append(wraps[key]); return s; };
+    const openDock = (k) => { G.dock = G.dock === k ? null : k; if (G.dock) { const s = { Branches: secBr, Commits: secCm, Remotes: secRm }[k]; s.open(); } applyDock(); };
+    const secBr = mk('Branches', 'Branches', [ibtn('plus', 'Create branch…', () => newBranch())]);
+    const secCm = mk('Commits', 'Commits', [ibtn('refresh', 'Reload commits', () => loadCommits())]);
+    const secRm = mk('Remotes', 'Remotes', [ibtn('download', 'Fetch all remotes', () => fetchIt()), ibtn('plus', 'Add remote…', () => addRemote())]);
+    const loading = (s) => { s.inner.replaceChildren(stateRow('load', 'Loading…')); };
+    const failed = (s, e, retry) => { s.setCount('!'); s.inner.replaceChildren(stateRow('err', (e && e.message) || String(e), h('button', { class: 'scm-btn', type: 'button', onclick: retry }, 'Retry'))); };
+    const chip = (t, title, cls) => h('span', { class: 'scm-chip' + (cls ? ' ' + cls : ''), title }, t);
+    let drawRemotes = null;
+
+    // Branches: current branch pinned on top, local and remote-tracking in separate groups, live filter.
+    const loadBranches = async () => {
+      loading(secBr);
+      try {
+        const r = await git(['branch', '-a', '--format=%(HEAD)%09%(refname)%09%(refname:short)%09%(upstream:short)%09%(upstream:track)%09%(objectname:short)']);
+        if (r.code !== 0) throw new Error((r.stderr || 'git branch failed').trim());
+        G.branches = r.stdout.split('\n').filter(Boolean).map((l) => { const [hd, ref, short, up, track, sha] = l.split('\t'), remote = ref.startsWith('refs/remotes/');
+          return { cur: hd === '*', ref, remote, name: remote ? ref.slice(13) : short, up: up || '', sha: sha || '', ahead: +((track || '').match(/ahead (\d+)/) || [])[1] || 0, behind: +((track || '').match(/behind (\d+)/) || [])[1] || 0, gone: /gone/.test(track || '') }; })
+          .filter((b) => b.ref.startsWith('refs/heads/') || (b.remote && !/\/HEAD$/.test(b.ref)));
+      } catch (e) { return failed(secBr, e, loadBranches); }
+      const list = h('div', { class: 'scm-list', role: 'list', 'aria-label': 'Branches' });
+      const row = (b) => {
+        const items = branchItems(b), open = () => { if (!b.cur) checkoutBranch(b); };
+        return h('div', { ...rowProps(open, (e) => CF.menu(e, items)), class: 'gi scm-br' + (b.cur ? ' is-cur' : '') + (b.remote ? ' rem' : ''), 'aria-current': b.cur ? 'true' : null,
+          title: `${b.name}${b.cur ? ' (current branch)' : b.remote ? ' (remote-tracking)' : ''}${b.up ? '\nTracks ' + b.up : ''}${b.sha ? '\n' + b.sha : ''}` },
+          h('span', { class: 'ic', html: CF.iconHtml(b.remote ? 'cloud' : 'git', 13) }), h('span', { class: 'nm' }, b.name),
+          b.cur ? chip('current', 'You are on this branch', 'now') : null, b.ahead ? chip('↑' + b.ahead, `${b.ahead} commit(s) to push`) : null, b.behind ? chip('↓' + b.behind, `${b.behind} commit(s) to pull`) : null, b.gone ? chip('gone', 'The upstream branch no longer exists', 'warn') : null,
+          h('span', { class: 'acts' }, b.cur ? null : ibtn('check', 'Checkout', open), ibtn('more', 'More actions', (e) => menuBelow(e.currentTarget, items))));
+      };
+      const draw = () => {
+        const q = (G.q.branches || '').trim().toLowerCase(), hit = (b) => !q || b.name.toLowerCase().includes(q), by = (a, b) => (b.cur - a.cur) || a.name.localeCompare(b.name);
+        const local = G.branches.filter((b) => !b.remote && hit(b)).sort(by), remote = G.branches.filter((b) => b.remote && hit(b)).sort(by), nodes = [];
+        const grp = (label, n) => h('div', { class: 'scm-grp' }, h('span', {}, label), h('span', { class: 'scm-count' }, n));
+        if (local.length) nodes.push(grp('Local', local.length), ...local.map(row));
+        if (remote.length) nodes.push(grp('Remote', remote.length), ...remote.map(row));
+        if (!nodes.length) nodes.push(stateRow('empty', G.branches.length ? `No branches match “${q}”` : 'No branches yet. Make the first commit.'));
+        list.replaceChildren(...nodes);
+      };
+      secBr.inner.replaceChildren(filterBox('branches', 'Filter branches…', draw), list);
+      secBr.setCount(G.branches.length); draw();
+      if (drawRemotes) drawRemotes();                                       // remote rows show how many branches each remote has
+    };
+
+    // Commits: compact rows with a graph rail (filled dot = HEAD, ring = merge commit), short hash, author, relative time.
+    const loadCommits = async () => {
+      loading(secCm);
+      let rows;
+      try {
+        const r = await git(['log', '--all', '-n', String(G.logN), '--pretty=format:%H%x1f%h%x1f%an%x1f%at%x1f%P%x1f%s%x1f%D']);
+        if (r.code !== 0 && !/does not have any commits|bad default revision|unknown revision/i.test(r.stderr)) throw new Error((r.stderr || 'git log failed').trim());
+        rows = r.code ? [] : r.stdout.split('\n').filter(Boolean).map((l) => { const [full, hash, author, at, parents, subj, refs] = l.split('\x1f'), rf = (refs || '').split(', ').filter(Boolean);
+          return { full, hash, author, at: +at, merge: (parents || '').trim().split(' ').filter(Boolean).length > 1, subj: subj || '', refs: rf, head: rf.some((x) => x === 'HEAD' || x.startsWith('HEAD -> ')) }; });
+      } catch (e) { return failed(secCm, e, loadCommits); }
+      const more = rows.length >= G.logN;
+      const list = h('div', { class: 'scm-list', role: 'list', 'aria-label': 'Commits' });
+      const row = (c) => {
+        const items = commitItems(c), open = () => CF.showCommit(c.hash);
+        const pill = (x) => h('span', { class: 'cm-ref' + (x.startsWith('tag: ') ? ' tag' : ''), title: x }, x.replace('HEAD -> ', '').replace('tag: ', ''));
+        const refs = c.refs.slice().sort((a, b) => (b.startsWith('HEAD') - a.startsWith('HEAD')));
+        return h('div', { ...rowProps(open, (e) => CF.menu(e, items)), class: 'commit scm-cm' + (c.head ? ' head' : '') + (c.merge ? ' merge' : ''),
+          title: `${c.subj}\n${c.hash} · ${c.author} · ${new Date(c.at * 1000).toLocaleString()}${c.merge ? '\nMerge commit' : ''}` },
+          h('span', { class: 'dot' }),
+          h('div', { class: 'cm-body' }, h('div', { class: 'cm-subj' }, h('span', { class: 'cm-t' }, c.subj || '(no message)'), ...refs.slice(0, 1).map(pill), refs.length > 1 ? h('span', { class: 'cm-more', title: refs.slice(1).join('\n') }, '+' + (refs.length - 1)) : null),
+            h('div', { class: 'cm-meta' }, h('span', { class: 'cm-hash' }, c.hash), h('span', { class: 'cm-au' }, c.author), h('span', { class: 'cm-ago' }, ago(c.at)))),
+          h('span', { class: 'acts' }, ibtn('copy', 'Copy hash', () => copy(c.full, 'Hash')), ibtn('more', 'More actions', (e) => menuBelow(e.currentTarget, items))));
+      };
+      const draw = () => {
+        const q = (G.q.commits || '').trim().toLowerCase(), hit = (c) => !q || (c.subj + ' ' + c.author + ' ' + c.full + ' ' + c.refs.join(' ')).toLowerCase().includes(q), shown = rows.filter(hit);
+        const nodes = shown.map(row);
+        if (!nodes.length) nodes.push(stateRow('empty', rows.length ? `No loaded commits match “${q}”` : 'No commits yet.'));
+        if (more) nodes.push(h('button', { class: 'scm-more', type: 'button', onclick: () => { G.logN += 100; loadCommits(); } }, q ? 'Load more history to search…' : 'Load more commits'));
+        list.replaceChildren(...nodes);
+      };
+      secCm.inner.replaceChildren(filterBox('commits', 'Filter commits (message, author, hash)…', draw), list);
+      secCm.setCount(more ? rows.length + '+' : rows.length); draw();
+    };
+
+    // Remotes: name, masked URL, branch count / sync info, fetch + push, full management in the menu.
+    const loadRemotes = async () => {
+      loading(secRm);
+      try {
+        const r = await git(['remote', '-v']);
+        if (r.code !== 0) throw new Error((r.stderr || 'git remote failed').trim());
+        const map = new Map();
+        r.stdout.split('\n').filter(Boolean).forEach((l) => { const m = l.match(/^(\S+)\t(.*) \((fetch|push)\)$/); if (!m) return; const o = map.get(m[1]) || { name: m[1], fetch: '', push: '' }; o[m[3]] = m[2]; map.set(m[1], o); });
+        G.remotes = [...map.values()];
+      } catch (e) { return failed(secRm, e, loadRemotes); }
+      secRm.setCount(G.remotes.length);
+      const list = h('div', { class: 'scm-list', role: 'list', 'aria-label': 'Remotes' });
+      secRm.inner.replaceChildren(list);
+      drawRemotes = () => {
+        if (!G.remotes.length) return list.replaceChildren(h('div', { class: 'scm-emptycard' }, h('b', {}, 'No remote yet'), h('small', {}, 'Add one to push, pull and collaborate on a Git host.'),
+          h('button', { class: 'scm-btn', type: 'button', onclick: addRemote }, CF.icon('plus', 12), 'Add remote')));
+        const curBr = G.branches.find((b) => b.cur);
+        list.replaceChildren(...G.remotes.map((rm) => {
+          const items = remoteItems(rm), nb = G.branches.filter((b) => b.remote && b.name.startsWith(rm.name + '/')).length;
+          const tracked = curBr && curBr.up.startsWith(rm.name + '/'), when = Math.max(G.rsync[rm.name] || 0, G.lastSync || 0);
+          const status = [nb ? `${nb} branch${nb === 1 ? '' : 'es'}` : null, when ? 'fetched ' + ago(when / 1000) : 'not fetched yet'].filter(Boolean).join(' · ');
+          const diffUrl = rm.push && rm.push !== rm.fetch;
+          const el = h('div', { ...rowProps(() => fetchRemote(rm.name, el), (e) => CF.menu(e, items)), class: 'gi scm-remote', 'data-remote': rm.name,
+            title: `${rm.name}\nFetch: ${maskUrl(rm.fetch)}${diffUrl ? '\nPush: ' + maskUrl(rm.push) : ''}\n${status}\n(Enter = fetch, right-click for more)` },
+            h('span', { class: 'ic', html: CF.iconHtml('cloud', 14) }),
+            h('div', { class: 'rbody' }, h('div', { class: 'rl1' }, h('span', { class: 'rn' }, rm.name), tracked && G.ahead ? chip('↑' + G.ahead, `${G.ahead} commit(s) to push`) : null, tracked && G.behind ? chip('↓' + G.behind, `${G.behind} commit(s) to pull`) : null),
+              h('div', { class: 'ru' }, maskUrl(rm.fetch) || '(no URL)'), h('div', { class: 'rs' }, status)),
+            h('span', { class: 'acts' }, ibtn('download', 'Fetch ' + rm.name, () => fetchRemote(rm.name, el)), ibtn('up', `Push ${G.branch || 'HEAD'} to ${rm.name}`, () => pushRemote(rm.name, el)), ibtn('more', 'More actions', (e) => menuBelow(e.currentTarget, items))));
+          return el;
+        }));
+      };
+      drawRemotes();
+    };
+
+    // Footer: always visible. Repo state, ahead/behind, last sync and Fetch / Pull / Push.
+    const fbtn = (icon, title, fn, n) => h('button', { class: 'scm-ic' + (n ? ' has' : ''), type: 'button', title, 'aria-label': title, 'data-sync': '1', onclick: fn }, CF.icon(icon, 14), n ? h('span', { class: 'fn' }, n) : null);
+    const tab = (key, icon, label) => { const c = h('span', { class: 'tc' }, ({ Branches: G.branches, Commits: null, Remotes: G.remotes }[key] || []).length || ''); tabCount[key] = c; const b = h('button', { class: 'ft-tab', type: 'button', title: label + ' (click to show or hide)', 'aria-label': label, 'aria-pressed': 'false', onclick: () => openDock(key) }, CF.icon(icon, 13), h('span', { class: 'tl' }, label), c); tabBtn[key] = b; return b; };
+    foot.append(h('span', { class: 'ft-tabs' }, tab('Branches', 'git', 'Branches'), tab('Commits', 'history', 'Commits'), tab('Remotes', 'cloud', 'Remotes')), h('span', { class: 'grow' }),
+      h('span', { class: 'ft-acts' }, fbtn('download', 'Fetch from all remotes', () => fetchIt()), fbtn('down', G.behind ? `Pull (${G.behind} behind)` : 'Pull', () => pullIt(), G.behind || 0), fbtn('up', G.ahead ? `Push (${G.ahead} ahead)` : 'Push', () => pushIt(), G.ahead || 0)));
+    applyDock();
+    foot.querySelectorAll('button').forEach((b) => { b.disabled = !!G.busy; });
+    restoreView();
+    await Promise.all([loadBranches(), loadCommits(), loadRemotes()]);
+    restoreView(); setTimeout(() => { restoreView(); ready = true; }, 60);
   };
   // Instant feedback: flip every Sync/Publish button to a disabled "Syncing…" state before any git process starts.
   const setBusy = (on, label) => {
     G.busy = on;
-    document.querySelectorAll('.scm-commit.sync, .scm-ic[data-sync]').forEach((b) => {
+    document.querySelectorAll('.scm-commit.sync, .scm-ic[data-sync], .scm-foot button').forEach((b) => {
       b.disabled = on; b.classList.toggle('busy', on);
       if (b.classList.contains('scm-commit')) { if (on) { b.dataset.html = b.innerHTML; b.textContent = label; } else if (b.dataset.html) b.innerHTML = b.dataset.html; }
     });
@@ -304,7 +466,7 @@
       if (/rejected|fetch first|non-fast-forward|behind/i.test(r.stderr)) { setBusy(false); await CF.gitRefresh(); if (await CF.confirm('Remote has newer commits (not up to date). Pull then push?', 'Pull & push')) return syncIt(); return; }
       throw new Error(r.stderr.trim());
     }
-    CF.toast('Pushed'); await CF.gitRefresh();
+    G.lastSync = Date.now(); CF.toast('Pushed'); await CF.gitRefresh();
   };
   // Sync = pull (fetches + merges) then push, like VS Code's "Sync Changes". One status refresh, no separate fetch.
   const syncIt = CF.guard(async () => {
@@ -313,6 +475,7 @@
     try {
       const wasBehind = G.behind;
       if (G.hasUp) await must(['pull']);
+      G.lastSync = Date.now();
       await CF.gitRefresh();
       if (G.ahead || !G.hasUp) await pushCore();
       else CF.toast(wasBehind ? 'Pulled, up to date' : 'Already up to date');
@@ -321,7 +484,8 @@
   });
   CF.gitSync = () => syncIt();
   // Keep ahead/behind current without restarting: refresh on window focus, auto-fetch every 3 minutes.
-  const autoFetch = async () => { if (!S.root || !G.repo || !G.hasUp || document.hidden) return; await git(['fetch', '--quiet'], { timeout: 30000 }); CF.gitRefresh(); };
+  const autoFetch = async () => { if (!S.root || !G.repo || !G.hasUp || document.hidden) return; const r = await git(['fetch', '--quiet'], { timeout: 30000 }); if (r.code === 0) G.lastSync = Date.now(); CF.gitRefresh(); };
+  setInterval(() => { const el = document.querySelector('.scm-foot .ft-ls'); if (el) el.textContent = lastSyncText(); }, 30000);
   setInterval(autoFetch, 180000);
   window.addEventListener('focus', () => { if (S.root) { CF.gitRefresh(); setTimeout(autoFetch, 500); } });
   // Branch selector: local branches (switch), plus create / rename / delete.
@@ -339,9 +503,99 @@
     if (del.length) items.push(['Delete branch…', () => CF.menu(at, del.map((b) => ['Delete ' + b.name, CF.guard(async () => { if (await CF.confirm(`Delete branch ${b.name}? (only works if it is fully merged)`, 'Delete')) run('Deleted ' + b.name + ' -', ['branch', '-d', b.name])(); })]))]);
     CF.menu(at, items);
   });
-  const renameBranch = CF.guard(async () => { const v = await CF.ask('Rename Branch', [{ id: 'n', label: 'New name for ' + G.branch, value: G.branch }], 'Rename'); if (v && v.n && v.n !== G.branch) { if (/^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Renamed to ' + v.n + ' -', ['branch', '-m', v.n])(); else CF.toast('Invalid branch name', true); } });
-  const newBranch = CF.guard(async () => { const v = await CF.ask('Checkout New Branch', [{ id: 'n', label: 'New branch name (created from the current branch)', placeholder: 'feature/login' }], 'Create & checkout'); if (v && /^[\w./-]+$/.test(v.n) && !v.n.startsWith('-')) run('Checked out new branch ' + v.n + ' -', ['checkout', '-b', v.n])(); else if (v) CF.toast('Invalid branch name', true); });
-  const addRemote = CF.guard(async () => { const v = await CF.ask('Add Remote', [{ id: 'n', label: 'Name', value: 'origin' }, { id: 'u', label: 'URL (https or ssh)' }]); if (v && v.u) run('Add remote', ['remote', 'add', v.n, v.u])(); });
+  // ---- branch / commit / remote actions (all go through the same allow-listed `git` IPC as everything else) ----
+  const branchOf = (b) => (b && b.name) || G.branch;
+  const shortOf = (b) => b.name.slice(b.name.indexOf('/') + 1);                    // origin/feature/x -> feature/x
+  const checkoutBranch = (b) => {
+    if (!b.remote) return run('Switched to ' + b.name + ' -', ['checkout', b.name])();
+    const local = G.branches.find((x) => !x.remote && x.name === shortOf(b));
+    return local ? run('Switched to ' + local.name + ' -', ['checkout', local.name])() : run('Checked out ' + shortOf(b) + ' (tracking ' + b.name + ') -', ['checkout', '--track', b.name])();
+  };
+  const mergeBranch = CF.guard(async (b) => { if (await CF.confirm(`Merge ${b.name} into ${G.branch}?`, 'Merge')) run('Merge', ['merge', b.name])(); });
+  const rebaseOnto = CF.guard(async (b) => { if (await CF.confirm(`Rebase ${G.branch} onto ${b.name}? This rewrites ${G.branch}'s commits.`, 'Rebase')) run('Rebase', ['rebase', b.name])(); });
+  const deleteBranch = CF.guard(async (b) => {
+    if (b.remote) {
+      const rn = b.name.slice(0, b.name.indexOf('/'));
+      if (await CF.confirm(`Delete branch ${shortOf(b)} on remote ${rn}? This removes it from the server for everyone.`, 'Delete remote branch')) run('Deleted ' + b.name + ' -', ['push', rn, '--delete', shortOf(b)])();
+      return;
+    }
+    if (!(await CF.confirm(`Delete branch ${b.name}?`, 'Delete'))) return;
+    const r = await git(['branch', '-d', b.name]);
+    if (r.code === 0) { CF.toast('Deleted ' + b.name); return CF.gitRefresh(); }
+    if (/not fully merged/i.test(r.stderr) && await CF.confirm(`${b.name} has commits that are not merged anywhere. Delete it anyway? Those commits may be lost.`, 'Force delete')) { await must(['branch', '-D', b.name]); CF.toast('Deleted ' + b.name); return CF.gitRefresh(); }
+    if (!/not fully merged/i.test(r.stderr)) throw new Error((r.stderr || 'Delete failed').trim());
+  });
+  const renameBranch = CF.guard(async (b) => {
+    const cur = b && b.name && !b.remote ? b.name : G.branch;
+    const v = await CF.ask('Rename Branch', [{ id: 'n', label: 'New name for ' + cur, value: cur }], 'Rename');
+    if (!v || !v.n || v.n === cur) return;
+    if (!okName(v.n)) return CF.toast('Invalid branch name', true);
+    run('Renamed to ' + v.n + ' -', ['branch', '-m', cur, v.n])();
+  });
+  // Create (and switch to) a branch, optionally starting from another branch or a commit.
+  const branchFrom = CF.guard(async (start, label) => {
+    const v = await CF.ask('Checkout New Branch', [{ id: 'n', label: `New branch name (created from ${label || 'the current branch'})`, placeholder: 'feature/login' }], 'Create & checkout');
+    if (!v) return;
+    if (!okName(v.n || '')) return CF.toast('Invalid branch name', true);
+    run('Checked out new branch ' + v.n + ' -', start ? ['checkout', '-b', v.n, start] : ['checkout', '-b', v.n])();
+  });
+  const newBranch = () => branchFrom();
+  const branchItems = (b) => {
+    const i = [];
+    if (!b.cur) i.push(['Checkout', () => checkoutBranch(b)], ['Merge into ' + G.branch, () => mergeBranch(b)], ['Rebase ' + G.branch + ' onto this', () => rebaseOnto(b)], '-');
+    i.push(['Create branch from here…', () => branchFrom(b.name, b.name)]);
+    if (!b.remote) i.push(['Rename…', () => renameBranch(b)]);
+    if (!b.cur) i.push([b.remote ? 'Delete remote branch…' : 'Delete branch', () => deleteBranch(b)]);
+    i.push('-', ['Copy branch name', () => copy(b.name, 'Branch name')]);
+    return i;
+  };
+
+  const checkoutCommit = CF.guard(async (c) => { if (await CF.confirm(`Check out ${c.hash}? You will be on a detached HEAD; create a branch to keep new commits.`, 'Checkout')) run('Checked out ' + c.hash + ' -', ['checkout', c.full])(); });
+  const cherryPick = CF.guard(async (c) => { if (await CF.confirm(`Apply commit ${c.hash} onto ${G.branch}?`, 'Cherry-pick')) run('Cherry-pick', ['cherry-pick', ...(c.merge ? ['-m', '1'] : []), c.full])(); });
+  const revertCommit = CF.guard(async (c) => { if (await CF.confirm(`Create a new commit that undoes ${c.hash}?`, 'Revert')) run('Revert', ['revert', '--no-edit', ...(c.merge ? ['-m', '1'] : []), c.full])(); });
+  const commitItems = (c) => [['Inspect details', () => CF.showCommit(c.hash)], '-', ['Copy hash', () => copy(c.full, 'Hash')], ['Copy message', () => copy(c.subj, 'Message')], '-',
+    ['Checkout commit (detached)', () => checkoutCommit(c)], ['Create branch from here…', () => branchFrom(c.full, c.hash)], ['Cherry-pick', () => cherryPick(c)], ['Revert', () => revertCommit(c)]];
+
+  // Network operations: disable the sync buttons while running (setBusy), remember when it last worked, refresh once at the end.
+  const netOp = (label, fn) => CF.guard(async () => {
+    if (G.busy) return;
+    setBusy(true, label);
+    try { await fn(); } finally { setBusy(false); await CF.gitRefresh(); }
+  });
+  const fetchIt = netOp('Fetching…', async () => { await must(['fetch', '--all']); G.lastSync = Date.now(); CF.toast('Fetched'); });
+  const pullIt = netOp('Pulling…', async () => { await must(['pull']); G.lastSync = Date.now(); CF.toast('Pulled'); await CF.reloadOpenFiles(); CF.refreshTree && CF.refreshTree(); });
+  // Per-remote actions show a busy state on that row.
+  const onRow = async (el, fn) => {
+    if (G.busy) return;
+    G.busy = true; if (el) { el.classList.add('busy'); el.setAttribute('aria-busy', 'true'); }
+    try { await fn(); } finally { G.busy = false; if (el) { el.classList.remove('busy'); el.removeAttribute('aria-busy'); } await CF.gitRefresh(); }
+  };
+  const fetchRemote = CF.guard((name, el) => onRow(el, async () => { await must(['fetch', name]); G.rsync[name] = G.lastSync = Date.now(); CF.toast('Fetched ' + name); }));
+  const pushRemote = CF.guard(async (name, el) => {
+    if (!G.branch) return CF.toast('No branch to push', true);
+    if (!(await CF.confirm(`Push ${G.branch} to ${name}?`, 'Push'))) return;
+    await onRow(el, async () => { await must(['push', ...(G.hasUp ? [] : ['-u']), name, G.branch]); G.rsync[name] = G.lastSync = Date.now(); CF.toast(`Pushed ${G.branch} to ${name}`); });
+  });
+  const okRemote = (v) => /^[\w.-]+$/.test(v.n || '') && !v.n.startsWith('-') && (v.u || '').trim() && !v.u.trim().startsWith('-');
+  const addRemote = CF.guard(async () => {
+    const v = await CF.ask('Add Remote', [{ id: 'n', label: 'Name', value: G.remotes.length ? '' : 'origin' }, { id: 'u', label: 'URL (https or ssh)' }], 'Add');
+    if (!v) return;
+    if (!okRemote(v)) return CF.toast('Enter a valid remote name and URL', true);
+    if (G.remotes.some((r) => r.name === v.n)) return CF.toast(`Remote “${v.n}” already exists`, true);
+    run('Added remote ' + v.n + ' -', ['remote', 'add', v.n, v.u.trim()])();
+  });
+  const editRemote = CF.guard(async (rm) => {
+    const v = await CF.ask('Edit Remote', [{ id: 'n', label: 'Name', value: rm.name }, { id: 'u', label: 'URL' + (/\/\/[^/@\s]+@/.test(rm.fetch) ? ' (contains credentials - shown in full here)' : ''), value: rm.fetch }], 'Save');
+    if (!v) return;
+    if (!okRemote(v)) return CF.toast('Enter a valid remote name and URL', true);
+    if (v.n !== rm.name && G.remotes.some((r) => r.name === v.n)) return CF.toast(`Remote “${v.n}” already exists`, true);
+    if (v.n === rm.name && v.u.trim() === rm.fetch && rm.push === rm.fetch) return;
+    if (v.n !== rm.name) await must(['remote', 'rename', rm.name, v.n]);
+    if (v.u.trim() !== rm.fetch || rm.push !== rm.fetch) await must(['remote', 'set-url', v.n, v.u.trim()]);
+    CF.toast('Remote updated'); await CF.gitRefresh();
+  });
+  const removeRemote = CF.guard(async (rm) => { if (await CF.confirm(`Remove remote ${rm.name}? Its remote-tracking branches are deleted locally; nothing changes on the server.`, 'Remove')) run('Removed remote ' + rm.name + ' -', ['remote', 'remove', rm.name])(); });
+  const remoteItems = (rm) => [['Fetch', () => fetchRemote(rm.name)], [`Push ${G.branch || 'branch'}…`, () => pushRemote(rm.name)], '-', ['Edit remote…', () => editRemote(rm)], ['Copy URL', () => copy(rm.fetch, 'URL')], '-', ['Remove remote…', () => removeRemote(rm)]];
 
   // ---- diff viewer --------------------------------------------------------------------------------
   CF.showDiff = CF.guard(async (f, staged, commitRef) => {
@@ -404,5 +658,5 @@
     if (!v || !v.url || !v.dir) return;
     CF.toast('Cloning…'); CF.setRoot(await cf.git.clone(v.url, v.dir));
   });
-  CF.gitInit = run('Init', ['init']);
+  CF.gitInit = () => run('Init', initArgs())();
 })();

@@ -54,6 +54,8 @@
     treeView: '<path d="M4 5h7M8 5v13M8 10h5M8 18h5M15 8h6M15 15h6"/>',
     newSearch: '<circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 6 6M10 7.5v5M7.5 10h5"/>',
     pin: '<path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z"/>',
+    cloud: '<path d="M7 18a4 4 0 0 1-.7-7.94A6 6 0 0 1 17.9 9.6 4.2 4.2 0 0 1 17.5 18z"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
   };
   CF.icon = (name, size = 16, extra = '') => h('span', { class: 'svg ' + extra, html: `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${UI[name] || ''}</svg>` });
   CF.iconHtml = (name, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${UI[name] || ''}</svg>`;

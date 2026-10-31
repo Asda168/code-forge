@@ -88,7 +88,16 @@ function createWindow(query = {}) {
   if (process.env.CODEFORGE_E2E) win.webContents.once('did-finish-load', () => setTimeout(async () => {
     try {
       const dir = process.env.CODEFORGE_E2E_ROOT; if (dir) registerRoot(dir);
-      const out = await win.webContents.executeJavaScript(fs.readFileSync(process.env.CODEFORGE_E2E, 'utf8'));
+      let out = await win.webContents.executeJavaScript(fs.readFileSync(process.env.CODEFORGE_E2E, 'utf8'));
+      if (process.env.CODEFORGE_E2E_SIZES) {                                 // test-only: run the script again at each WxH and screenshot it (${CODEFORGE_SHOT}-WxH.png)
+        const res = {}; win.show();
+        for (const sz of process.env.CODEFORGE_E2E_SIZES.split(',')) {
+          const [w, h] = sz.split('x').map(Number); win.setContentSize(w, h); await new Promise((r) => setTimeout(r, 900));
+          const [cw, ch] = win.getContentSize(); res[sz] = { content: cw + 'x' + ch, ...(await win.webContents.executeJavaScript(fs.readFileSync(process.env.CODEFORGE_E2E_SIZE_SCRIPT || process.env.CODEFORGE_E2E, 'utf8'))) };
+          if (process.env.CODEFORGE_SHOT) fs.writeFileSync(process.env.CODEFORGE_SHOT.replace(/.png$/, '') + '-' + sz + '.png', (await win.webContents.capturePage()).toPNG());
+        }
+        out = res;
+      }
       if (process.env.CODEFORGE_SHOT) { win.show(); win.focus(); await new Promise((r) => setTimeout(r, 2000)); fs.writeFileSync(process.env.CODEFORGE_SHOT, (await win.webContents.capturePage()).toPNG()); }
       console.log('[e2e]', typeof out === 'string' ? out : JSON.stringify(out, null, 1));
     } catch (e) { console.log('[e2e-error]', e.message); }

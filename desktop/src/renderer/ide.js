@@ -134,7 +134,7 @@
   // Leave the maximized state (used when the panel is closed or a file is opened) so the editor is visible again.
   CF.restorePanel = () => { const p = $('#panel'); if (!p.classList.contains('max')) return; p.classList.remove('max'); sh.hidden = false; $('#panel-max').innerHTML = CF.iconHtml('chevronUp', 15); setTimeout(() => { S.groups.forEach((g) => g.editor.layout()); S.terms.forEach((t) => t.fit()); }, 30); };
   sh.addEventListener('dblclick', () => setPanel(260));
-  drag(sh, (e) => { const mainBox = $('#main').getBoundingClientRect(); const ph = Math.min(mainBox.height - 120, Math.max(80, mainBox.bottom - e.clientY)); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); });
+  drag(sh, (e) => { const mainBox = $('#main').getBoundingClientRect(); const ph = Math.min(mainBox.height - Math.max(120, mainBox.height * 0.3), Math.max(80, mainBox.bottom - e.clientY)); $('#panel').style.height = ph + 'px'; saved.panel = ph; localStorage.setItem('cf.layout', JSON.stringify(saved)); });
   new ResizeObserver(place).observe($('#sidebar')); place();
   // Window resize: CSS caps the panel (max-height) so the editor always keeps room; refit terminals to whatever size they ended up with.
   let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => S.terms.forEach((t) => t.fit()), 60); }).observe($('#panel'));
