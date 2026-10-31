@@ -25,7 +25,8 @@ Repository **secrets**: Azure -> `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CL
 - Signs `Asta.exe`, all DLLs (`win.signDlls`), the installer and the uninstaller, SHA-256 digest (`signingHashAlgorithms`) with an RFC 3161 timestamp (`rfc3161TimeStampServer`).
 - `win.signExts: ['.node']` + `signDlls` also sign native addons and the unpacked node-pty `winpty-agent.exe`/`winpty.dll` (electron-builder 25.x; v26 uses the same `signExts`). When signing is configured the workflow passes `-c.forceCodeSigning=true`, so a signing failure stops the build instead of shipping an unsigned file. Microsoft's own `conpty.dll`/`OpenConsole.exe` ship already signed; check after the first signed build that they still show Microsoft as publisher (the audit flags this).
 - `desktop/scripts/audit-binaries.ps1` (read-only) writes `signature-audit.csv/.md` (publisher, status, issuer, timestamp, SHA-256, origin, expected-signed) and `SHA256-MANIFEST.txt`; `-Compare old-manifest` fails on modified/missing/extra files. CI uploads it as the `signature-audit` artifact. Unknown-origin files are reported, never auto-signed.
-- With signing configured, tag builds are verified strictly. With no signing configured the build is unsigned and only warns.
+- **Tag (release) builds fail unless fully signed**: `verify-signatures.ps1 -Require -SigntoolStrict` (also runs `signtool verify /pa /all /v`) and the `release` job re-checks installer SHA-256s against the build job's `SHA256-INSTALLERS.txt` so nothing can change after verification. To knowingly ship unsigned, set the repo variable `ALLOW_UNSIGNED_RELEASE=true`. Manual (non-tag) runs only warn.
+- Release notes (generated in the `release` job) carry install + verify instructions. Targets: NSIS installer only (x64, arm64); there is no portable build, so nothing extra to sign.
 - `desktop/scripts/verify-signatures.ps1` runs before artifacts are uploaded: every exe/dll must be `Valid`, timestamped, SHA-2, chain to a trusted root and match `WIN_PUBLISHER_NAME`; `-Require` (tags) also rejects unsigned files. Run it locally: `pwsh desktop/scripts/verify-signatures.ps1 -Path desktop/dist -Publisher "<name>" -Require`.
 - `test-windows` installs silently, checks the installed `Asta.exe` signature, launches, upgrades over a running app, uninstalls and prints Code Integrity block events.
 - Note: GitHub-hosted runners do not enforce Smart App Control. Final acceptance must be done by hand on a Windows 11 machine with SAC **On** (Settings -> Privacy & security -> Windows Security -> App & browser control -> Smart App Control): install the signed `Asta-Setup-x64.exe`, launch, uninstall, and confirm no new 3033/3077 events for Asta binaries.
@@ -35,6 +36,15 @@ Repository **secrets**: Azure -> `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CL
 Events 3033/3077 for `...\Programs\Asta\Asta.exe` (launched by explorer.exe), `Uninstall Asta.exe` and the installer's `old-uninstaller.exe`; all `NotSigned`.
 Also unsigned in the 1.3.8 install: Electron's `ffmpeg.dll`, `libEGL.dll`, `libGLESv2.dll`, `vk_swiftshader.dll`, `vulkan-1.dll`, `resources/elevate.exe`, and node-pty's `pty.node`, `conpty.node`, `winpty*` (these would block the integrated terminal once `Asta.exe` itself passes).
 No signature can be produced without a real certificate; until `WIN_PUBLISHER_NAME` + a signing secret exist, builds stay unsigned and SAC will keep blocking them.
+
+### Manual acceptance test (needs a signed build and real Windows 11 machines; hosted runners do not enforce SAC)
+| Scenario | Pass criteria |
+|---|---|
+| Win 11 clean VM, SAC **On**, download installer from the official site | `Get-AuthenticodeSignature` = Valid; installer runs; no Code Integrity 3033/3077 for Asta files |
+| Fresh install, launch, open terminal (node-pty), uninstall | App and terminal work; uninstall leaves no `Asta.exe` |
+| Upgrade over the previous (unsigned) release, running and not running | Installer replaces it; launch works; settings kept |
+| SmartScreen path (SAC Off) | At most a reputation prompt; no "unknown publisher" for an OV/EV or Trusted Signing publisher |
+Record results in the release PR. Not performed yet: no certificate exists, so no signed build could be tested.
 
 ## macOS (Gatekeeper)
 - Needs an Apple Developer account ($99/yr) and a *Developer ID Application* certificate.

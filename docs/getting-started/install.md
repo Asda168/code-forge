@@ -12,7 +12,7 @@ Open [astaide.vercel.app](/#download). The page detects your system and shows th
 ## Windows
 
 1. Run `Asta-Setup-x64.exe` (or `Asta-Setup-arm64.exe` on ARM PCs).
-2. If Windows shows **"Windows protected your PC"**, click **More info**, then **Run anyway**. The installer is safe; the warning appears because it is not yet code-signed. Details: [SmartScreen and Smart App Control](../troubleshooting/installation.md).
+2. Optionally verify the download: `Get-AuthenticodeSignature .\Asta-Setup-x64.exe` should report `Valid`, and `Get-FileHash` should match `SHA256SUMS.txt` on the release page. If Windows blocks or warns about the installer, read [SmartScreen, Smart App Control and signature checks](../troubleshooting/installation.md); do not turn off Windows security features.
 3. Choose the install folder (the wizard lets you change it) and finish. AstaIDE creates a desktop shortcut and a Start menu entry, and can start immediately after install.
 
 ## macOS

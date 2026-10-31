@@ -519,8 +519,9 @@ html[lang=km] .btn{line-height:1.4}
       <p class="note" data-note></p>
       <details class="help" data-help="windows">
         <summary>Seeing “Windows protected your PC”?</summary>
-        <p>The installer is safe but not yet code-signed, so SmartScreen warns about an unknown publisher. It is not a virus warning.</p>
-        <ol><li>Click <b>More info</b> in the blue window.</li><li>Click <b>Run anyway</b>.</li></ol>
+        <p>SmartScreen warns when it cannot verify the publisher or has not seen the file often. First confirm you downloaded from this page and check the signature:</p>
+        <div class="cmd" tabindex="0">Get-AuthenticodeSignature "$HOME\Downloads\Asta-Setup-x64.exe" | Format-List Status, SignerCertificate<button class="copy" type="button" data-copy="Get-AuthenticodeSignature &quot;$HOME\Downloads\Asta-Setup-x64.exe&quot; | Format-List Status, SignerCertificate" aria-label="Copy signature check command">Copy</button></div>
+        <p>If Status is <b>Valid</b> and the hash matches <code>SHA256SUMS.txt</code> on the release page, use <b>More info → Run anyway</b>. If Windows 11 <b>Smart App Control</b> blocks it (no Run anyway button), do not disable Windows security; see the <a href="/docs/troubleshooting/installation/">troubleshooting guide</a>.</p>
         <p>If the file was blocked after download: right-click it → <b>Properties</b> → tick <b>Unblock</b> → OK. Or in PowerShell:</p>
         <div class="cmd" tabindex="0">Unblock-File "$HOME\Downloads\Asta-Setup-x64.exe"<button class="copy" type="button" data-copy="Unblock-File &quot;$HOME\Downloads\Asta-Setup-x64.exe&quot;" aria-label="Copy Unblock-File command">Copy</button></div>
         <p>Not sure which one? <b>x64</b> fits almost every PC; pick <b>ARM64</b> only for Snapdragon / ARM laptops.</p>

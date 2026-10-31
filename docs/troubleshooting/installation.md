@@ -1,4 +1,4 @@
-The AstaIDE installers are currently **not code-signed**, so Windows and macOS show a warning the first time. The software is not a virus; the warning means the system does not know the publisher yet.
+Windows and macOS warn about, or block, apps whose publisher they cannot verify. Releases are published with a SHA-256 checksum file and, once signed, a verifiable digital signature (see below). Check the release notes to see whether your version is signed.
 
 ## Installation problems
 
@@ -17,20 +17,37 @@ The AstaIDE installers are currently **not code-signed**, so Windows and macOS s
 1. Click **More info** in the blue window.
 2. Click **Run anyway**.
 
-SmartScreen learns from downloads over time, and a signed build removes the warning.
+SmartScreen learns from downloads over time, and a signed build removes the warning. Only click **Run anyway** for a file you downloaded from the official page and whose checksum or signature you have verified.
 
 ## Windows Smart App Control
 
-Windows 11 can run **Smart App Control (SAC)**. When it is **On** it blocks apps that are not signed by a trusted publisher and have no download reputation, with a message such as *"Smart App Control blocked an app that may be unsafe"*. Unlike SmartScreen there is **no "Run anyway" button**, and SAC cannot be allowed per app.
+Windows 11 can run **Smart App Control (SAC)**. When it is **On** it only runs apps that are signed by a publisher whose certificate chains to Microsoft's trusted roots, or that Microsoft's cloud already knows to be safe. Unsigned or untrusted apps are blocked with *"Smart App Control blocked an app that may be unsafe"*. Unlike SmartScreen there is **no "Run anyway" button**, and SAC cannot be allowed per app. This is Windows working as designed, not a sign that the file is malicious.
 
-Your options:
+What to do:
 
-- **Wait for a signed build.** Once releases are signed with a certificate that chains to Microsoft's trusted roots, SAC accepts them. Release notes will say when this happens.
-- **Check whether SAC is on:** Settings, Privacy & security, Windows Security, App & browser control, Smart App Control.
-- **Turn SAC off** (Evaluation or Off). Be aware that, on Windows, once turned off it **cannot be turned back on** without resetting or reinstalling Windows. Only do this if you accept that trade-off.
-- **Use a machine or account where SAC is Off** (it is not enforced on Windows 10).
+1. **Download only the official installer** from [astaide.vercel.app](/#download) or the [GitHub Releases](https://github.com/Asda168/code-forge/releases) page. Never use a mirror or a link from a message.
+2. **Check the release is signed** (see below). Signed releases from a trusted publisher are accepted by SAC; the release notes state when a version is signed.
+3. **If a build is unsigned, do not work around Windows.** Wait for a signed release, use a PC where SAC is already Off or in Evaluation by your own choice, or build from [source](https://github.com/Asda168/code-forge) yourself.
+4. Report it with the details below so we can fix it.
 
-> **Important:** never disable security features for software you do not trust. If you prefer, review the source on [GitHub](https://github.com/Asda168/code-forge) and build it yourself.
+> We never recommend turning off Smart App Control, Microsoft Defender or any antivirus. SAC cannot be turned back on without resetting Windows; only your IT administrator or you, knowingly and for software you trust, should change it.
+
+**Collecting details for a bug report.** In PowerShell:
+
+```powershell
+Get-AuthenticodeSignature "$env:LOCALAPPDATA\Programs\Asta\Asta.exe" | Format-List Status, StatusMessage, SignerCertificate
+Get-WinEvent -FilterHashtable @{LogName='Microsoft-Windows-CodeIntegrity/Operational'; Id=3033,3077} -MaxEvents 10 | Format-List TimeCreated, Message
+```
+
+## Verify the publisher and signature
+
+Right-click `Asta-Setup-x64.exe`, choose **Properties**, then the **Digital Signatures** tab: select the signature, **Details**, and confirm *"This digital signature is OK"* and that the signer is the publisher named on the website and in the release notes. Or in PowerShell:
+
+```powershell
+Get-AuthenticodeSignature .\Asta-Setup-x64.exe | Format-List Status, SignerCertificate, TimeStamperCertificate
+```
+
+`Status` must be `Valid`. `NotSigned`, `HashMismatch` or `NotTrusted` means do not run it: re-download from the official page.
 
 ## macOS Gatekeeper
 
@@ -38,7 +55,7 @@ If macOS says the app "cannot be opened because the developer cannot be verified
 
 ## Verify your download
 
-Each release publishes a SHA-256 manifest of its files. Compare your file's hash with it:
+Each release publishes `SHA256SUMS.txt`. Compare your file's hash with it:
 
 ```powershell
 Get-FileHash .\Asta-Setup-x64.exe -Algorithm SHA256
@@ -50,7 +67,7 @@ shasum -a 256 Asta.AppImage
 
 ## Expected result
 
-AstaIDE installs and opens normally after you click through the one-time warning.
+The installer's signature shows `Valid`, its hash matches `SHA256SUMS.txt`, and AstaIDE installs and opens normally.
 
 ## Related
 

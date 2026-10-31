@@ -80,11 +80,17 @@ jobs:
         env:
           WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
           IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          # Escape hatch for a deliberately unsigned release (repo variable). Default: a release tag MUST be signed.
+          ALLOW_UNSIGNED_RELEASE: ${{ vars.ALLOW_UNSIGNED_RELEASE }}
         run: |
           # Hashtable splatting passes real NAMED parameters (an array would be passed positionally, making the string '-Path' the path).
           $verify = @{ Path = 'dist' }
           if ($env:WIN_PUBLISHER_NAME) { $verify.Publisher = $env:WIN_PUBLISHER_NAME }
-          if ($env:IS_RELEASE -eq 'true' -and $env:WIN_PUBLISHER_NAME) { $verify.Require = $true }   # strict only for releases with signing configured
+          if ($env:IS_RELEASE -eq 'true' -and $env:ALLOW_UNSIGNED_RELEASE -ne 'true') {
+            if (-not $env:WIN_PUBLISHER_NAME) { throw 'Release tag without signing configuration. Set WIN_PUBLISHER_NAME + a signing secret (docs/SIGNING.md), or set the repo variable ALLOW_UNSIGNED_RELEASE=true to ship knowingly unsigned.' }
+            $verify.Require = $true          # every exe/dll/.node must be Valid, SHA-2, timestamped, publisher-matched, trusted chain
+            $verify.SigntoolStrict = $true   # plus signtool verify /pa /all /v
+          }
           ./scripts/verify-signatures.ps1 @verify
       - name: Binary audit + SHA-256 manifest (win-unpacked)
         if: runner.os == 'Windows'
@@ -126,6 +132,7 @@ jobs:
           path: |
             desktop/dist/*.exe
             !desktop/dist/Asta-Setup.exe
+            desktop/dist/SHA256-INSTALLERS.txt
             desktop/dist/*.dmg
             desktop/dist/*.AppImage
             desktop/dist/*.deb
@@ -142,12 +149,33 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: artifacts, merge-multiple: true }
-      - name: SHA-256 checksums
+      - name: SHA-256 checksums (and tamper check against the build job's hashes)
         working-directory: artifacts
-        run: sha256sum Asta* > SHA256SUMS.txt && cat SHA256SUMS.txt
+        run: |
+          # SHA256-INSTALLERS.txt was written by the build job right after signature verification; the files must not have changed since.
+          sha256sum -c SHA256-INSTALLERS.txt
+          sha256sum Asta* > SHA256SUMS.txt && cat SHA256SUMS.txt
+          rm SHA256-INSTALLERS.txt
+      - name: Release notes with install and verification instructions
+        run: |
+          cat > notes.md <<'EOF'
+          ## Install
+          Download only from this page or the official site, https://astaide.vercel.app. Pick `Asta-Setup-x64.exe` (most PCs) or `Asta-Setup-arm64.exe` (ARM laptops) for Windows.
+
+          ## Verify (recommended)
+          ```powershell
+          Get-FileHash .\Asta-Setup-x64.exe -Algorithm SHA256        # compare with SHA256SUMS.txt
+          Get-AuthenticodeSignature .\Asta-Setup-x64.exe | Format-List Status, SignerCertificate, TimeStamperCertificate
+          ```
+          Status must be `Valid` and the signer must be the publisher named on the website. Linux/macOS: `shasum -a 256 <file>`.
+
+          Windows blocked it? See https://astaide.vercel.app/docs/troubleshooting/installation/ . Never disable Windows security features to install Asta.
+          EOF
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
+          body_path: notes.md
+          generate_release_notes: true
 
   # Smoke tests: really install the built packages and check the app starts and stays up.
   # Not required by `release` (so a flaky runner can't block a release); check them before announcing a version.
@@ -221,9 +249,12 @@ jobs:
           if (-not (Test-Path $exe)) { throw "not installed at $exe" }
       - name: Installed binaries are signed
         shell: pwsh
+        env:
+          STRICT: ${{ startsWith(github.ref, 'refs/tags/v') && vars.ALLOW_UNSIGNED_RELEASE != 'true' }}
         run: |
           $sig = Get-AuthenticodeSignature "$env:LOCALAPPDATA\Programs\Asta\Asta.exe"
           Write-Host "$($sig.Status) $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid' -and $env:STRICT -eq 'true') { throw "Installed Asta.exe signature is $($sig.Status); refusing to release." }
           if ($sig.Status -ne 'Valid') {
             Write-Warning "Asta.exe is not validly signed ($($sig.Status)); Smart App Control will block it."
           }
